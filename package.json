@@ -10,9 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google-cloud/local-auth": "^3.0.1",
-    "axios": "^1.16.1",
-    "googleapis": "^172.0.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1"
