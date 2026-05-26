@@ -75,7 +75,7 @@ function Proyectos() {
 
   function getNombre(id) {
     const u = usuarios.find(u => u.id === id)
-    return u ? u.nombre.split(' ')[0] : id
+    return u ? u.nombre ? u.nombre.split(' ')[0] : u.id : id
   }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
@@ -87,7 +87,7 @@ function Proyectos() {
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <select value={filtroPersona} onChange={e => setFiltroPersona(e.target.value)} className="select-filtro">
             <option value="todos">Todos los miembros</option>
-            {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre.split(' ')[0]}</option>)}
+            {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre ? u.nombre.split(' ')[0] : u.id}</option>)}
           </select>
           <button onClick={() => setModalProyecto(true)} style={{
             background: '#00953B', color: 'white', border: 'none', borderRadius: '8px',
@@ -186,7 +186,7 @@ function Proyectos() {
               <select value={nuevaTarea.asignado_a} onChange={e => setNuevaTarea({...nuevaTarea, asignado_a: e.target.value})}
                 style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
                 <option value="">Asignar a...</option>
-                {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre.split(' ')[0]}</option>)}
+                {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre ? u.nombre.split(' ')[0] : u.id}</option>)}
               </select>
               <select value={nuevaTarea.dia_semana} onChange={e => setNuevaTarea({...nuevaTarea, dia_semana: e.target.value})}
                 style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
