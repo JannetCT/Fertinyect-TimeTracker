@@ -25,25 +25,25 @@ function Login() {
         <img src={logo} alt="Fertinyect" style={{ 
           width: '90%',
           display: 'block',
-          margin: '0 auto 16px'
+          margin: '0 auto 20px'
         }} />
         <p style={{
           color: '#373A36',
-          margin: '0 0 8px',
-          fontSize: '18px',
-          fontWeight: '900',
-          letterSpacing: '1px',
-          textTransform: 'uppercase'
+          margin: '0 0 4px',
+          fontSize: '13px',
+          fontWeight: '600',
+          letterSpacing: '0.5px'
         }}>
           Sistema de Gestión del Tiempo · I+D
         </p>
         <h2 style={{
           color: '#373A36',
           margin: '0 0 28px',
-          fontSize: '22px',
-          fontWeight: '400'
+          fontSize: '28px',
+          fontWeight: '300',
+          letterSpacing: '2px'
         }}>
-          Bienvenida
+          Bienvenido
         </h2>
         <button
           onClick={login}
@@ -58,7 +58,7 @@ function Login() {
             borderRadius: '8px',
             background: 'white',
             cursor: 'pointer',
-            fontSize: '16px',
+            fontSize: '15px',
             color: '#373A36',
             transition: 'all 0.2s'
           }}
