@@ -21,7 +21,7 @@ function Login({ onLogin }) {
         textAlign: 'center',
         boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
       }}>
-        <img src={logo} alt="Fertinyect" style={{ height: '60px', marginBottom: '8px' }} />
+        <img src={logo} alt="Fertinyect" style={{ height: "160px", marginBottom: '8px' }} />
         <p style={{ color: '#373A36', margin: '0 0 32px', fontSize: '14px', opacity: 0.7 }}>
           Sistema de Gestión del Tiempo · I+D
         </p>
