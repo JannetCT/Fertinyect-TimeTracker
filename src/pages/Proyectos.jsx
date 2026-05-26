@@ -17,43 +17,48 @@ const TIPOS = [
   { value: 'corto_plazo', label: 'Corto plazo (puntual)' }
 ]
 
+const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
+
 function Proyectos() {
   const { accessToken } = useAuth()
   const [proyectos, setProyectos] = useState([])
-  const [proyectoAbierto, setProyectoAbierto] = useState(null)
   const [estados, setEstados] = useState([])
   const [acciones, setAcciones] = useState([])
   const [ensayos, setEnsayos] = useState([])
   const [tareas, setTareas] = useState([])
+  const [usuarios, setUsuarios] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [vistaProyecto, setVistaProyecto] = useState(null)
+  const [vistaEnsayo, setVistaEnsayo] = useState(null)
   const [modalProyecto, setModalProyecto] = useState(false)
   const [modalAccion, setModalAccion] = useState(null)
   const [modalEnsayo, setModalEnsayo] = useState(null)
+  const [modalTarea, setModalTarea] = useState(null)
   const [confirmEliminar, setConfirmEliminar] = useState(null)
-  const [vistaProyecto, setVistaProyecto] = useState(null)
 
-  const [nuevoProyecto, setNuevoProyecto] = useState({
-    nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: ''
-  })
+  const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: '' })
   const [nuevaAccion, setNuevaAccion] = useState({ nombre: '', descripcion: '' })
   const [nuevoEnsayo, setNuevoEnsayo] = useState({ nombre: '', tipo: 'ensayo', descripcion: '' })
+  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', dia_recomendado_hora: '', fecha_limite: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
   async function cargarDatos() {
     try {
-      const [p, e, a, en, t] = await Promise.all([
+      const [p, e, a, en, t, u] = await Promise.all([
         leerHoja('proyectos', accessToken),
         leerHoja('estados_proyecto', accessToken),
         leerHoja('acciones', accessToken),
         leerHoja('ensayos', accessToken),
-        leerHoja('tareas', accessToken)
+        leerHoja('tareas', accessToken),
+        leerHoja('usuarios', accessToken)
       ])
       setProyectos(p)
       setEstados(e)
       setAcciones(a)
       setEnsayos(en)
       setTareas(t)
+      setUsuarios(u)
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
@@ -61,14 +66,10 @@ function Proyectos() {
   async function crearProyecto() {
     if (!nuevoProyecto.nombre) return
     const id = Date.now().toString()
-    await escribirFila('proyectos', [
-      id, nuevoProyecto.nombre, nuevoProyecto.descripcion,
-      nuevoProyecto.tipo, nuevoProyecto.color,
-      nuevoProyecto.fecha_inicio, nuevoProyecto.fecha_fin,
-      new Date().toISOString()
-    ], accessToken)
+    await escribirFila('proyectos', [id, nuevoProyecto.nombre, nuevoProyecto.descripcion, nuevoProyecto.tipo, nuevoProyecto.color, nuevoProyecto.fecha_inicio, nuevoProyecto.fecha_fin, new Date().toISOString()], accessToken)
     for (const fase of FASES_DEFAULT) {
-      const faseId = Date.now().toString() + fase.orden
+      await new Promise(r => setTimeout(r, 200))
+      const faseId = Date.now().toString() + Math.random().toString(36).slice(2)
       await escribirFila('estados_proyecto', [faseId, id, fase.nombre, fase.orden, 'true'], accessToken)
     }
     setModalProyecto(false)
@@ -79,10 +80,7 @@ function Proyectos() {
   async function crearAccion() {
     if (!nuevaAccion.nombre || !modalAccion) return
     const id = Date.now().toString()
-    await escribirFila('acciones', [
-      id, modalAccion.estado_id, modalAccion.proyecto_id,
-      nuevaAccion.nombre, nuevaAccion.descripcion, new Date().toISOString()
-    ], accessToken)
+    await escribirFila('acciones', [id, modalAccion.estado_id, modalAccion.proyecto_id, nuevaAccion.nombre, nuevaAccion.descripcion, new Date().toISOString()], accessToken)
     setModalAccion(null)
     setNuevaAccion({ nombre: '', descripcion: '' })
     cargarDatos()
@@ -91,13 +89,24 @@ function Proyectos() {
   async function crearEnsayo() {
     if (!nuevoEnsayo.nombre || !modalEnsayo) return
     const id = Date.now().toString()
-    await escribirFila('ensayos', [
-      id, modalEnsayo.accion_id, modalEnsayo.proyecto_id,
-      nuevoEnsayo.tipo, nuevoEnsayo.nombre, nuevoEnsayo.descripcion,
-      new Date().toISOString()
-    ], accessToken)
+    await escribirFila('ensayos', [id, modalEnsayo.accion_id, modalEnsayo.proyecto_id, nuevoEnsayo.tipo, nuevoEnsayo.nombre, nuevoEnsayo.descripcion, new Date().toISOString()], accessToken)
     setModalEnsayo(null)
     setNuevoEnsayo({ nombre: '', tipo: 'ensayo', descripcion: '' })
+    cargarDatos()
+  }
+
+  async function crearTarea() {
+    if (!nuevaTarea.nombre || !modalTarea) return
+    const id = Date.now().toString()
+    const asignadosStr = nuevaTarea.asignados.join(',')
+    const diaRec = nuevaTarea.dia_recomendado ? `${nuevaTarea.dia_recomendado}${nuevaTarea.dia_recomendado_hora ? ' ' + nuevaTarea.dia_recomendado_hora : ''}` : ''
+    await escribirFila('tareas', [
+      id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
+      nuevaTarea.nombre, asignadosStr, 'por_asignar', diaRec,
+      nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString()
+    ], accessToken)
+    setModalTarea(null)
+    setNuevaTarea({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', dia_recomendado_hora: '', fecha_limite: '' })
     cargarDatos()
   }
 
@@ -107,15 +116,29 @@ function Proyectos() {
       const idx = todos.findIndex(p => p.id === proyecto.id)
       if (idx === -1) return
       const filaNum = idx + 2
-      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${import.meta.env.VITE_SPREADSHEET_ID}/values/proyectos!A${filaNum}:H${filaNum}?valueInputOption=RAW`, {
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${import.meta.env.VITE_SPREADSHEET_ID}/values/proyectos!H${filaNum}?valueInputOption=RAW`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values: [[proyecto.id, proyecto.nombre, proyecto.descripcion, proyecto.tipo, proyecto.color, proyecto.fecha_inicio, proyecto.fecha_fin, 'eliminado']] })
+        body: JSON.stringify({ values: [['eliminado']] })
       })
       setConfirmEliminar(null)
-      if (vistaProyecto?.id === proyecto.id) setVistaProyecto(null)
+      setVistaProyecto(null)
       cargarDatos()
     } catch (e) { console.error(e) }
+  }
+
+  function toggleAsignado(userId) {
+    setNuevaTarea(prev => ({
+      ...prev,
+      asignados: prev.asignados.includes(userId)
+        ? prev.asignados.filter(id => id !== userId)
+        : [...prev.asignados, userId]
+    }))
+  }
+
+  function getNombre(id) {
+    const u = usuarios.find(u => u.id === id)
+    return u ? (u.nombre ? u.nombre.split(' ')[0] : id) : id
   }
 
   function estadosDeProyecto(proyectoId) {
@@ -135,37 +158,159 @@ function Proyectos() {
   }
 
   function progresoProyecto(proyectoId) {
-    const tareasProyecto = tareas.filter(t => t.proyecto_id === proyectoId)
-    if (tareasProyecto.length === 0) return 0
-    return Math.round((tareasProyecto.filter(t => t.estado === 'completada').length / tareasProyecto.length) * 100)
+    const t = tareas.filter(t => t.proyecto_id === proyectoId)
+    if (t.length === 0) return 0
+    return Math.round((t.filter(t => t.estado === 'completada').length / t.length) * 100)
   }
 
   const proyectosActivos = proyectos.filter(p => p.fecha_creacion !== 'eliminado' && p.id)
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
+  // VISTA ENSAYO
+  if (vistaEnsayo) {
+    const tareasEnsayo = tareasDeEnsayo(vistaEnsayo.id)
+    return (
+      <div className="proyectos-container">
+        <div className="proyectos-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button onClick={() => setVistaEnsayo(null)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Volver</button>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ background: vistaEnsayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7', color: vistaEnsayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: '600' }}>
+                  {vistaEnsayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}
+                </span>
+                <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaEnsayo.nombre}</h1>
+              </div>
+              {vistaEnsayo.descripcion && <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#888' }}>{vistaEnsayo.descripcion}</p>}
+            </div>
+          </div>
+          <button onClick={() => setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id })} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+            + Nueva tarea
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {tareasEnsayo.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}>
+              <p style={{ fontSize: '40px' }}>📋</p>
+              <p>Sin tareas aún. ¡Crea la primera!</p>
+            </div>
+          )}
+          {tareasEnsayo.map(tarea => {
+            const asignados = tarea.asignados ? tarea.asignados.split(',') : []
+            const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && tarea.estado !== 'completada'
+            const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
+            return (
+              <div key={tarea.id} style={{
+                background: 'white', borderRadius: '10px', padding: '16px 20px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : '#00953B'}`
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none', color: tarea.estado === 'completada' ? '#888' : '#373A36' }}>{tarea.nombre}</p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      {asignados.map(id => (
+                        <span key={id} style={{ background: '#f0fdf4', color: '#00953B', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>
+                          {getNombre(id)}
+                        </span>
+                      ))}
+                      {tarea.dia_recomendado && (
+                        <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>
+                          📌 {tarea.dia_recomendado}
+                        </span>
+                      )}
+                      {tarea.fecha_limite && (
+                        <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>
+                          {vencida ? '⚠️ Vencida' : '📅'} {tarea.fecha_limite}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : tarea.estado === 'en_curso' ? '#dbeafe' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : tarea.estado === 'en_curso' ? '#1d4ed8' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                    {tarea.estado || 'pendiente'}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {modalTarea && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+              <h2 style={{ marginBottom: '24px' }}>Nueva tarea</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre}
+                  onChange={e => setNuevaTarea({...nuevaTarea, nombre: e.target.value})}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+
+                <div>
+                  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a (puede ser más de uno):</label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {usuarios.map(u => (
+                      <button key={u.id} onClick={() => toggleAsignado(u.id)} style={{
+                        padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600',
+                        background: nuevaTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6',
+                        color: nuevaTarea.asignados.includes(u.id) ? 'white' : '#373A36',
+                        border: nuevaTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb'
+                      }}>
+                        {u.nombre ? u.nombre.split(' ')[0] : u.id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado (opcional):</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select value={nuevaTarea.dia_recomendado} onChange={e => setNuevaTarea({...nuevaTarea, dia_recomendado: e.target.value})}
+                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                      <option value="">Sin día específico</option>
+                      {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
+                    </select>
+                    <input type="date" value={nuevaTarea.dia_recomendado_hora}
+                      onChange={e => setNuevaTarea({...nuevaTarea, dia_recomendado_hora: e.target.value})}
+                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label>
+                  <input type="date" value={nuevaTarea.fecha_limite}
+                    onChange={e => setNuevaTarea({...nuevaTarea, fecha_limite: e.target.value})}
+                    style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button onClick={() => { setModalTarea(null); setNuevaTarea({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', dia_recomendado_hora: '', fecha_limite: '' }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={crearTarea} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear tarea</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // VISTA PROYECTO
   if (vistaProyecto) {
     const estadosProyecto = estadosDeProyecto(vistaProyecto.id)
     return (
       <div className="proyectos-container">
         <div className="proyectos-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button onClick={() => setVistaProyecto(null)} style={{
-              background: 'none', border: '1px solid #ddd', borderRadius: '8px',
-              padding: '6px 12px', cursor: 'pointer', fontSize: '14px'
-            }}>← Volver</button>
+            <button onClick={() => setVistaProyecto(null)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Volver</button>
             <div>
-              <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: vistaProyecto.color, display: 'inline-block' }}></span>
                 {vistaProyecto.nombre}
               </h1>
               <span style={{ fontSize: '13px', color: '#888' }}>{TIPOS.find(t => t.value === vistaProyecto.tipo)?.label}</span>
             </div>
           </div>
-          <button onClick={() => setConfirmEliminar(vistaProyecto)} style={{
-            background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '8px',
-            padding: '8px 16px', cursor: 'pointer', fontSize: '14px'
-          }}>🗑 Eliminar proyecto</button>
+          <button onClick={() => setConfirmEliminar(vistaProyecto)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}>🗑 Eliminar</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -173,15 +318,10 @@ function Proyectos() {
             <div key={estado.id} style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '16px', color: '#373A36' }}>
-                  <span style={{ color: '#00953B', marginRight: '8px' }}>{estado.orden}.</span>
-                  {estado.nombre}
+                  <span style={{ color: '#00953B', marginRight: '8px' }}>{estado.orden}.</span>{estado.nombre}
                 </h3>
-                <button onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })} style={{
-                  background: '#f0fdf4', color: '#00953B', border: '1px solid #00953B', borderRadius: '6px',
-                  padding: '4px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600'
-                }}>+ Acción</button>
+                <button onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })} style={{ background: '#f0fdf4', color: '#00953B', border: '1px solid #00953B', borderRadius: '6px', padding: '4px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>+ Acción</button>
               </div>
-
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {accionesDeEstado(estado.id).map(accion => (
                   <div key={accion.id} style={{ background: '#f8f9fa', borderRadius: '8px', padding: '14px', borderLeft: `3px solid ${vistaProyecto.color}` }}>
@@ -190,35 +330,30 @@ function Proyectos() {
                         <p style={{ margin: 0, fontWeight: '600', fontSize: '14px' }}>{accion.nombre}</p>
                         {accion.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{accion.descripcion}</p>}
                       </div>
-                      <button onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })} style={{
-                        background: '#fff', color: '#373A36', border: '1px solid #ddd', borderRadius: '6px',
-                        padding: '4px 10px', cursor: 'pointer', fontSize: '11px'
-                      }}>+ Ensayo/Informe</button>
+                      <button onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })} style={{ background: '#fff', color: '#373A36', border: '1px solid #ddd', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '11px' }}>+ Ensayo/Informe</button>
                     </div>
-
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {ensayosDeAccion(accion.id).map(ensayo => (
-                        <div key={ensayo.id} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div key={ensayo.id} onClick={() => setVistaEnsayo(ensayo)} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                          onMouseOver={e => e.currentTarget.style.background = '#f0fdf4'}
+                          onMouseOut={e => e.currentTarget.style.background = 'white'}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{
-                              background: ensayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7',
-                              color: ensayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e',
-                              borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: '600'
-                            }}>{ensayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}</span>
+                            <span style={{ background: ensayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7', color: ensayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: '600' }}>
+                              {ensayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}
+                            </span>
                             <span style={{ fontSize: '13px' }}>{ensayo.nombre}</span>
                           </div>
-                          <span style={{ fontSize: '12px', color: '#888' }}>{tareasDeEnsayo(ensayo.id).length} tareas</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '12px', color: '#888' }}>{tareasDeEnsayo(ensayo.id).length} tareas</span>
+                            <span style={{ color: '#00953B', fontSize: '14px' }}>→</span>
+                          </div>
                         </div>
                       ))}
-                      {ensayosDeAccion(accion.id).length === 0 && (
-                        <p style={{ margin: 0, fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin ensayos ni informes aún</p>
-                      )}
+                      {ensayosDeAccion(accion.id).length === 0 && <p style={{ margin: 0, fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin ensayos ni informes aún</p>}
                     </div>
                   </div>
                 ))}
-                {accionesDeEstado(estado.id).length === 0 && (
-                  <p style={{ margin: 0, fontSize: '13px', color: '#aaa', fontStyle: 'italic' }}>Sin acciones aún</p>
-                )}
+                {accionesDeEstado(estado.id).length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#aaa', fontStyle: 'italic' }}>Sin acciones aún</p>}
               </div>
             </div>
           ))}
@@ -243,7 +378,7 @@ function Proyectos() {
             <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px' }}>
               <h2 style={{ marginBottom: '24px' }}>Nueva acción</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <input placeholder="Nombre de la acción" value={nuevaAccion.nombre}
+                <input placeholder="Nombre de la acción *" value={nuevaAccion.nombre}
                   onChange={e => setNuevaAccion({...nuevaAccion, nombre: e.target.value})}
                   style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
                 <textarea placeholder="Descripción (opcional)" value={nuevaAccion.descripcion}
@@ -268,7 +403,7 @@ function Proyectos() {
                   <option value="ensayo">Ensayo</option>
                   <option value="informe">Informe</option>
                 </select>
-                <input placeholder="Nombre" value={nuevoEnsayo.nombre}
+                <input placeholder="Nombre *" value={nuevoEnsayo.nombre}
                   onChange={e => setNuevoEnsayo({...nuevoEnsayo, nombre: e.target.value})}
                   style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
                 <textarea placeholder="Descripción (opcional)" value={nuevoEnsayo.descripcion}
@@ -286,14 +421,12 @@ function Proyectos() {
     )
   }
 
+  // LISTA DE PROYECTOS
   return (
     <div className="proyectos-container">
       <div className="proyectos-header">
         <h1>📁 Proyectos</h1>
-        <button onClick={() => setModalProyecto(true)} style={{
-          background: '#00953B', color: 'white', border: 'none', borderRadius: '8px',
-          padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px'
-        }}>+ Nuevo proyecto</button>
+        <button onClick={() => setModalProyecto(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nuevo proyecto</button>
       </div>
 
       <div className="proyectos-lista">
@@ -309,7 +442,7 @@ function Proyectos() {
             <div className="proyecto-header">
               <div>
                 <h3>{proyecto.nombre}</h3>
-                <span className={`tipo-badge`}>{TIPOS.find(t => t.value === proyecto.tipo)?.label || proyecto.tipo}</span>
+                <span className="tipo-badge">{TIPOS.find(t => t.value === proyecto.tipo)?.label || proyecto.tipo}</span>
               </div>
               <span className="progreso-texto">{progresoProyecto(proyecto.id)}%</span>
             </div>
