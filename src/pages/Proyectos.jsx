@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja, escribirFila } from '../services/googleSheets'
+import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
 
 const FASES_DEFAULT = [
   { nombre: 'Estudio viabilidad', orden: 1 },
@@ -175,7 +175,7 @@ export default function Proyectos() {
 
   async function guardarEditProyecto() {
     if (!editProyecto) return
-    await editarFilaSheet('proyectos', editProyecto.id, [
+    await actualizarFila('proyectos', editProyecto.id, [
       editProyecto.id, editProyecto.nombre, editProyecto.descripcion,
       editProyecto.tipo, editProyecto.color, editProyecto.fecha_inicio,
       editProyecto.fecha_fin, editProyecto.fecha_creacion
@@ -196,7 +196,7 @@ export default function Proyectos() {
 
   async function guardarEditAccion() {
     if (!editAccion) return
-    await editarFilaSheet('acciones', editAccion.id, [
+    await actualizarFila('acciones', editAccion.id, [
       editAccion.id, editAccion.estado_id, editAccion.proyecto_id,
       editAccion.nombre, editAccion.descripcion, editAccion.fecha_creacion
     ], accessToken)
@@ -215,7 +215,7 @@ export default function Proyectos() {
 
   async function guardarEditEnsayo() {
     if (!editEnsayo) return
-    await editarFilaSheet('ensayos', editEnsayo.id, [
+    await actualizarFila('ensayos', editEnsayo.id, [
       editEnsayo.id, editEnsayo.accion_id, editEnsayo.proyecto_id,
       editEnsayo.tipo, editEnsayo.nombre, editEnsayo.descripcion, editEnsayo.fecha_creacion
     ], accessToken)
@@ -239,7 +239,7 @@ export default function Proyectos() {
     if (!editTarea) return
     const asignadosStr = Array.isArray(editTarea.asignados) ? editTarea.asignados.join(',') : editTarea.asignados
     const diaRec = [editTarea.dia_recomendado, editTarea.fecha_recomendada].filter(Boolean).join(' ')
-    await editarFilaSheet('tareas', editTarea.id, [
+    await actualizarFila('tareas', editTarea.id, [
       editTarea.id, editTarea.ensayo_id, editTarea.accion_id, editTarea.proyecto_id,
       editTarea.nombre, asignadosStr, editTarea.dia_semana, diaRec,
       editTarea.fecha_limite, editTarea.estado, editTarea.fecha_creacion
@@ -252,7 +252,7 @@ export default function Proyectos() {
     if (!confirmEliminar) return
     const { tipo, item } = confirmEliminar
     if (tipo === 'proyecto') {
-      await editarFilaSheet('proyectos', item.id, [item.id, item.nombre, item.descripcion, item.tipo, item.color, item.fecha_inicio, item.fecha_fin, 'eliminado'], accessToken)
+      await actualizarFila('proyectos', item.id, [item.id, item.nombre, item.descripcion, item.tipo, item.color, item.fecha_inicio, item.fecha_fin, 'eliminado'], accessToken)
       setVistaProyecto(null)
     } else if (tipo === 'accion') {
       await eliminarFilaSheet('acciones', item.id, accessToken)
