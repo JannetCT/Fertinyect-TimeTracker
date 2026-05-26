@@ -1,8 +1,9 @@
 const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
 
 export async function leerHoja(nombreHoja, accessToken) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}`
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}?key=${API_KEY}`
+  const res = await fetch(url)
   const data = await res.json()
   const filas = data.values || []
   if (filas.length === 0) return []
@@ -24,9 +25,7 @@ export async function escribirFila(nombreHoja, fila, accessToken) {
 }
 
 export async function actualizarFila(nombreHoja, id, valoresNuevos, accessToken) {
-  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}`, {
-    headers: { Authorization: `Bearer ${accessToken}` }
-  })
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}?key=${API_KEY}`)
   const data = await res.json()
   const filas = data.values || []
   const idx = filas.findIndex(f => f[0] === id)
@@ -40,9 +39,7 @@ export async function actualizarFila(nombreHoja, id, valoresNuevos, accessToken)
 }
 
 export async function marcarEliminado(nombreHoja, id, accessToken) {
-  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}`, {
-    headers: { Authorization: `Bearer ${accessToken}` }
-  })
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}?key=${API_KEY}`)
   const data = await res.json()
   const filas = data.values || []
   const idx = filas.findIndex(f => f[0] === id)
