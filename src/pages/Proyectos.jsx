@@ -12,17 +12,12 @@ function Proyectos() {
   const [modalProyecto, setModalProyecto] = useState(false)
   const [modalTarea, setModalTarea] = useState(false)
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null)
+  const [confirmEliminar, setConfirmEliminar] = useState(null)
 
-  const [nuevoProyecto, setNuevoProyecto] = useState({
-    nombre: '', tipo: 'fijo', color: '#00953B', descripcion: ''
-  })
-  const [nuevaTarea, setNuevaTarea] = useState({
-    nombre: '', asignado_a: '', dia_semana: 'por_asignar'
-  })
+  const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', tipo: 'fijo', color: '#00953B', descripcion: '' })
+  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignado_a: '', dia_semana: 'por_asignar' })
 
-  useEffect(() => {
-    if (accessToken) cargarDatos()
-  }, [accessToken])
+  useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
   async function cargarDatos() {
     try {
@@ -34,29 +29,40 @@ function Proyectos() {
       setProyectos(p.filter(x => x.estado === 'activo'))
       setTareas(t)
       setUsuarios(u)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setCargando(false)
-    }
+    } catch (e) { console.error(e) }
+    finally { setCargando(false) }
   }
 
   async function crearProyecto() {
-    console.log("creando proyecto", nuevoProyecto, accessToken)
     if (!nuevoProyecto.nombre) return
     const id = Date.now().toString()
-    const fila = [id, nuevoProyecto.nombre, nuevoProyecto.tipo, 'activo', nuevoProyecto.color, '', '', nuevoProyecto.descripcion]
-    await escribirFila('proyectos', fila, accessToken)
+    await escribirFila('proyectos', [id, nuevoProyecto.nombre, nuevoProyecto.tipo, 'activo', nuevoProyecto.color, '', '', nuevoProyecto.descripcion], accessToken)
     setModalProyecto(false)
     setNuevoProyecto({ nombre: '', tipo: 'fijo', color: '#00953B', descripcion: '' })
     cargarDatos()
   }
 
+  async function eliminarProyecto(proyecto) {
+    try {
+      const todosProyectos = await leerHoja('proyectos', accessToken)
+      const filaIndex = todosProyectos.findIndex(p => p.id === proyecto.id)
+      if (filaIndex === -1) return
+      const filaNum = filaIndex + 2
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${import.meta.env.VITE_SPREADSHEET_ID}/values/proyectos!D${filaNum}?valueInputOption=RAW`
+      await fetch(url, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: [['inactivo']] })
+      })
+      setConfirmEliminar(null)
+      cargarDatos()
+    } catch (e) { console.error(e) }
+  }
+
   async function crearTarea() {
     if (!nuevaTarea.nombre || !proyectoSeleccionado) return
     const id = Date.now().toString()
-    const fila = [id, proyectoSeleccionado.id, nuevaTarea.nombre, nuevaTarea.asignado_a || usuario.id, nuevaTarea.dia_semana, 'Pendiente', new Date().toISOString()]
-    await escribirFila('tareas', fila, accessToken)
+    await escribirFila('tareas', [id, proyectoSeleccionado.id, nuevaTarea.nombre, nuevaTarea.asignado_a || usuario.id, nuevaTarea.dia_semana, 'Pendiente', new Date().toISOString()], accessToken)
     setModalTarea(false)
     setNuevaTarea({ nombre: '', asignado_a: '', dia_semana: 'por_asignar' })
     cargarDatos()
@@ -76,7 +82,7 @@ function Proyectos() {
 
   function getNombre(id) {
     const u = usuarios.find(u => u.id === id)
-    return u ? u.nombre ? u.nombre.split(' ')[0] : u.id : id
+    return u ? (u.nombre ? u.nombre.split(' ')[0] : id) : id
   }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
@@ -117,6 +123,10 @@ function Proyectos() {
                   background: '#00953B', color: 'white', border: 'none', borderRadius: '6px',
                   padding: '4px 10px', cursor: 'pointer', fontSize: '12px'
                 }}>+ Tarea</button>
+                <button onClick={() => setConfirmEliminar(proyecto)} style={{
+                  background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '6px',
+                  padding: '4px 10px', cursor: 'pointer', fontSize: '12px'
+                }}>🗑</button>
               </div>
             </div>
             <div className="barra-progreso">
@@ -130,18 +140,36 @@ function Proyectos() {
                   <span className={`estado-small estado-${tarea.estado?.toLowerCase().replace(' ', '-')}`}>{tarea.estado || 'Pendiente'}</span>
                 </div>
               ))}
-              {tareasPorProyecto(proyecto.id).length === 0 && (
-                <p className="sin-tareas">Sin tareas aún</p>
-              )}
+              {tareasPorProyecto(proyecto.id).length === 0 && <p className="sin-tareas">Sin tareas aún</p>}
             </div>
           </div>
         ))}
       </div>
 
+      {confirmEliminar && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+            <p style={{ fontSize: '48px', margin: '0 0 16px' }}>⚠️</p>
+            <h2 style={{ marginBottom: '8px' }}>¿Eliminar proyecto?</h2>
+            <p style={{ color: '#888', marginBottom: '24px' }}>{confirmEliminar.nombre}</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setConfirmEliminar(null)} style={{
+                flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd',
+                background: 'white', cursor: 'pointer', fontSize: '14px'
+              }}>Cancelar</button>
+              <button onClick={() => eliminarProyecto(confirmEliminar)} style={{
+                flex: 1, padding: '10px', borderRadius: '8px', border: 'none',
+                background: '#dc2626', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: '600'
+              }}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalProyecto && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px' }}>
-            <h2 style={{ marginBottom: '24px', color: '#373A36' }}>Nuevo proyecto</h2>
+            <h2 style={{ marginBottom: '24px' }}>Nuevo proyecto</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre del proyecto" value={nuevoProyecto.nombre}
                 onChange={e => setNuevoProyecto({...nuevoProyecto, nombre: e.target.value})}
@@ -178,7 +206,7 @@ function Proyectos() {
       {modalTarea && proyectoSeleccionado && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px' }}>
-            <h2 style={{ marginBottom: '8px', color: '#373A36' }}>Nueva tarea</h2>
+            <h2 style={{ marginBottom: '8px' }}>Nueva tarea</h2>
             <p style={{ color: '#888', marginBottom: '24px', fontSize: '14px' }}>Proyecto: {proyectoSeleccionado.nombre}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre de la tarea" value={nuevaTarea.nombre}
