@@ -22,7 +22,7 @@ function Login() {
         textAlign: 'center',
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
       }}>
-        <img src={logo} alt="Fertinyect" style={{ height: '220px', marginBottom: '12px' }} />
+        <img src={logo} alt="Fertinyect" style={{ height: '280px', marginBottom: '12px' }} />
         <p style={{
           color: '#373A36',
           margin: '0 0 32px'
@@ -51,7 +51,7 @@ function Login() {
         textAlign: 'center',
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
       }}>
-        <img src={logo} alt="Fertinyect" style={{ height: '220px', marginBottom: '12px' }} />
+        <img src={logo} alt="Fertinyect" style={{ height: '280px', marginBottom: '12px' }} />
         <p style={{
           color: '#373A36',
           margin: '0 0 32px',
