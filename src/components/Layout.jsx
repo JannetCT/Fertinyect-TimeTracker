@@ -16,12 +16,22 @@ function Layout({ usuario, children }) {
       <aside className="sidebar">
         <div className="sidebar-header">
           <img src={logo} alt="Fertinyect" style={{ 
-            width: '80%', 
+            width: '90%', 
             display: 'block', 
-            margin: '0 auto 8px',
+            margin: '0 auto 10px',
             mixBlendMode: 'screen'
           }} />
-          <p style={{ textAlign: 'center', fontSize: '11px', opacity: 0.7, margin: 0 }}>Sistema de Gestión del Tiempo · I+D</p>
+          <p style={{ 
+            textAlign: 'center', 
+            fontSize: '12px', 
+            fontWeight: '700',
+            opacity: 0.9, 
+            margin: 0,
+            lineHeight: '1.4',
+            letterSpacing: '0.3px'
+          }}>
+            Sistema de Gestión<br/>del Tiempo · I+D
+          </p>
         </div>
         <nav className="sidebar-nav">
           <NavLink to="/planner" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
