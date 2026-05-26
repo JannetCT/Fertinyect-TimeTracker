@@ -16,16 +16,51 @@ function Login() {
       <div style={{
         background: 'white',
         borderRadius: '16px',
-        padding: '48px 40px',
+        padding: '32px 40px 48px',
         width: '100%',
         maxWidth: '420px',
         textAlign: 'center',
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
       }}>
-        <img src={logo} alt="Fertinyect" style={{ height: '280px', marginBottom: '12px' }} />
+        <img src={logo} alt="Fertinyect" style={{ 
+          width: '80%',
+          margin: '-10px auto 4px',
+          display: 'block'
+        }} />
         <p style={{
           color: '#373A36',
-          margin: '0 0 32px'
+          margin: '0 0 28px',
+          fontSize: '15px',
+          fontWeight: '700',
+          letterSpacing: '0.5px'
+        }}>
+          Sistema de Gestión del Tiempo · I+D
+        </p>
+        <h2 style={{ color: '#373A36', marginBottom: '8px', fontSize: '24px' }}>Bienvenida</h2>
+        <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
+          Accede con tu cuenta de Google para continuar
+        </p>
+        <button
+          onClick={login}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            width: '100%',
+            padding: '14px 24px',
+            border: '2px solid #e0e0e0',
+            borderRadius: '8px',
+            background: 'white',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontFamily: "'Roboto Condensed', sans-serif",
+            color: '#373A36',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={e => e.currentTarget.style.borderColor = '#00953B'}
+          onMouseOut={e => e.currentTarget.style.borderColor = '#e0e0e0'}
+        >
 cat > src/pages/Login.jsx << 'EOF'
 import { useAuth } from '../hooks/useAuth'
 import logo from '../assets/logo.png'
@@ -45,24 +80,28 @@ function Login() {
       <div style={{
         background: 'white',
         borderRadius: '16px',
-        padding: '48px 40px',
+        padding: '32px 40px 48px',
         width: '100%',
         maxWidth: '420px',
         textAlign: 'center',
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
       }}>
-        <img src={logo} alt="Fertinyect" style={{ height: '280px', marginBottom: '12px' }} />
+        <img src={logo} alt="Fertinyect" style={{ 
+          width: '80%',
+          margin: '-10px auto 4px',
+          display: 'block'
+        }} />
         <p style={{
           color: '#373A36',
-          margin: '0 0 32px',
-          fontSize: '16px',
+          margin: '0 0 28px',
+          fontSize: '15px',
           fontWeight: '700',
           letterSpacing: '0.5px'
         }}>
           Sistema de Gestión del Tiempo · I+D
         </p>
         <h2 style={{ color: '#373A36', marginBottom: '8px', fontSize: '24px' }}>Bienvenida</h2>
-        <p style={{ color: '#373A36', opacity: 0.6, marginBottom: '32px', fontSize: '14px' }}>
+        <p style={{ color: '#888', marginBottom: '32px', fontSize: '14px' }}>
           Accede con tu cuenta de Google para continuar
         </p>
         <button
