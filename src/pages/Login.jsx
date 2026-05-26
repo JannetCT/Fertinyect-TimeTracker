@@ -28,8 +28,8 @@ function Login() {
           margin: '0 auto 16px'
         }} />
         <p style={{
-          color: '#00953B',
-          margin: '0 0 28px',
+          color: '#373A36',
+          margin: '0 0 8px',
           fontSize: '18px',
           fontWeight: '900',
           letterSpacing: '1px',
@@ -37,6 +37,14 @@ function Login() {
         }}>
           Sistema de Gestión del Tiempo · I+D
         </p>
+        <h2 style={{
+          color: '#373A36',
+          margin: '0 0 28px',
+          fontSize: '22px',
+          fontWeight: '400'
+        }}>
+          Bienvenida
+        </h2>
         <button
           onClick={login}
           style={{
