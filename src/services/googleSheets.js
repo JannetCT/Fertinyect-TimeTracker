@@ -10,7 +10,7 @@ export async function leerHoja(nombreHoja, accessToken) {
   const cabeceras = filas[0].map(c => c.toLowerCase())
   return filas.slice(1).map(fila => {
     const obj = {}
-    cabeceras.forEach((cab, i) => { obj[cab] = fila[i] || '' })
+    cabeceras.forEach((cab, i) => { obj[cab.trim()] = (fila[i] || '').trim() })
     return obj
   }).filter(obj => obj.id && obj.id !== 'eliminado')
 }
