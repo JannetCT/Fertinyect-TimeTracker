@@ -255,12 +255,12 @@ export default function Proyectos() {
       await actualizarFila('proyectos', item.id, [item.id, item.nombre, item.descripcion, item.tipo, item.color, item.fecha_inicio, item.fecha_fin, 'eliminado'], accessToken)
       setVistaProyecto(null)
     } else if (tipo === 'accion') {
-      await eliminarFilaSheet('acciones', item.id, accessToken)
+      await marcarEliminado('acciones', item.id, accessToken)
     } else if (tipo === 'ensayo') {
-      await eliminarFilaSheet('ensayos', item.id, accessToken)
+      await marcarEliminado('ensayos', item.id, accessToken)
       if (vistaEnsayo?.id === item.id) setVistaEnsayo(null)
     } else if (tipo === 'tarea') {
-      await eliminarFilaSheet('tareas', item.id, accessToken)
+      await marcarEliminado('tareas', item.id, accessToken)
     }
     setConfirmEliminar(null)
     cargarDatos()
