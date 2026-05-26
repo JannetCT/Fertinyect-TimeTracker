@@ -19,7 +19,93 @@ const TIPOS = [
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
 
-function Proyectos() {
+const SHEET_ID = import.meta.env.VITE_SPREADSHEET_ID
+
+async function eliminarFilaSheet(hoja, id, accessToken) {
+  const filas = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${hoja}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  }).then(r => r.json())
+  const rows = filas.values || []
+  const idx = rows.findIndex(r => r[0] === id)
+  if (idx === -1) return
+  const sheetInfo = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  }).then(r => r.json())
+  const sheet = sheetInfo.sheets.find(s => s.properties.title === hoja)
+  if (!sheet) return
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: [{
+        deleteDimension: {
+          range: { sheetId: sheet.properties.sheetId, dimension: 'ROWS', startIndex: idx, endIndex: idx + 1 }
+        }
+      }]
+    })
+  })
+}
+
+async function editarFilaSheet(hoja, id, valores, accessToken) {
+  const filas = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${hoja}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  }).then(r => r.json())
+  const rows = filas.values || []
+  const idx = rows.findIndex(r => r[0] === id)
+  if (idx === -1) return
+  const filaNum = idx + 1
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${hoja}!A${filaNum}?valueInputOption=RAW`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [valores] })
+  })
+}
+
+function Modal({ titulo, onClose, onSave, children }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h2 style={{ marginBottom: '24px' }}>{titulo}</h2>
+        {children}
+        <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={onSave} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ConfirmEliminar({ nombre, onClose, onConfirm }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+      <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+        <p style={{ fontSize: '48px', margin: '0 0 16px' }}>⚠️</p>
+        <h2 style={{ marginBottom: '8px' }}>¿Eliminar?</h2>
+        <p style={{ color: '#888', marginBottom: '24px' }}>{nombre}</p>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={onConfirm} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#dc2626', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Eliminar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BtnAccion({ onClick, tipo, children }) {
+  const estilos = {
+    editar: { background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb' },
+    eliminar: { background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' },
+    añadir: { background: '#f0fdf4', color: '#00953B', border: '1px solid #00953B' },
+  }
+  return (
+    <button onClick={onClick} style={{ ...estilos[tipo], borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+      {children}
+    </button>
+  )
+}
+
+export default function Proyectos() {
   const { accessToken } = useAuth()
   const [proyectos, setProyectos] = useState([])
   const [estados, setEstados] = useState([])
@@ -30,16 +116,26 @@ function Proyectos() {
   const [cargando, setCargando] = useState(true)
   const [vistaProyecto, setVistaProyecto] = useState(null)
   const [vistaEnsayo, setVistaEnsayo] = useState(null)
+
+  // Modales crear
   const [modalProyecto, setModalProyecto] = useState(false)
   const [modalAccion, setModalAccion] = useState(null)
   const [modalEnsayo, setModalEnsayo] = useState(null)
   const [modalTarea, setModalTarea] = useState(null)
+
+  // Modales editar
+  const [editProyecto, setEditProyecto] = useState(null)
+  const [editAccion, setEditAccion] = useState(null)
+  const [editEnsayo, setEditEnsayo] = useState(null)
+  const [editTarea, setEditTarea] = useState(null)
+
+  // Confirmar eliminar
   const [confirmEliminar, setConfirmEliminar] = useState(null)
 
   const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: '' })
   const [nuevaAccion, setNuevaAccion] = useState({ nombre: '', descripcion: '' })
   const [nuevoEnsayo, setNuevoEnsayo] = useState({ nombre: '', tipo: 'ensayo', descripcion: '' })
-  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', dia_recomendado_hora: '', fecha_limite: '' })
+  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
@@ -77,12 +173,34 @@ function Proyectos() {
     cargarDatos()
   }
 
+  async function guardarEditProyecto() {
+    if (!editProyecto) return
+    await editarFilaSheet('proyectos', editProyecto.id, [
+      editProyecto.id, editProyecto.nombre, editProyecto.descripcion,
+      editProyecto.tipo, editProyecto.color, editProyecto.fecha_inicio,
+      editProyecto.fecha_fin, editProyecto.fecha_creacion
+    ], accessToken)
+    setVistaProyecto(editProyecto)
+    setEditProyecto(null)
+    cargarDatos()
+  }
+
   async function crearAccion() {
     if (!nuevaAccion.nombre || !modalAccion) return
     const id = Date.now().toString()
     await escribirFila('acciones', [id, modalAccion.estado_id, modalAccion.proyecto_id, nuevaAccion.nombre, nuevaAccion.descripcion, new Date().toISOString()], accessToken)
     setModalAccion(null)
     setNuevaAccion({ nombre: '', descripcion: '' })
+    cargarDatos()
+  }
+
+  async function guardarEditAccion() {
+    if (!editAccion) return
+    await editarFilaSheet('acciones', editAccion.id, [
+      editAccion.id, editAccion.estado_id, editAccion.proyecto_id,
+      editAccion.nombre, editAccion.descripcion, editAccion.fecha_creacion
+    ], accessToken)
+    setEditAccion(null)
     cargarDatos()
   }
 
@@ -95,40 +213,61 @@ function Proyectos() {
     cargarDatos()
   }
 
+  async function guardarEditEnsayo() {
+    if (!editEnsayo) return
+    await editarFilaSheet('ensayos', editEnsayo.id, [
+      editEnsayo.id, editEnsayo.accion_id, editEnsayo.proyecto_id,
+      editEnsayo.tipo, editEnsayo.nombre, editEnsayo.descripcion, editEnsayo.fecha_creacion
+    ], accessToken)
+    setVistaEnsayo(editEnsayo)
+    setEditEnsayo(null)
+    cargarDatos()
+  }
+
   async function crearTarea() {
     if (!nuevaTarea.nombre || !modalTarea) return
     const id = Date.now().toString()
     const asignadosStr = nuevaTarea.asignados.join(',')
-    const diaRec = nuevaTarea.dia_recomendado ? `${nuevaTarea.dia_recomendado}${nuevaTarea.dia_recomendado_hora ? ' ' + nuevaTarea.dia_recomendado_hora : ''}` : ''
-    await escribirFila('tareas', [
-      id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
-      nuevaTarea.nombre, asignadosStr, 'por_asignar', diaRec,
-      nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString()
-    ], accessToken)
+    const diaRec = [nuevaTarea.dia_recomendado, nuevaTarea.fecha_recomendada].filter(Boolean).join(' ')
+    await escribirFila('tareas', [id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', diaRec, nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString()], accessToken)
     setModalTarea(null)
-    setNuevaTarea({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', dia_recomendado_hora: '', fecha_limite: '' })
+    setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
     cargarDatos()
   }
 
-  async function eliminarProyecto(proyecto) {
-    try {
-      const todos = await leerHoja('proyectos', accessToken)
-      const idx = todos.findIndex(p => p.id === proyecto.id)
-      if (idx === -1) return
-      const filaNum = idx + 2
-      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${import.meta.env.VITE_SPREADSHEET_ID}/values/proyectos!H${filaNum}?valueInputOption=RAW`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values: [['eliminado']] })
-      })
-      setConfirmEliminar(null)
-      setVistaProyecto(null)
-      cargarDatos()
-    } catch (e) { console.error(e) }
+  async function guardarEditTarea() {
+    if (!editTarea) return
+    const asignadosStr = Array.isArray(editTarea.asignados) ? editTarea.asignados.join(',') : editTarea.asignados
+    const diaRec = [editTarea.dia_recomendado, editTarea.fecha_recomendada].filter(Boolean).join(' ')
+    await editarFilaSheet('tareas', editTarea.id, [
+      editTarea.id, editTarea.ensayo_id, editTarea.accion_id, editTarea.proyecto_id,
+      editTarea.nombre, asignadosStr, editTarea.dia_semana, diaRec,
+      editTarea.fecha_limite, editTarea.estado, editTarea.fecha_creacion
+    ], accessToken)
+    setEditTarea(null)
+    cargarDatos()
   }
 
-  function toggleAsignado(userId) {
-    setNuevaTarea(prev => ({
+  async function ejecutarEliminar() {
+    if (!confirmEliminar) return
+    const { tipo, item } = confirmEliminar
+    if (tipo === 'proyecto') {
+      await editarFilaSheet('proyectos', item.id, [item.id, item.nombre, item.descripcion, item.tipo, item.color, item.fecha_inicio, item.fecha_fin, 'eliminado'], accessToken)
+      setVistaProyecto(null)
+    } else if (tipo === 'accion') {
+      await eliminarFilaSheet('acciones', item.id, accessToken)
+    } else if (tipo === 'ensayo') {
+      await eliminarFilaSheet('ensayos', item.id, accessToken)
+      if (vistaEnsayo?.id === item.id) setVistaEnsayo(null)
+    } else if (tipo === 'tarea') {
+      await eliminarFilaSheet('tareas', item.id, accessToken)
+    }
+    setConfirmEliminar(null)
+    cargarDatos()
+  }
+
+  function toggleAsignado(userId, state, setter) {
+    setter(prev => ({
       ...prev,
       asignados: prev.asignados.includes(userId)
         ? prev.asignados.filter(id => id !== userId)
@@ -141,25 +280,13 @@ function Proyectos() {
     return u ? (u.nombre ? u.nombre.split(' ')[0] : id) : id
   }
 
-  function estadosDeProyecto(proyectoId) {
-    return estados.filter(e => e.proyecto_id === proyectoId).sort((a, b) => Number(a.orden) - Number(b.orden))
-  }
-
-  function accionesDeEstado(estadoId) {
-    return acciones.filter(a => a.estado_id === estadoId)
-  }
-
-  function ensayosDeAccion(accionId) {
-    return ensayos.filter(e => e.accion_id === accionId)
-  }
-
-  function tareasDeEnsayo(ensayoId) {
-    return tareas.filter(t => t.ensayo_id === ensayoId)
-  }
-
-  function progresoProyecto(proyectoId) {
-    const t = tareas.filter(t => t.proyecto_id === proyectoId)
-    if (t.length === 0) return 0
+  function estadosDeProyecto(pId) { return estados.filter(e => e.proyecto_id === pId).sort((a, b) => Number(a.orden) - Number(b.orden)) }
+  function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId) }
+  function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId) }
+  function tareasDeEnsayo(eId) { return tareas.filter(t => t.ensayo_id === eId) }
+  function progresoProyecto(pId) {
+    const t = tareas.filter(t => t.proyecto_id === pId)
+    if (!t.length) return 0
     return Math.round((t.filter(t => t.estado === 'completada').length / t.length) * 100)
   }
 
@@ -185,9 +312,11 @@ function Proyectos() {
               {vistaEnsayo.descripcion && <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#888' }}>{vistaEnsayo.descripcion}</p>}
             </div>
           </div>
-          <button onClick={() => setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id })} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
-            + Nueva tarea
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <BtnAccion tipo="editar" onClick={() => setEditEnsayo({...vistaEnsayo})}>✏️ Editar</BtnAccion>
+            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: vistaEnsayo })}>🗑 Eliminar</BtnAccion>
+            <button onClick={() => setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id })} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -198,98 +327,104 @@ function Proyectos() {
             </div>
           )}
           {tareasEnsayo.map(tarea => {
-            const asignados = tarea.asignados ? tarea.asignados.split(',') : []
+            const asignados = tarea.asignados ? tarea.asignados.split(',').filter(Boolean) : []
             const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && tarea.estado !== 'completada'
             const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
             return (
-              <div key={tarea.id} style={{
-                background: 'white', borderRadius: '10px', padding: '16px 20px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : '#00953B'}`
-              }}>
+              <div key={tarea.id} style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : '#00953B'}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none', color: tarea.estado === 'completada' ? '#888' : '#373A36' }}>{tarea.nombre}</p>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none' }}>{tarea.nombre}</p>
+                    <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#888' }}>📁 {vistaEnsayo.nombre}</p>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {asignados.map(id => (
-                        <span key={id} style={{ background: '#f0fdf4', color: '#00953B', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>
-                          {getNombre(id)}
-                        </span>
+                        <span key={id} style={{ background: '#f0fdf4', color: '#00953B', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>
                       ))}
-                      {tarea.dia_recomendado && (
-                        <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>
-                          📌 {tarea.dia_recomendado}
-                        </span>
-                      )}
-                      {tarea.fecha_limite && (
-                        <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>
-                          {vencida ? '⚠️ Vencida' : '📅'} {tarea.fecha_limite}
-                        </span>
-                      )}
+                      {tarea.dia_recomendado && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>📌 {tarea.dia_recomendado}</span>}
+                      {tarea.fecha_limite && <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>{vencida ? '⚠️ Vencida' : '📅'} {tarea.fecha_limite}</span>}
                     </div>
                   </div>
-                  <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : tarea.estado === 'en_curso' ? '#dbeafe' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : tarea.estado === 'en_curso' ? '#1d4ed8' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                    {tarea.estado || 'pendiente'}
-                  </span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
+                    <BtnAccion tipo="editar" onClick={() => setEditTarea({ ...tarea, asignados: tarea.asignados ? tarea.asignados.split(',').filter(Boolean) : [] })}>✏️</BtnAccion>
+                    <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: tarea })}>🗑</BtnAccion>
+                    <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : tarea.estado === 'en_curso' ? '#dbeafe' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : tarea.estado === 'en_curso' ? '#1d4ed8' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>{tarea.estado || 'pendiente'}</span>
+                  </div>
                 </div>
               </div>
             )
           })}
         </div>
 
+        {/* Modal nueva tarea */}
         {modalTarea && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-              <h2 style={{ marginBottom: '24px' }}>Nueva tarea</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre}
-                  onChange={e => setNuevaTarea({...nuevaTarea, nombre: e.target.value})}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-
-                <div>
-                  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a (puede ser más de uno):</label>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {usuarios.map(u => (
-                      <button key={u.id} onClick={() => toggleAsignado(u.id)} style={{
-                        padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600',
-                        background: nuevaTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6',
-                        color: nuevaTarea.asignados.includes(u.id) ? 'white' : '#373A36',
-                        border: nuevaTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb'
-                      }}>
-                        {u.nombre ? u.nombre.split(' ')[0] : u.id}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado (opcional):</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <select value={nuevaTarea.dia_recomendado} onChange={e => setNuevaTarea({...nuevaTarea, dia_recomendado: e.target.value})}
-                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                      <option value="">Sin día específico</option>
-                      {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
-                    </select>
-                    <input type="date" value={nuevaTarea.dia_recomendado_hora}
-                      onChange={e => setNuevaTarea({...nuevaTarea, dia_recomendado_hora: e.target.value})}
-                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label>
-                  <input type="date" value={nuevaTarea.fecha_limite}
-                    onChange={e => setNuevaTarea({...nuevaTarea, fecha_limite: e.target.value})}
-                    style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+          <Modal titulo="Nueva tarea" onClose={() => { setModalTarea(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' }) }} onSave={crearTarea}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534' }}>
+                📁 Ensayo: <strong>{vistaEnsayo.nombre}</strong>
+              </div>
+              <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({...nuevaTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {usuarios.map(u => (
+                    <button key={u.id} onClick={() => toggleAsignado(u.id, nuevaTarea, setNuevaTarea)} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: nuevaTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6', color: nuevaTarea.asignados.includes(u.id) ? 'white' : '#373A36', border: nuevaTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb' }}>
+                      {u.nombre ? u.nombre.split(' ')[0] : u.id}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <button onClick={() => { setModalTarea(null); setNuevaTarea({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', dia_recomendado_hora: '', fecha_limite: '' }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={crearTarea} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear tarea</button>
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado (opcional):</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select value={nuevaTarea.dia_recomendado} onChange={e => setNuevaTarea({...nuevaTarea, dia_recomendado: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                    <option value="">Sin día específico</option>
+                    {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
+                  </select>
+                  <input type="date" value={nuevaTarea.fecha_recomendada} onChange={e => setNuevaTarea({...nuevaTarea, fecha_recomendada: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label>
+                <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({...nuevaTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
             </div>
-          </div>
+          </Modal>
         )}
+
+        {/* Modal editar tarea */}
+        {editTarea && (
+          <Modal titulo="Editar tarea" onClose={() => setEditTarea(null)} onSave={guardarEditTarea}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input placeholder="Nombre de la tarea *" value={editTarea.nombre} onChange={e => setEditTarea({...editTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {usuarios.map(u => (
+                    <button key={u.id} onClick={() => setEditTarea(prev => ({ ...prev, asignados: prev.asignados.includes(u.id) ? prev.asignados.filter(id => id !== u.id) : [...prev.asignados, u.id] }))} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: editTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6', color: editTarea.asignados.includes(u.id) ? 'white' : '#373A36', border: editTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb' }}>
+                      {u.nombre ? u.nombre.split(' ')[0] : u.id}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select value={editTarea.dia_recomendado || ''} onChange={e => setEditTarea({...editTarea, dia_recomendado: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                    <option value="">Sin día específico</option>
+                    {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
+                  </select>
+                  <input type="date" value={editTarea.fecha_recomendada || ''} onChange={e => setEditTarea({...editTarea, fecha_recomendada: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
+                <input type="date" value={editTarea.fecha_limite || ''} onChange={e => setEditTarea({...editTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
   }
@@ -310,7 +445,10 @@ function Proyectos() {
               <span style={{ fontSize: '13px', color: '#888' }}>{TIPOS.find(t => t.value === vistaProyecto.tipo)?.label}</span>
             </div>
           </div>
-          <button onClick={() => setConfirmEliminar(vistaProyecto)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontSize: '14px' }}>🗑 Eliminar</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <BtnAccion tipo="editar" onClick={() => setEditProyecto({...vistaProyecto})}>✏️ Editar</BtnAccion>
+            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'proyecto', item: vistaProyecto })}>🗑 Eliminar</BtnAccion>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -320,7 +458,7 @@ function Proyectos() {
                 <h3 style={{ margin: 0, fontSize: '16px', color: '#373A36' }}>
                   <span style={{ color: '#00953B', marginRight: '8px' }}>{estado.orden}.</span>{estado.nombre}
                 </h3>
-                <button onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })} style={{ background: '#f0fdf4', color: '#00953B', border: '1px solid #00953B', borderRadius: '6px', padding: '4px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>+ Acción</button>
+                <BtnAccion tipo="añadir" onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Acción</BtnAccion>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {accionesDeEstado(estado.id).map(accion => (
@@ -330,22 +468,28 @@ function Proyectos() {
                         <p style={{ margin: 0, fontWeight: '600', fontSize: '14px' }}>{accion.nombre}</p>
                         {accion.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{accion.descripcion}</p>}
                       </div>
-                      <button onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })} style={{ background: '#fff', color: '#373A36', border: '1px solid #ddd', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '11px' }}>+ Ensayo/Informe</button>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <BtnAccion tipo="editar" onClick={() => setEditAccion({...accion})}>✏️</BtnAccion>
+                        <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'accion', item: accion })}>🗑</BtnAccion>
+                        <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo/Informe</BtnAccion>
+                      </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {ensayosDeAccion(accion.id).map(ensayo => (
-                        <div key={ensayo.id} onClick={() => setVistaEnsayo(ensayo)} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                          onMouseOver={e => e.currentTarget.style.background = '#f0fdf4'}
-                          onMouseOut={e => e.currentTarget.style.background = 'white'}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div key={ensayo.id} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div onClick={() => setVistaEnsayo(ensayo)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1 }}
+                            onMouseOver={e => e.currentTarget.style.opacity = '0.7'}
+                            onMouseOut={e => e.currentTarget.style.opacity = '1'}>
                             <span style={{ background: ensayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7', color: ensayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: '600' }}>
                               {ensayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}
                             </span>
                             <span style={{ fontSize: '13px' }}>{ensayo.nombre}</span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                             <span style={{ fontSize: '12px', color: '#888' }}>{tareasDeEnsayo(ensayo.id).length} tareas</span>
-                            <span style={{ color: '#00953B', fontSize: '14px' }}>→</span>
+                            <BtnAccion tipo="editar" onClick={() => setEditEnsayo({...ensayo})}>✏️</BtnAccion>
+                            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: ensayo })}>🗑</BtnAccion>
+                            <span onClick={() => setVistaEnsayo(ensayo)} style={{ color: '#00953B', fontSize: '14px', cursor: 'pointer' }}>→</span>
                           </div>
                         </div>
                       ))}
@@ -359,64 +503,82 @@ function Proyectos() {
           ))}
         </div>
 
-        {confirmEliminar && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-              <p style={{ fontSize: '48px', margin: '0 0 16px' }}>⚠️</p>
-              <h2 style={{ marginBottom: '8px' }}>¿Eliminar proyecto?</h2>
-              <p style={{ color: '#888', marginBottom: '24px' }}>{confirmEliminar.nombre}</p>
+        {/* Modal editar proyecto */}
+        {editProyecto && (
+          <Modal titulo="Editar proyecto" onClose={() => setEditProyecto(null)} onSave={guardarEditProyecto}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input placeholder="Nombre *" value={editProyecto.nombre} onChange={e => setEditProyecto({...editProyecto, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción" value={editProyecto.descripcion || ''} onChange={e => setEditProyecto({...editProyecto, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <select value={editProyecto.tipo} onChange={e => setEditProyecto({...editProyecto, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <label style={{ fontSize: '14px', color: '#555' }}>Color:</label>
+                <input type="color" value={editProyecto.color} onChange={e => setEditProyecto({...editProyecto, color: e.target.value})} style={{ width: '48px', height: '36px', border: 'none', cursor: 'pointer' }} />
+              </div>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => setConfirmEliminar(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={() => eliminarProyecto(confirmEliminar)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#dc2626', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Eliminar</button>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
+                  <input type="date" value={editProyecto.fecha_inicio || ''} onChange={e => setEditProyecto({...editProyecto, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin</label>
+                  <input type="date" value={editProyecto.fecha_fin || ''} onChange={e => setEditProyecto({...editProyecto, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
               </div>
             </div>
-          </div>
+          </Modal>
         )}
 
+        {/* Modal nueva accion */}
         {modalAccion && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px' }}>
-              <h2 style={{ marginBottom: '24px' }}>Nueva acción</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <input placeholder="Nombre de la acción *" value={nuevaAccion.nombre}
-                  onChange={e => setNuevaAccion({...nuevaAccion, nombre: e.target.value})}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-                <textarea placeholder="Descripción (opcional)" value={nuevaAccion.descripcion}
-                  onChange={e => setNuevaAccion({...nuevaAccion, descripcion: e.target.value})}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <button onClick={() => setModalAccion(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={crearAccion} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear acción</button>
-              </div>
+          <Modal titulo="Nueva acción" onClose={() => setModalAccion(null)} onSave={crearAccion}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input placeholder="Nombre de la acción *" value={nuevaAccion.nombre} onChange={e => setNuevaAccion({...nuevaAccion, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={nuevaAccion.descripcion} onChange={e => setNuevaAccion({...nuevaAccion, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
             </div>
-          </div>
+          </Modal>
         )}
 
-        {modalEnsayo && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px' }}>
-              <h2 style={{ marginBottom: '24px' }}>Nuevo ensayo o informe</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <select value={nuevoEnsayo.tipo} onChange={e => setNuevoEnsayo({...nuevoEnsayo, tipo: e.target.value})}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                  <option value="ensayo">Ensayo</option>
-                  <option value="informe">Informe</option>
-                </select>
-                <input placeholder="Nombre *" value={nuevoEnsayo.nombre}
-                  onChange={e => setNuevoEnsayo({...nuevoEnsayo, nombre: e.target.value})}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-                <textarea placeholder="Descripción (opcional)" value={nuevoEnsayo.descripcion}
-                  onChange={e => setNuevoEnsayo({...nuevoEnsayo, descripcion: e.target.value})}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <button onClick={() => setModalEnsayo(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-                <button onClick={crearEnsayo} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear</button>
-              </div>
+        {/* Modal editar accion */}
+        {editAccion && (
+          <Modal titulo="Editar acción" onClose={() => setEditAccion(null)} onSave={guardarEditAccion}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input placeholder="Nombre *" value={editAccion.nombre} onChange={e => setEditAccion({...editAccion, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción" value={editAccion.descripcion || ''} onChange={e => setEditAccion({...editAccion, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
             </div>
-          </div>
+          </Modal>
         )}
+
+        {/* Modal nuevo ensayo */}
+        {modalEnsayo && (
+          <Modal titulo="Nuevo ensayo o informe" onClose={() => setModalEnsayo(null)} onSave={crearEnsayo}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <select value={nuevoEnsayo.tipo} onChange={e => setNuevoEnsayo({...nuevoEnsayo, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                <option value="ensayo">Ensayo</option>
+                <option value="informe">Informe</option>
+              </select>
+              <input placeholder="Nombre *" value={nuevoEnsayo.nombre} onChange={e => setNuevoEnsayo({...nuevoEnsayo, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={nuevoEnsayo.descripcion} onChange={e => setNuevoEnsayo({...nuevoEnsayo, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+            </div>
+          </Modal>
+        )}
+
+        {/* Modal editar ensayo */}
+        {editEnsayo && (
+          <Modal titulo="Editar ensayo/informe" onClose={() => setEditEnsayo(null)} onSave={guardarEditEnsayo}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <select value={editEnsayo.tipo} onChange={e => setEditEnsayo({...editEnsayo, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                <option value="ensayo">Ensayo</option>
+                <option value="informe">Informe</option>
+              </select>
+              <input placeholder="Nombre *" value={editEnsayo.nombre} onChange={e => setEditEnsayo({...editEnsayo, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción" value={editEnsayo.descripcion || ''} onChange={e => setEditEnsayo({...editEnsayo, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+            </div>
+          </Modal>
+        )}
+
+        {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
   }
@@ -437,8 +599,7 @@ function Proyectos() {
           </div>
         )}
         {proyectosActivos.map(proyecto => (
-          <div key={proyecto.id} className="proyecto-card" style={{ borderLeftColor: proyecto.color || '#6B7280', cursor: 'pointer' }}
-            onClick={() => setVistaProyecto(proyecto)}>
+          <div key={proyecto.id} className="proyecto-card" style={{ borderLeftColor: proyecto.color || '#6B7280', cursor: 'pointer' }} onClick={() => setVistaProyecto(proyecto)}>
             <div className="proyecto-header">
               <div>
                 <h3>{proyecto.nombre}</h3>
@@ -455,53 +616,33 @@ function Proyectos() {
       </div>
 
       {modalProyecto && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ marginBottom: '24px' }}>Nuevo proyecto</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <input placeholder="Nombre del proyecto *" value={nuevoProyecto.nombre}
-                onChange={e => setNuevoProyecto({...nuevoProyecto, nombre: e.target.value})}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <textarea placeholder="Descripción (opcional)" value={nuevoProyecto.descripcion}
-                onChange={e => setNuevoProyecto({...nuevoProyecto, descripcion: e.target.value})}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-              <select value={nuevoProyecto.tipo} onChange={e => setNuevoProyecto({...nuevoProyecto, tipo: e.target.value})}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <label style={{ fontSize: '14px', color: '#555' }}>Color:</label>
-                <input type="color" value={nuevoProyecto.color}
-                  onChange={e => setNuevoProyecto({...nuevoProyecto, color: e.target.value})}
-                  style={{ width: '48px', height: '36px', border: 'none', cursor: 'pointer', borderRadius: '4px' }} />
+        <Modal titulo="Nuevo proyecto" onClose={() => setModalProyecto(false)} onSave={crearProyecto}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <input placeholder="Nombre del proyecto *" value={nuevoProyecto.nombre} onChange={e => setNuevoProyecto({...nuevoProyecto, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+            <textarea placeholder="Descripción (opcional)" value={nuevoProyecto.descripcion} onChange={e => setNuevoProyecto({...nuevoProyecto, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+            <select value={nuevoProyecto.tipo} onChange={e => setNuevoProyecto({...nuevoProyecto, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+              {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label style={{ fontSize: '14px', color: '#555' }}>Color:</label>
+              <input type="color" value={nuevoProyecto.color} onChange={e => setNuevoProyecto({...nuevoProyecto, color: e.target.value})} style={{ width: '48px', height: '36px', border: 'none', cursor: 'pointer' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
+                <input type="date" value={nuevoProyecto.fecha_inicio} onChange={e => setNuevoProyecto({...nuevoProyecto, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
-                  <input type="date" value={nuevoProyecto.fecha_inicio}
-                    onChange={e => setNuevoProyecto({...nuevoProyecto, fecha_inicio: e.target.value})}
-                    style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
-                  <input type="date" value={nuevoProyecto.fecha_fin}
-                    onChange={e => setNuevoProyecto({...nuevoProyecto, fecha_fin: e.target.value})}
-                    style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-              </div>
-              <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '12px', fontSize: '13px', color: '#166534' }}>
-                ✓ Se crearán automáticamente los 6 estados del proceso I+D
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
+                <input type="date" value={nuevoProyecto.fecha_fin} onChange={e => setNuevoProyecto({...nuevoProyecto, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => setModalProyecto(false)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={crearProyecto} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear proyecto</button>
+            <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '12px', fontSize: '13px', color: '#166534' }}>
+              ✓ Se crearán automáticamente los 6 estados del proceso I+D
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )
 }
-
-export default Proyectos
