@@ -42,6 +42,7 @@ function Proyectos() {
   }
 
   async function crearProyecto() {
+    console.log("creando proyecto", nuevoProyecto, accessToken)
     if (!nuevoProyecto.nombre) return
     const id = Date.now().toString()
     const fila = [id, nuevoProyecto.nombre, nuevoProyecto.tipo, 'activo', nuevoProyecto.color, '', '', nuevoProyecto.descripcion]
