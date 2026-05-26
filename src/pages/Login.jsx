@@ -1,8 +1,9 @@
+import { useAuth } from '../hooks/useAuth'
 import logo from '../assets/logo.png'
 
-function Login({ onLogin }) {
-  const { login } = require('../hooks/useAuth').useAuth ? require('../hooks/useAuth').useAuth() : { login: onLogin }
-  
+function Login() {
+  const { login } = useAuth()
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -17,12 +18,47 @@ function Login({ onLogin }) {
         borderRadius: '16px',
         padding: '48px 40px',
         width: '100%',
-        maxWidth: '400px',
+        maxWidth: '420px',
         textAlign: 'center',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
+        boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
       }}>
-        <img src={logo} alt="Fertinyect" style={{ height: "160px", marginBottom: '8px' }} />
-        <p style={{ color: '#373A36', margin: '0 0 32px', fontSize: '14px', opacity: 0.7 }}>
+        <img src={logo} alt="Fertinyect" style={{ height: '220px', marginBottom: '12px' }} />
+        <p style={{
+          color: '#373A36',
+          margin: '0 0 32px'
+cat > src/pages/Login.jsx << 'EOF'
+import { useAuth } from '../hooks/useAuth'
+import logo from '../assets/logo.png'
+
+function Login() {
+  const { login } = useAuth()
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #00953B 0%, #007a30 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: "'Roboto Condensed', sans-serif"
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        padding: '48px 40px',
+        width: '100%',
+        maxWidth: '420px',
+        textAlign: 'center',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
+      }}>
+        <img src={logo} alt="Fertinyect" style={{ height: '220px', marginBottom: '12px' }} />
+        <p style={{
+          color: '#373A36',
+          margin: '0 0 32px',
+          fontSize: '16px',
+          fontWeight: '700',
+          letterSpacing: '0.5px'
+        }}>
           Sistema de Gestión del Tiempo · I+D
         </p>
         <h2 style={{ color: '#373A36', marginBottom: '8px', fontSize: '24px' }}>Bienvenida</h2>
