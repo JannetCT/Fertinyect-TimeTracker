@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import logo from '../assets/logo.png'
+import logo from '../assets/logoblanco.png'
 
 function Layout({ usuario, children }) {
   const { logout } = useAuth()
@@ -15,7 +15,12 @@ function Layout({ usuario, children }) {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <img src={logo} alt="Fertinyect" style={{ width: '80%', display: 'block', margin: '0 auto 8px' }} />
+          <img src={logo} alt="Fertinyect" style={{ 
+            width: '80%', 
+            display: 'block', 
+            margin: '0 auto 8px',
+            mixBlendMode: 'screen'
+          }} />
           <p style={{ textAlign: 'center', fontSize: '11px', opacity: 0.7, margin: 0 }}>Sistema de Gestión del Tiempo · I+D</p>
         </div>
         <nav className="sidebar-nav">
