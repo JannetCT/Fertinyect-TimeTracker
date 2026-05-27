@@ -568,6 +568,3 @@ export default function Proyectos() {
   )
 }
 EOF
-git add .
-git commit -m "feat: eliminar y añadir estados en proyecto"
-git push origin master:main
