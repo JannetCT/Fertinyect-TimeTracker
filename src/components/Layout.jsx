@@ -40,6 +40,9 @@ function Layout({ usuario, children }) {
           <NavLink to="/proyectos" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             📁 Proyectos
           </NavLink>
+          <NavLink to="/soporte" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+  🛠️ Soporte
+</NavLink>
           <NavLink to="/graficas" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             📊 Gráficas
           </NavLink>
