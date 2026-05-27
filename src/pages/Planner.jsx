@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { leerHoja, escribirFila, actualizarFila } from '../services/googleSheets'
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
 const DIAS_LABEL = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes' }
+
+function formatTiempo(segundos) {
+  const h = Math.floor(segundos / 3600)
+  const m = Math.floor((segundos % 3600) / 60)
+  const s = segundos % 60
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+}
 
 function Planner() {
   const { usuario, accessToken } = useAuth()
@@ -20,7 +27,24 @@ function Planner() {
   const [modalNuevaTarea, setModalNuevaTarea] = useState(null)
   const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', dia_semana: 'por_asignar', fecha_limite: '' })
 
+  // Cronómetro
+  const [cronActivo, setCronActivo] = useState(null) // { tareaId, tipo, inicio, acumulado }
+  const [tiempoActual, setTiempoActual] = useState(0)
+  const intervalRef = useRef(null)
+
   useEffect(() => { if (accessToken && usuario) cargarDatos() }, [accessToken, usuario])
+
+  useEffect(() => {
+    if (cronActivo) {
+      intervalRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - cronActivo.inicio) / 1000)
+        setTiempoActual(cronActivo.acumulado + elapsed)
+      }, 1000)
+    } else {
+      clearInterval(intervalRef.current)
+    }
+    return () => clearInterval(intervalRef.current)
+  }, [cronActivo])
 
   async function cargarDatos() {
     try {
@@ -43,6 +67,57 @@ function Planner() {
     finally { setCargando(false) }
   }
 
+  function iniciarCronometro(tarea) {
+    if (cronActivo && cronActivo.tareaId === tarea.id) return
+    if (cronActivo) pausarCronometro()
+    setCronActivo({ tareaId: tarea.id, tipo: tarea._tipo, nombre: tarea.nombre, inicio: Date.now(), acumulado: 0 })
+    setTiempoActual(0)
+  }
+
+  function pausarCronometro() {
+    if (!cronActivo) return
+    const elapsed = Math.floor((Date.now() - cronActivo.inicio) / 1000)
+    setCronActivo(prev => ({ ...prev, acumulado: prev.acumulado + elapsed, inicio: null }))
+    clearInterval(intervalRef.current)
+  }
+
+  function reanudarCronometro() {
+    if (!cronActivo) return
+    setCronActivo(prev => ({ ...prev, inicio: Date.now() }))
+  }
+
+  async function detenerCronometro(completar = false) {
+    if (!cronActivo) return
+    const elapsed = cronActivo.inicio ? Math.floor((Date.now() - cronActivo.inicio) / 1000) : 0
+    const total = cronActivo.acumulado + elapsed
+    const fin = new Date().toISOString()
+    const inicio = new Date(Date.now() - total * 1000).toISOString()
+    const id = Date.now().toString()
+    await escribirFila('registros', [
+      id, cronActivo.tareaId, usuario.id,
+      inicio, fin, total,
+      new Date().toDateString(),
+      cronActivo.tipo,
+      cronActivo.nombre
+    ], accessToken)
+    if (completar) {
+      const hoja = cronActivo.tipo === 'proyecto' ? 'tareas' : cronActivo.tipo === 'soporte' ? 'tareas_soporte' : 'tareas_planner'
+      const tarea = [...tareas, ...tareasSoporte, ...tareasPlanner].find(t => t.id === cronActivo.tareaId)
+      if (tarea) {
+        if (cronActivo.tipo === 'proyecto') {
+          await actualizarFila(hoja, tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.dia_recomendado, tarea.fecha_limite, 'completada', tarea.fecha_creacion], accessToken)
+        } else if (cronActivo.tipo === 'soporte') {
+          await actualizarFila(hoja, tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_soporte_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.dia_recomendado, tarea.fecha_limite, 'completada', tarea.fecha_creacion], accessToken)
+        } else {
+          await actualizarFila(hoja, tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana, tarea.fecha_limite, 'completada', tarea.fecha_creacion], accessToken)
+        }
+      }
+    }
+    setCronActivo(null)
+    setTiempoActual(0)
+    cargarDatos()
+  }
+
   async function asignarDia(tarea, dia, tipo) {
     setAsignandoDia(true)
     try {
@@ -62,16 +137,7 @@ function Planner() {
   async function crearTareaPlanner() {
     if (!formTarea.nombre) return
     const id = Date.now().toString()
-    await escribirFila('tareas_planner', [
-      id, usuario.id,
-      formTarea.tarea_padre_id || '',
-      formTarea.tarea_padre_tipo || '',
-      formTarea.nombre,
-      formTarea.dia_semana || 'por_asignar',
-      formTarea.fecha_limite || '',
-      'pendiente',
-      new Date().toISOString()
-    ], accessToken)
+    await escribirFila('tareas_planner', [id, usuario.id, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, formTarea.dia_semana || 'por_asignar', formTarea.fecha_limite || '', 'pendiente', new Date().toISOString()], accessToken)
     setModalNuevaTarea(null)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', dia_semana: 'por_asignar', fecha_limite: '' })
     cargarDatos()
@@ -84,13 +150,8 @@ function Planner() {
     return [...tp, ...ts, ...tpl]
   }
 
-  function tareasPorDia(dia) {
-    return todasLasTareas().filter(t => t.dia_semana === dia)
-  }
-
-  function tareasBacklog() {
-    return todasLasTareas().filter(t => !t.dia_semana || t.dia_semana === 'por_asignar' || t.dia_semana === '')
-  }
+  function tareasPorDia(dia) { return todasLasTareas().filter(t => t.dia_semana === dia) }
+  function tareasBacklog() { return todasLasTareas().filter(t => !t.dia_semana || t.dia_semana === 'por_asignar' || t.dia_semana === '') }
 
   function getContexto(tarea) {
     if (tarea._tipo === 'proyecto') {
@@ -112,12 +173,28 @@ function Planner() {
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando planner...</p></div>
 
+  const estaActiva = (tareaId) => cronActivo?.tareaId === tareaId
+  const estaPausada = (tareaId) => cronActivo?.tareaId === tareaId && !cronActivo?.inicio
+
   return (
     <div className="planner-container">
       <div className="planner-header">
         <h1>📅 Planner semanal</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <p style={{ margin: 0 }}>Semana actual · {usuario.nombre}</p>
+          {cronActivo && (
+            <div style={{ background: '#f0fdf4', border: '2px solid #00953B', borderRadius: '8px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '12px', color: '#373A36', fontWeight: '600' }}>⏱ {cronActivo.nombre}</span>
+              <span style={{ fontSize: '20px', fontWeight: '700', color: '#00953B', fontFamily: 'monospace' }}>{formatTiempo(tiempoActual)}</span>
+              {cronActivo.inicio ? (
+                <button onClick={pausarCronometro} style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>⏸ Pausar</button>
+              ) : (
+                <button onClick={reanudarCronometro} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>▶️ Reanudar</button>
+              )}
+              <button onClick={() => detenerCronometro(false)} style={{ background: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>⏹ Parar</button>
+              <button onClick={() => detenerCronometro(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>✅ Completar</button>
+            </div>
+          )}
           <button onClick={() => setModalNuevaTarea(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
         </div>
       </div>
@@ -131,7 +208,16 @@ function Planner() {
             </div>
             <div className="column-tasks">
               {tareasPorDia(dia).map(tarea => (
-                <TarjetaTarea key={tarea.id + tarea._tipo} tarea={tarea} contexto={getContexto(tarea)} onClick={() => setTareaSeleccionada(tarea)} />
+                <TarjetaTarea
+                  key={tarea.id + tarea._tipo}
+                  tarea={tarea}
+                  contexto={getContexto(tarea)}
+                  onClick={() => setTareaSeleccionada(tarea)}
+                  onIniciar={() => iniciarCronometro(tarea)}
+                  activa={estaActiva(tarea.id)}
+                  pausada={estaPausada(tarea.id)}
+                  tiempoActual={estaActiva(tarea.id) ? tiempoActual : 0}
+                />
               ))}
             </div>
           </div>
@@ -143,7 +229,16 @@ function Planner() {
           </div>
           <div className="column-tasks">
             {tareasBacklog().map(tarea => (
-              <TarjetaTarea key={tarea.id + tarea._tipo} tarea={tarea} contexto={getContexto(tarea)} onClick={() => setTareaSeleccionada(tarea)} />
+              <TarjetaTarea
+                key={tarea.id + tarea._tipo}
+                tarea={tarea}
+                contexto={getContexto(tarea)}
+                onClick={() => setTareaSeleccionada(tarea)}
+                onIniciar={() => iniciarCronometro(tarea)}
+                activa={estaActiva(tarea.id)}
+                pausada={estaPausada(tarea.id)}
+                tiempoActual={estaActiva(tarea.id) ? tiempoActual : 0}
+              />
             ))}
           </div>
         </div>
@@ -176,22 +271,16 @@ function Planner() {
             <h2 style={{ marginBottom: '24px' }}>Nueva tarea personal</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre de la tarea *" value={formTarea.nombre} onChange={e => setFormTarea({...formTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Tipo de tarea:</label>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Tipo:</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setFormTarea({...formTarea, tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: ''})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'libre' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'libre' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'libre' ? '#00953B' : '#373A36' }}>
-                    📝 Tarea libre
-                  </button>
-                  <button onClick={() => setFormTarea({...formTarea, tipo: 'subtarea'})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'subtarea' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'subtarea' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'subtarea' ? '#00953B' : '#373A36' }}>
-                    🔗 Subtarea conectada
-                  </button>
+                  <button onClick={() => setFormTarea({...formTarea, tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: ''})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'libre' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'libre' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'libre' ? '#00953B' : '#373A36' }}>📝 Tarea libre</button>
+                  <button onClick={() => setFormTarea({...formTarea, tipo: 'subtarea'})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'subtarea' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'subtarea' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'subtarea' ? '#00953B' : '#373A36' }}>🔗 Subtarea</button>
                 </div>
               </div>
-
               {formTarea.tipo === 'subtarea' && (
                 <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Conectar con tarea padre:</label>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Conectar con:</label>
                   <select value={formTarea.tarea_padre_tipo} onChange={e => setFormTarea({...formTarea, tarea_padre_tipo: e.target.value, tarea_padre_id: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
                     <option value="">Selecciona tipo...</option>
                     <option value="proyecto">De Proyectos</option>
@@ -207,21 +296,18 @@ function Planner() {
                   )}
                 </div>
               )}
-
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Día de la semana:</label>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Día:</label>
                 <select value={formTarea.dia_semana} onChange={e => setFormTarea({...formTarea, dia_semana: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
                   <option value="por_asignar">Por asignar</option>
                   {DIAS.map(d => <option key={d} value={d}>{DIAS_LABEL[d]}</option>)}
                 </select>
               </div>
-
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha límite (opcional):</label>
                 <input type="date" value={formTarea.fecha_limite} onChange={e => setFormTarea({...formTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
             </div>
-
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
               <button onClick={() => { setModalNuevaTarea(null); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', dia_semana: 'por_asignar', fecha_limite: '' }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
               <button onClick={crearTareaPlanner} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear tarea</button>
@@ -233,18 +319,33 @@ function Planner() {
   )
 }
 
-function TarjetaTarea({ tarea, contexto, onClick }) {
+function TarjetaTarea({ tarea, contexto, onClick, onIniciar, activa, pausada, tiempoActual }) {
   const esCompletada = tarea.estado === 'completada'
-  const esEnCurso = tarea.estado === 'en_curso'
   const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
   const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
 
   return (
-    <div onClick={onClick} className={`tarea-card ${esCompletada ? 'completada' : ''} ${esEnCurso ? 'en-curso' : ''}`} style={{
-      borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`,
-      cursor: 'pointer'
+    <div className={`tarea-card ${esCompletada ? 'completada' : ''} ${activa ? 'en-curso' : ''}`} style={{
+      borderLeft: `4px solid ${activa ? '#00953B' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`,
+      background: activa ? '#f0fdf4' : 'white'
     }}>
-      <p className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`}>{tarea.nombre}</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <p onClick={onClick} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', flex: 1, margin: 0 }}>{tarea.nombre}</p>
+        {!esCompletada && (
+          <button onClick={e => { e.stopPropagation(); onIniciar() }} style={{
+            background: activa && !pausada ? '#f59e0b' : '#00953B',
+            color: 'white', border: 'none', borderRadius: '6px',
+            padding: '4px 8px', cursor: 'pointer', fontSize: '16px', marginLeft: '8px'
+          }}>
+            {activa && !pausada ? '⏸' : '▶️'}
+          </button>
+        )}
+      </div>
+      {activa && (
+        <p style={{ margin: '4px 0 0', fontSize: '13px', fontWeight: '700', color: '#00953B', fontFamily: 'monospace' }}>
+          ⏱ {Math.floor(tiempoActual/3600).toString().padStart(2,'0')}:{Math.floor((tiempoActual%3600)/60).toString().padStart(2,'0')}:{(tiempoActual%60).toString().padStart(2,'0')}
+        </p>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
         <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: tarea._tipo === 'soporte' ? '#eff6ff' : tarea._tipo === 'planner' ? '#f5f3ff' : '#f0fdf4', color: tarea._tipo === 'soporte' ? '#1d4ed8' : tarea._tipo === 'planner' ? '#7c3aed' : '#00953B', fontWeight: '600' }}>{contexto}</span>
         {tarea.dia_recomendado && <span style={{ fontSize: '10px', color: '#92400e', background: '#fef3c7', padding: '1px 5px', borderRadius: '4px' }}>📌 {tarea.dia_recomendado}</span>}
