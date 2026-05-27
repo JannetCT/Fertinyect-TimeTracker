@@ -1,50 +1,84 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja } from '../services/googleSheets'
+import { leerHoja, actualizarFila } from '../services/googleSheets'
 
-const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
+const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
+const DIAS_LABEL = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes' }
 
 function Planner() {
   const { usuario, accessToken } = useAuth()
   const [tareas, setTareas] = useState([])
+  const [tareasSoporte, setTareasSoporte] = useState([])
   const [proyectos, setProyectos] = useState([])
-  const [etiquetas, setEtiquetas] = useState([])
+  const [categoriasSoporte, setCategoriasSoporte] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [tareaSeleccionada, setTareaSeleccionada] = useState(null)
+  const [asignandoDia, setAsignandoDia] = useState(false)
 
-  useEffect(() => {
-    async function cargarDatos() {
-      try {
-        const [tareasData, proyectosData, etiquetasData] = await Promise.all([
-          leerHoja('tareas', accessToken),
-          leerHoja('proyectos', accessToken),
-          leerHoja('etiquetas', accessToken)
-        ])
-        setTareas(tareasData.filter(t => t.asignado_a === usuario.id))
-        setProyectos(proyectosData)
-        setEtiquetas(etiquetasData.filter(e => e.activa === 'TRUE'))
-      } catch (error) {
-        console.error('Error cargando datos:', error)
-      } finally {
-        setCargando(false)
+  useEffect(() => { if (accessToken && usuario) cargarDatos() }, [accessToken, usuario])
+
+  async function cargarDatos() {
+    try {
+      const [t, ts, p, cs] = await Promise.all([
+        leerHoja('tareas', accessToken),
+        leerHoja('tareas_soporte', accessToken),
+        leerHoja('proyectos', accessToken),
+        leerHoja('categorias_soporte', accessToken)
+      ])
+      const misId = usuario.id
+      setTareas(t.filter(t => t.asignados && t.asignados.split(',').includes(misId)))
+      setTareasSoporte(ts.filter(t => t.asignados && t.asignados.split(',').includes(misId)))
+      setProyectos(p)
+      setCategoriasSoporte(cs)
+    } catch (err) { console.error(err) }
+    finally { setCargando(false) }
+  }
+
+  async function asignarDia(tarea, dia, tipo) {
+    setAsignandoDia(true)
+    try {
+      if (tipo === 'proyecto') {
+        await actualizarFila('tareas', tarea.id, [
+          tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id,
+          tarea.nombre, tarea.asignados, dia, tarea.dia_recomendado,
+          tarea.fecha_limite, tarea.estado, tarea.fecha_creacion
+        ], accessToken)
+      } else {
+        await actualizarFila('tareas_soporte', tarea.id, [
+          tarea.id, tarea.categoria_id, tarea.proyecto_soporte_id || '',
+          tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados,
+          dia, tarea.dia_recomendado, tarea.fecha_limite,
+          tarea.estado, tarea.fecha_creacion
+        ], accessToken)
       }
-    }
-    if (accessToken) cargarDatos()
-  }, [accessToken])
+      setTareaSeleccionada(null)
+      cargarDatos()
+    } catch (err) { console.error(err) }
+    finally { setAsignandoDia(false) }
+  }
+
+  function todasLasTareas() {
+    const tp = tareas.map(t => ({ ...t, _tipo: 'proyecto' }))
+    const ts = tareasSoporte.map(t => ({ ...t, _tipo: 'soporte' }))
+    return [...tp, ...ts]
+  }
 
   function tareasPorDia(dia) {
-    return tareas.filter(t => t.dia_semana === dia)
+    return todasLasTareas().filter(t => t.dia_semana === dia)
   }
 
   function tareasBacklog() {
-    return tareas.filter(t => !t.dia_semana || t.dia_semana === '')
+    return todasLasTareas().filter(t => !t.dia_semana || t.dia_semana === 'por_asignar' || t.dia_semana === '')
   }
 
-  function getEtiqueta(nombre) {
-    return etiquetas.find(e => e.nombre === nombre)
-  }
-
-  function getProyecto(id) {
-    return proyectos.find(p => p.id === id)
+  function getContexto(tarea) {
+    if (tarea._tipo === 'proyecto') {
+      const p = proyectos.find(p => p.id === tarea.proyecto_id)
+      return p ? p.nombre : 'Proyecto'
+    } else {
+      const c = categoriasSoporte.find(c => c.id === tarea.categoria_id)
+      return c ? c.nombre : 'Soporte'
+    }
   }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando planner...</p></div>
@@ -60,16 +94,16 @@ function Planner() {
         {DIAS.map(dia => (
           <div key={dia} className="planner-column">
             <div className="column-header">
-              <h3>{dia}</h3>
+              <h3>{DIAS_LABEL[dia]}</h3>
               <span className="task-count">{tareasPorDia(dia).length}</span>
             </div>
             <div className="column-tasks">
               {tareasPorDia(dia).map(tarea => (
                 <TarjetaTarea
-                  key={tarea.id}
+                  key={tarea.id + tarea._tipo}
                   tarea={tarea}
-                  proyecto={getProyecto(tarea.proyecto_id)}
-                  etiqueta={getEtiqueta(tarea.etiquetas)}
+                  contexto={getContexto(tarea)}
+                  onClick={() => setTareaSeleccionada(tarea)}
                 />
               ))}
             </div>
@@ -84,38 +118,74 @@ function Planner() {
           <div className="column-tasks">
             {tareasBacklog().map(tarea => (
               <TarjetaTarea
-                key={tarea.id}
+                key={tarea.id + tarea._tipo}
                 tarea={tarea}
-                proyecto={getProyecto(tarea.proyecto_id)}
-                etiqueta={getEtiqueta(tarea.etiquetas)}
+                contexto={getContexto(tarea)}
+                onClick={() => setTareaSeleccionada(tarea)}
               />
             ))}
           </div>
         </div>
       </div>
+
+      {tareaSeleccionada && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '420px' }}>
+            <h2 style={{ marginBottom: '8px', fontSize: '18px' }}>{tareaSeleccionada.nombre}</h2>
+            <p style={{ color: '#888', fontSize: '13px', marginBottom: '24px' }}>{getContexto(tareaSeleccionada)}</p>
+            <p style={{ fontWeight: '600', marginBottom: '12px', fontSize: '14px' }}>Asignar a día:</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {DIAS.map(dia => (
+                <button key={dia} onClick={() => asignarDia(tareaSeleccionada, dia, tareaSeleccionada._tipo)} disabled={asignandoDia} style={{
+                  padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb',
+                  background: tareaSeleccionada.dia_semana === dia ? '#00953B' : 'white',
+                  color: tareaSeleccionada.dia_semana === dia ? 'white' : '#373A36',
+                  cursor: 'pointer', fontSize: '14px', fontWeight: '600', textAlign: 'left'
+                }}>
+                  {DIAS_LABEL[dia]}
+                </button>
+              ))}
+              <button onClick={() => asignarDia(tareaSeleccionada, 'por_asignar', tareaSeleccionada._tipo)} disabled={asignandoDia} style={{
+                padding: '10px', borderRadius: '8px', border: '1px solid #e5e7eb',
+                background: tareaSeleccionada.dia_semana === 'por_asignar' ? '#6b7280' : 'white',
+                color: tareaSeleccionada.dia_semana === 'por_asignar' ? 'white' : '#373A36',
+                cursor: 'pointer', fontSize: '14px', fontWeight: '600', textAlign: 'left'
+              }}>
+                📥 Por asignar
+              </button>
+            </div>
+            <button onClick={() => setTareaSeleccionada(null)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', marginTop: '16px', fontSize: '14px' }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function TarjetaTarea({ tarea, proyecto, etiqueta }) {
-  const esCompletada = tarea.estado === 'Completada'
-  const esEnCurso = tarea.estado === 'En curso'
-  const tieneDeadline = tarea.fecha_deadline && new Date(tarea.fecha_deadline) < new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+function TarjetaTarea({ tarea, contexto, onClick }) {
+  const esCompletada = tarea.estado === 'completada'
+  const esEnCurso = tarea.estado === 'en_curso'
+  const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
+  const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
 
   return (
-    <div className={`tarea-card ${esCompletada ? 'completada' : ''} ${esEnCurso ? 'en-curso' : ''} ${tieneDeadline && !esCompletada ? 'deadline-proximo' : ''}`}>
-      {etiqueta && (
-        <span className="etiqueta" style={{ backgroundColor: etiqueta.color }}>
-          {etiqueta.nombre}
-        </span>
-      )}
+    <div onClick={onClick} className={`tarea-card ${esCompletada ? 'completada' : ''} ${esEnCurso ? 'en-curso' : ''}`} style={{
+      borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : '#00953B'}`,
+      cursor: 'pointer'
+    }}>
       <p className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`}>{tarea.nombre}</p>
-      {proyecto && <p className="tarea-proyecto">{proyecto.nombre}</p>}
-      <div className="tarea-footer">
-        <span className={`estado-badge estado-${tarea.estado?.toLowerCase().replace(' ', '-')}`}>
-          {tarea.estado || 'Pendiente'}
-        </span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+        <span style={{
+          fontSize: '11px', padding: '2px 6px', borderRadius: '4px',
+          background: tarea._tipo === 'soporte' ? '#eff6ff' : '#f0fdf4',
+          color: tarea._tipo === 'soporte' ? '#1d4ed8' : '#00953B',
+          fontWeight: '600'
+        }}>{contexto}</span>
+        {tarea.dia_recomendado && <span style={{ fontSize: '10px', color: '#92400e', background: '#fef3c7', padding: '1px 5px', borderRadius: '4px' }}>📌 {tarea.dia_recomendado}</span>}
       </div>
+      {vencida && <p style={{ fontSize: '11px', color: '#dc2626', margin: '4px 0 0', fontWeight: '600' }}>⚠️ Vencida</p>}
     </div>
   )
 }
