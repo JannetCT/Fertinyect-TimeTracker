@@ -201,7 +201,19 @@ export default function Proyectos() {
     setEditTarea(null)
     cargarDatos()
   }
-
+async function eliminarYReordenarEstados(estadoId, proyectoId) {
+  const todosEstados = await leerHoja('estados_proyecto', accessToken)
+  const estadosRestantes = todosEstados
+    .filter(e => e.proyecto_id === proyectoId && e.id !== estadoId)
+    .sort((a, b) => Number(a.orden) - Number(b.orden))
+  await marcarEliminado('estados_proyecto', estadoId, accessToken)
+  for (let i = 0; i < estadosRestantes.length; i++) {
+    await actualizarFila('estados_proyecto', estadosRestantes[i].id, [
+      estadosRestantes[i].id, estadosRestantes[i].proyecto_id,
+      estadosRestantes[i].nombre, i + 1, estadosRestantes[i].activo
+    ], accessToken)
+  }
+}
   async function ejecutarEliminar() {
     if (!confirmEliminar) return
     const { tipo, item } = confirmEliminar
@@ -209,7 +221,7 @@ export default function Proyectos() {
       await actualizarFila('proyectos', item.id, [item.id, item.nombre, item.descripcion, item.tipo, item.color, item.fecha_inicio, item.fecha_fin, 'eliminado'], accessToken)
       setVistaProyecto(null)
     } else if (tipo === 'estado') {
-      await marcarEliminado('estados_proyecto', item.id, accessToken)
+      await eliminarYReordenarEstados(item.id, item.proyecto_id)
     } else if (tipo === 'accion') {
       await marcarEliminado('acciones', item.id, accessToken)
     } else if (tipo === 'ensayo') {
