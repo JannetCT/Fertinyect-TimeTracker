@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Planner from './pages/Planner'
 import Proyectos from './pages/Proyectos'
 import Soporte from './pages/Soporte'
+import Gantt from './pages/Gantt'
 import Graficas from './pages/Graficas'
 import Dashboard from './pages/Dashboard'
 import Configuracion from './pages/Configuracion'
@@ -49,6 +50,7 @@ function App() {
                 <Route path="/planner" element={<Planner />} />
                 <Route path="/proyectos" element={<Proyectos />} />
                 <Route path="/soporte" element={<Soporte />} />
+                <Route path="/gantt" element={<Gantt />} />
                 <Route path="/graficas" element={<Graficas />} />
                 {usuario.rol === 'admin' && (
                   <Route path="/dashboard" element={<Dashboard />} />

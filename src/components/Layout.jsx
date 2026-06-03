@@ -43,6 +43,9 @@ function Layout({ usuario, children }) {
           <NavLink to="/soporte" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
   🛠️ Soporte
 </NavLink>
+<NavLink to="/gantt" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+  📊 Gantt
+</NavLink>
           <NavLink to="/graficas" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             📊 Gráficas
           </NavLink>
