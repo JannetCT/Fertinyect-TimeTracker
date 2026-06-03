@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 import { useAuth } from '../hooks/useAuth'
 import { leerHoja, actualizarFila } from '../services/googleSheets'
 
@@ -91,53 +94,67 @@ function Gantt() {
   }
 
   function exportarExcel() {
-    if (!proyectoSeleccionado) return
-    const accionesProyecto = acciones.filter(a => a.proyecto_id === proyectoSeleccionado.id)
-    let csv = 'Actividad,Tipo,Fecha Inicio,Fecha Fin,Progreso\n'
-    accionesProyecto.forEach(accion => {
-      csv += `"${accion.nombre}",Acción,${accion.fecha_inicio || ''},${accion.fecha_fin || ''},${progresoAccion(accion.id)}%\n`
-      ensayos.filter(e => e.accion_id === accion.id).forEach(ensayo => {
-        csv += `"  ${ensayo.nombre}",${ensayo.tipo},${ensayo.fecha_inicio || ''},${ensayo.fecha_fin || ''},${progresoEnsayo(ensayo.id)}%\n`
-      })
+  if (!proyectoSeleccionado) return
+  const accionesProyecto = acciones.filter(a => a.proyecto_id === proyectoSeleccionado.id)
+  const datos = []
+  datos.push(['Actividad', 'Tipo', 'Fecha Inicio', 'Fecha Fin', 'Progreso'])
+  accionesProyecto.forEach(accion => {
+    datos.push([accion.nombre, 'Acción', accion.fecha_inicio || '', accion.fecha_fin || '', progresoAccion(accion.id) + '%'])
+    ensayos.filter(e => e.accion_id === accion.id).forEach(ensayo => {
+      datos.push(['  ' + ensayo.nombre, ensayo.tipo, ensayo.fecha_inicio || '', ensayo.fecha_fin || '', progresoEnsayo(ensayo.id) + '%'])
     })
-    const blob = new Blob(["FEFF" + csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `gantt_${proyectoSeleccionado.nombre}.csv`
-    a.click()
-  }
+  })
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet(datos)
+  ws['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 10 }]
+  XLSX.utils.book_append_sheet(wb, ws, 'Gantt')
+  XLSX.writeFile(wb, `gantt_${proyectoSeleccionado.nombre}.xlsx`)
+}
 
-  function exportarPDF() {
-    window.print()
-  }
+function exportarPDF() {
+  if (!proyectoSeleccionado) return
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+  const accionesProyecto = acciones.filter(a => a.proyecto_id === proyectoSeleccionado.id)
+  
+  doc.setFontSize(16)
+  doc.setTextColor(0, 149, 59)
+  doc.text(`Diagrama de Gantt — ${proyectoSeleccionado.nombre}`, 14, 15)
+  doc.setFontSize(10)
+  doc.setTextColor(100, 100, 100)
+  doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 14, 22)
 
-  if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando Gantt...</p></div>
+  const filas = []
+  accionesProyecto.forEach(accion => {
+    filas.push([
+      { content: accion.nombre, styles: { fontStyle: 'bold', fillColor: [240, 253, 244] } },
+      { content: 'Acción', styles: { fillColor: [240, 253, 244] } },
+      { content: accion.fecha_inicio || '-', styles: { fillColor: [240, 253, 244] } },
+      { content: accion.fecha_fin || '-', styles: { fillColor: [240, 253, 244] } },
+      { content: progresoAccion(accion.id) + '%', styles: { fillColor: [240, 253, 244], textColor: [0, 149, 59], fontStyle: 'bold' } }
+    ])
+    ensayos.filter(e => e.accion_id === accion.id).forEach(ensayo => {
+      filas.push([
+        '  ' + ensayo.nombre,
+        ensayo.tipo === 'ensayo' ? 'Ensayo' : 'Informe',
+        ensayo.fecha_inicio || '-',
+        ensayo.fecha_fin || '-',
+        progresoEnsayo(ensayo.id) + '%'
+      ])
+    })
+  })
 
-  if (!proyectoSeleccionado) {
-    return (
-      <div className="proyectos-container">
-        <div className="proyectos-header">
-          <h1>📊 Diagrama de Gantt</h1>
-        </div>
-        <div className="proyectos-lista">
-          {proyectos.length === 0 && <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}><p>No hay proyectos disponibles.</p></div>}
-          {proyectos.map(p => (
-            <div key={p.id} className="proyecto-card" style={{ borderLeftColor: p.color || '#00953B', cursor: 'pointer' }} onClick={() => setProyectoSeleccionado(p)}>
-              <div className="proyecto-header">
-                <div>
-                  <h3>{p.nombre}</h3>
-                  <span className="tipo-badge">{p.tipo}</span>
-                </div>
-                <span style={{ color: '#00953B', fontSize: '14px' }}>Ver Gantt →</span>
-              </div>
-              {p.descripcion && <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#888' }}>{p.descripcion}</p>}
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  autoTable(doc, {
+    startY: 28,
+    head: [['Actividad', 'Tipo', 'Fecha Inicio', 'Fecha Fin', 'Progreso']],
+    body: filas,
+    headStyles: { fillColor: [0, 149, 59], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 100 }, 4: { halign: 'center' } },
+    styles: { fontSize: 9, cellPadding: 3 },
+    alternateRowStyles: { fillColor: [249, 250, 251] }
+  })
+
+  doc.save(`gantt_${proyectoSeleccionado.nombre}.pdf`)
+}
 
   const accionesProyecto = acciones.filter(a => a.proyecto_id === proyectoSeleccionado.id)
   const fechasValidas = [
