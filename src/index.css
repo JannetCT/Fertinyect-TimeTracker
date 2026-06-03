@@ -1,0 +1,6 @@
+@media print {
+  .sidebar { display: none !important; }
+  .planner-header { display: none !important; }
+  .proyectos-header button { display: none !important; }
+  body { background: white !important; }
+}
