@@ -36,6 +36,41 @@ const PRIORIDADES = {
   delegar: { bg: '#dbeafe', color: '#1d4ed8', emoji: '🔵' },
 }
 
+function toggleEtiqueta(etiquetaActual, key) {
+  const lista = (etiquetaActual || '').split(',').filter(Boolean)
+  const nuevas = lista.includes(key) ? lista.filter(e => e !== key) : [...lista, key]
+  return nuevas.join(',')
+}
+
+function EtiquetasBadge({ etiqueta }) {
+  const lista = (etiqueta || '').split(',').filter(Boolean)
+  return (
+    <>
+      {lista.map(et => {
+        const p = PRIORIDADES[et.toLowerCase()]
+        return p
+          ? <span key={et} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '20px', background: p.bg, color: p.color, fontWeight: '600' }}>{p.emoji} {et}</span>
+          : <span key={et} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '20px', background: '#f3f4f6', color: '#6b7280' }}>🏷 {et}</span>
+      })}
+    </>
+  )
+}
+
+function BotonesPrioridad({ etiqueta, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+      {Object.entries(PRIORIDADES).map(([key, val]) => {
+        const activa = (etiqueta || '').split(',').includes(key)
+        return (
+          <button key={key} onClick={() => onChange(toggleEtiqueta(etiqueta, key))} style={{ padding: '6px 12px', borderRadius: '20px', border: '2px solid', borderColor: activa ? val.color : '#e5e7eb', background: activa ? val.bg : 'white', color: activa ? val.color : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+            {val.emoji} {key.charAt(0).toUpperCase() + key.slice(1)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function Planner() {
   const { usuario, accessToken } = useAuth()
   const [semanaBase, setSemanaBase] = useState(() => getLunesDeSemana(new Date()))
@@ -387,7 +422,6 @@ function Planner() {
         </>
       )}
 
-      {/* MODAL EDITAR TAREA */}
       {modalEditarTarea && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -403,15 +437,14 @@ function Planner() {
                 <input type="date" value={modalEditarTarea.fecha_limite || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
-                <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                  {Object.entries(PRIORIDADES).map(([key, val]) => (
-                    <button key={key} onClick={() => setModalEditarTarea({...modalEditarTarea, etiqueta: modalEditarTarea.etiqueta === key ? '' : key})} style={{ padding: '6px 12px', borderRadius: '20px', border: '2px solid', borderColor: modalEditarTarea.etiqueta === key ? val.color : '#e5e7eb', background: modalEditarTarea.etiqueta === key ? val.bg : 'white', color: modalEditarTarea.etiqueta === key ? val.color : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
-                      {val.emoji} {key.charAt(0).toUpperCase() + key.slice(1)}
-                    </button>
-                  ))}
-                </div>
-                <input placeholder="O escribe una etiqueta personalizada..." value={Object.keys(PRIORIDADES).includes(modalEditarTarea.etiqueta || '') ? '' : (modalEditarTarea.etiqueta || '')} onChange={e => setModalEditarTarea({...modalEditarTarea, etiqueta: e.target.value})} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', width: '100%' }} />
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad (puedes seleccionar varias):</label>
+                <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
+                <input placeholder="O escribe una etiqueta personalizada..." value={(modalEditarTarea.etiqueta || '').split(',').filter(e => !Object.keys(PRIORIDADES).includes(e)).join(',')} onChange={e => {
+                  const priosActivas = (modalEditarTarea.etiqueta || '').split(',').filter(e => Object.keys(PRIORIDADES).includes(e))
+                  const personalizada = e.target.value
+                  const todas = [...priosActivas, ...(personalizada ? [personalizada] : [])].join(',')
+                  setModalEditarTarea({...modalEditarTarea, etiqueta: todas})
+                }} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', width: '100%', marginTop: '8px' }} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
@@ -422,7 +455,6 @@ function Planner() {
         </div>
       )}
 
-      {/* MODAL NUEVA TAREA */}
       {modalNuevaTarea && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -461,13 +493,7 @@ function Planner() {
               </div>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {Object.entries(PRIORIDADES).map(([key, val]) => (
-                    <button key={key} onClick={() => setFormTarea({...formTarea, etiqueta: formTarea.etiqueta === key ? '' : key})} style={{ padding: '6px 12px', borderRadius: '20px', border: '2px solid', borderColor: formTarea.etiqueta === key ? val.color : '#e5e7eb', background: formTarea.etiqueta === key ? val.bg : 'white', color: formTarea.etiqueta === key ? val.color : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
-                      {val.emoji} {key.charAt(0).toUpperCase() + key.slice(1)}
-                    </button>
-                  ))}
-                </div>
+                <BotonesPrioridad etiqueta={formTarea.etiqueta} onChange={val => setFormTarea({...formTarea, etiqueta: val})} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
@@ -478,7 +504,6 @@ function Planner() {
         </div>
       )}
 
-      {/* MODAL NUEVO EVENTO */}
       {modalNuevoEvento && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px' }}>
@@ -523,16 +548,6 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, activa, pausada, t
   const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
   const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
 
-  const prio = tarea.etiqueta ? PRIORIDADES[tarea.etiqueta.toLowerCase()] : null
-
-  const estadoEstilo = {
-    completada: { bg: '#dcfce7', color: '#166534', label: 'Completada' },
-    en_curso: { bg: '#dbeafe', color: '#1d4ed8', label: 'En curso' },
-    pendiente: { bg: '#f3f4f6', color: '#6b7280', label: 'Pendiente' },
-  }
-  const estadoKey = activa ? 'en_curso' : (tarea.estado || 'pendiente')
-  const est = estadoEstilo[estadoKey] || estadoEstilo.pendiente
-
   return (
     <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{
       borderLeft: `4px solid ${activa ? '#00953B' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`,
@@ -553,11 +568,12 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, activa, pausada, t
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
         <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: tarea._tipo === 'soporte' ? '#eff6ff' : tarea._tipo === 'planner' ? '#f5f3ff' : '#f0fdf4', color: tarea._tipo === 'soporte' ? '#1d4ed8' : tarea._tipo === 'planner' ? '#7c3aed' : '#00953B', fontWeight: '600' }}>{contexto}</span>
-        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: est.bg, color: est.color, fontWeight: '600' }}>{est.label}</span>
+        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: activa ? '#dbeafe' : esCompletada ? '#dcfce7' : '#f3f4f6', color: activa ? '#1d4ed8' : esCompletada ? '#166534' : '#6b7280', fontWeight: '600' }}>
+          {activa ? 'En curso' : esCompletada ? 'Completada' : 'Pendiente'}
+        </span>
       </div>
       <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
-        {prio && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '20px', background: prio.bg, color: prio.color, fontWeight: '600' }}>{prio.emoji} {tarea.etiqueta}</span>}
-        {tarea.etiqueta && !prio && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '20px', background: '#f3f4f6', color: '#6b7280' }}>🏷 {tarea.etiqueta}</span>}
+        <EtiquetasBadge etiqueta={tarea.etiqueta} />
         {tarea.fecha_limite && <span style={{ fontSize: '10px', color: vencida ? '#dc2626' : '#6b7280', background: vencida ? '#fee2e2' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>{vencida ? '⚠️' : '📅'} {tarea.fecha_limite}</span>}
       </div>
     </div>
