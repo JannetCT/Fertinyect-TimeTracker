@@ -262,7 +262,6 @@ function Planner() {
               ? <button onClick={pausarYGuardar} style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>⏸ Pausar</button>
               : <button onClick={reanudarCronometro} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>▶️ Reanudar</button>
             }
-            <button onClick={() => detenerCronometro(false)} style={{ background: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>⏹ Parar</button>
             <button onClick={() => detenerCronometro(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>✅ Completar</button>
           </div>
         )}
