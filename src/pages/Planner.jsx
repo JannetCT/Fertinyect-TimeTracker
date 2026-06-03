@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja, escribirFila, actualizarFila } from '../services/googleSheets'
+import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
 
 const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
 const DIAS_LABEL = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes' }
@@ -37,30 +37,37 @@ const PRIORIDADES = {
 }
 
 function toggleEtiqueta(etiquetaActual, key) {
-  const lista = (etiquetaActual || '').split(',').filter(Boolean)
-  const nuevas = lista.includes(key) ? lista.filter(e => e !== key) : [...lista, key]
-  return nuevas.join(',')
+  const lista = etiquetaActual ? etiquetaActual.split(',').filter(e => e.trim() !== '') : []
+  const idx = lista.indexOf(key)
+  if (idx >= 0) {
+    lista.splice(idx, 1)
+  } else {
+    lista.push(key)
+  }
+  return lista.join(',')
 }
 
 function EtiquetasBadge({ etiqueta }) {
-  const lista = (etiqueta || '').split(',').filter(Boolean)
+  if (!etiqueta) return null
+  const lista = etiqueta.split(',').filter(e => e.trim() !== '')
   return (
     <>
-      {lista.map(et => {
-        const p = PRIORIDADES[et.toLowerCase()]
+      {lista.map((et, i) => {
+        const p = PRIORIDADES[et.toLowerCase().trim()]
         return p
-          ? <span key={et} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '20px', background: p.bg, color: p.color, fontWeight: '600' }}>{p.emoji} {et}</span>
-          : <span key={et} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '20px', background: '#f3f4f6', color: '#6b7280' }}>🏷 {et}</span>
+          ? <span key={i} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '20px', background: p.bg, color: p.color, fontWeight: '600' }}>{p.emoji} {et}</span>
+          : <span key={i} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '20px', background: '#f3f4f6', color: '#6b7280' }}>🏷 {et}</span>
       })}
     </>
   )
 }
 
 function BotonesPrioridad({ etiqueta, onChange }) {
+  const lista = etiqueta ? etiqueta.split(',').filter(e => e.trim() !== '') : []
   return (
     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
       {Object.entries(PRIORIDADES).map(([key, val]) => {
-        const activa = (etiqueta || '').split(',').includes(key)
+        const activa = lista.includes(key)
         return (
           <button key={key} onClick={() => onChange(toggleEtiqueta(etiqueta, key))} style={{ padding: '6px 12px', borderRadius: '20px', border: '2px solid', borderColor: activa ? val.color : '#e5e7eb', background: activa ? val.bg : 'white', color: activa ? val.color : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
             {val.emoji} {key.charAt(0).toUpperCase() + key.slice(1)}
@@ -89,6 +96,7 @@ function Planner() {
   const [modalEditarTarea, setModalEditarTarea] = useState(null)
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
   const [modalNuevoEvento, setModalNuevoEvento] = useState(false)
+  const [modalEditarEvento, setModalEditarEvento] = useState(null)
   const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '' })
   const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion' })
   const [cronActivo, setCronActivo] = useState(null)
@@ -186,6 +194,20 @@ function Planner() {
       await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_exacta || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     }
     setModalEditarTarea(null)
+    cargarDatos()
+  }
+
+  async function guardarEditarEvento() {
+    if (!modalEditarEvento) return
+    const ev = modalEditarEvento
+    await actualizarFila('eventos', ev.id, [ev.id, ev.usuario_id, ev.titulo, ev.descripcion || '', ev.fecha_exacta, ev.hora_inicio || '', ev.hora_fin || '', ev.tipo, ev.fecha_creacion], accessToken)
+    setModalEditarEvento(null)
+    cargarDatos()
+  }
+
+  async function eliminarEvento(eventoId) {
+    await marcarEliminado('eventos', eventoId, accessToken)
+    setModalEditarEvento(null)
     cargarDatos()
   }
 
@@ -335,9 +357,12 @@ function Planner() {
                   </div>
                   <div className="column-tasks">
                     {eventosDelDia.map(ev => (
-                      <div key={ev.id} style={{ background: '#f5f3ff', borderLeft: '4px solid #7c3aed', borderRadius: '8px', padding: '8px 10px', marginBottom: '6px' }}>
+                      <div key={ev.id} onClick={() => setModalEditarEvento({...ev})} style={{ background: '#f5f3ff', borderLeft: '4px solid #7c3aed', borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', cursor: 'pointer' }}
+                        onMouseOver={e => e.currentTarget.style.opacity = '0.8'}
+                        onMouseOut={e => e.currentTarget.style.opacity = '1'}>
                         <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed' }}>🗓 {ev.titulo}</p>
                         {ev.hora_inicio && <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{ev.hora_inicio}{ev.hora_fin ? ` — ${ev.hora_fin}` : ''}</p>}
+                        <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
                       </div>
                     ))}
                     {tareasDelDia.map(tarea => (
@@ -422,6 +447,7 @@ function Planner() {
         </>
       )}
 
+      {/* MODAL EDITAR TAREA */}
       {modalEditarTarea && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -439,12 +465,6 @@ function Planner() {
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad (puedes seleccionar varias):</label>
                 <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
-                <input placeholder="O escribe una etiqueta personalizada..." value={(modalEditarTarea.etiqueta || '').split(',').filter(e => !Object.keys(PRIORIDADES).includes(e)).join(',')} onChange={e => {
-                  const priosActivas = (modalEditarTarea.etiqueta || '').split(',').filter(e => Object.keys(PRIORIDADES).includes(e))
-                  const personalizada = e.target.value
-                  const todas = [...priosActivas, ...(personalizada ? [personalizada] : [])].join(',')
-                  setModalEditarTarea({...modalEditarTarea, etiqueta: todas})
-                }} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', width: '100%', marginTop: '8px' }} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
@@ -455,6 +475,45 @@ function Planner() {
         </div>
       )}
 
+      {/* MODAL EDITAR EVENTO */}
+      {modalEditarEvento && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px' }}>
+            <h2 style={{ marginBottom: '24px' }}>Editar evento</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input placeholder="Título *" value={modalEditarEvento.titulo || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, titulo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <select value={modalEditarEvento.tipo || 'reunion'} onChange={e => setModalEditarEvento({...modalEditarEvento, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                <option value="reunion">Reunión</option>
+                <option value="formacion">Formación</option>
+                <option value="evento">Evento</option>
+                <option value="otro">Otro</option>
+              </select>
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha</label>
+                <input type="date" value={modalEditarEvento.fecha_exacta || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, fecha_exacta: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio</label>
+                  <input type="time" value={modalEditarEvento.hora_inicio || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, hora_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin</label>
+                  <input type="time" value={modalEditarEvento.hora_fin || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, hora_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+              </div>
+              <textarea placeholder="Descripción" value={modalEditarEvento.descripcion || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '70px', resize: 'none' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '24px' }}>
+              <button onClick={() => eliminarEvento(modalEditarEvento.id)} style={{ padding: '10px 14px', borderRadius: '8px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>🗑 Eliminar</button>
+              <button onClick={() => setModalEditarEvento(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={guardarEditarEvento} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NUEVA TAREA */}
       {modalNuevaTarea && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -504,6 +563,7 @@ function Planner() {
         </div>
       )}
 
+      {/* MODAL NUEVO EVENTO */}
       {modalNuevoEvento && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px' }}>
@@ -580,4 +640,4 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, activa, pausada, t
   )
 }
 
-export default Planner
+export default Plann
