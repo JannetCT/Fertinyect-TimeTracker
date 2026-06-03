@@ -12,10 +12,10 @@ function formatTiempo(s) {
 
 function getLunesDeSemana(fecha) {
   const d = new Date(fecha)
+  d.setHours(12, 0, 0, 0)
   const dia = d.getDay()
   const diff = dia === 0 ? -6 : 1 - dia
   d.setDate(d.getDate() + diff)
-  d.setHours(0,0,0,0)
   return d
 }
 
