@@ -62,6 +62,7 @@ function EtiquetasBadge({ etiqueta }) {
   )
 }
 
+// FIX BUG 1: e.stopPropagation() + e.preventDefault() en cada botón de prioridad
 function BotonesPrioridad({ etiqueta, onChange }) {
   const lista = etiqueta ? etiqueta.split(',').filter(e => e.trim() !== '') : []
   return (
@@ -69,7 +70,25 @@ function BotonesPrioridad({ etiqueta, onChange }) {
       {Object.entries(PRIORIDADES).map(([key, val]) => {
         const activa = lista.includes(key)
         return (
-          <button key={key} onClick={() => onChange(toggleEtiqueta(etiqueta, key))} style={{ padding: '6px 12px', borderRadius: '20px', border: '2px solid', borderColor: activa ? val.color : '#e5e7eb', background: activa ? val.bg : 'white', color: activa ? val.color : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+          <button
+            key={key}
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              onChange(toggleEtiqueta(etiqueta, key))
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '20px',
+              border: '2px solid',
+              borderColor: activa ? val.color : '#e5e7eb',
+              background: activa ? val.bg : 'white',
+              color: activa ? val.color : '#6b7280',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '600'
+            }}
+          >
             {val.emoji} {key.charAt(0).toUpperCase() + key.slice(1)}
           </button>
         )
@@ -356,10 +375,26 @@ function Planner() {
                     <span className="task-count" style={{ background: esHoy ? 'rgba(255,255,255,0.3)' : undefined, color: esHoy ? 'white' : undefined }}>{tareasDelDia.length + eventosDelDia.length}</span>
                   </div>
                   <div className="column-tasks">
+                    {/* FIX BUG 2: e.stopPropagation() en onClick del evento + campos protegidos con || '' */}
                     {eventosDelDia.map(ev => (
-                      <div key={ev.id} onClick={() => setModalEditarEvento({...ev})} style={{ background: '#f5f3ff', borderLeft: '4px solid #7c3aed', borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', cursor: 'pointer' }}
+                      <div
+                        key={ev.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setModalEditarEvento({
+                            ...ev,
+                            titulo: ev.titulo || '',
+                            descripcion: ev.descripcion || '',
+                            fecha_exacta: ev.fecha_exacta || '',
+                            hora_inicio: ev.hora_inicio || '',
+                            hora_fin: ev.hora_fin || '',
+                            tipo: ev.tipo || 'reunion'
+                          })
+                        }}
+                        style={{ background: '#f5f3ff', borderLeft: '4px solid #7c3aed', borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', cursor: 'pointer' }}
                         onMouseOver={e => e.currentTarget.style.opacity = '0.8'}
-                        onMouseOut={e => e.currentTarget.style.opacity = '1'}>
+                        onMouseOut={e => e.currentTarget.style.opacity = '1'}
+                      >
                         <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed' }}>🗓 {ev.titulo}</p>
                         {ev.hora_inicio && <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{ev.hora_inicio}{ev.hora_fin ? ` — ${ev.hora_fin}` : ''}</p>}
                         <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
@@ -640,4 +675,4 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, activa, pausada, t
   )
 }
 
-export default Plann
+export default Planner
