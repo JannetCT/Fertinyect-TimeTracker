@@ -41,13 +41,16 @@ function Layout({ usuario, children }) {
             📁 Proyectos
           </NavLink>
           <NavLink to="/soporte" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-  🛠️ Soporte
-</NavLink>
-<NavLink to="/gantt" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-  📊 Gantt
-</NavLink>
+            🛠️ Soporte
+          </NavLink>
+          <NavLink to="/gantt" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+            📊 Gantt
+          </NavLink>
+          <NavLink to="/calendario-equipo" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+            🗓 Calendario I+D
+          </NavLink>
           <NavLink to="/graficas" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-            📊 Gráficas
+            📈 Gráficas
           </NavLink>
           {usuario.rol === 'admin' && (
             <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>

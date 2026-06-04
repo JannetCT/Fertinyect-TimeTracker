@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import Login from './pages/Login'
@@ -9,8 +9,8 @@ import Gantt from './pages/Gantt'
 import Graficas from './pages/Graficas'
 import Dashboard from './pages/Dashboard'
 import Configuracion from './pages/Configuracion'
+import CalendarioEquipo from './pages/CalendarioEquipo'
 import Layout from './components/Layout'
-import { leerHoja } from './services/googleSheets'
 import './App.css'
 
 function App() {
@@ -52,6 +52,7 @@ function App() {
                 <Route path="/soporte" element={<Soporte />} />
                 <Route path="/gantt" element={<Gantt />} />
                 <Route path="/graficas" element={<Graficas />} />
+                <Route path="/calendario-equipo" element={<CalendarioEquipo />} />
                 {usuario.rol === 'admin' && (
                   <Route path="/dashboard" element={<Dashboard />} />
                 )}
