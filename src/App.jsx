@@ -10,6 +10,7 @@ import Graficas from './pages/Graficas'
 import Dashboard from './pages/Dashboard'
 import Configuracion from './pages/Configuracion'
 import CalendarioEquipo from './pages/CalendarioEquipo'
+import MovilCampo from './pages/MovilCampo'
 import Layout from './components/Layout'
 import './App.css'
 
@@ -53,6 +54,7 @@ function App() {
                 <Route path="/gantt" element={<Gantt />} />
                 <Route path="/graficas" element={<Graficas />} />
                 <Route path="/calendario-equipo" element={<CalendarioEquipo />} />
+                <Route path="/movil-campo" element={<MovilCampo />} />
                 {usuario.rol === 'admin' && (
                   <Route path="/dashboard" element={<Dashboard />} />
                 )}

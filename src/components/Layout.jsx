@@ -57,6 +57,9 @@ function Layout({ usuario, children }) {
               🎯 Dashboard
             </NavLink>
           )}
+          <NavLink to="/movil-campo" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+  🌿 Vista Campo
+</NavLink>
           <NavLink to="/configuracion" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             ⚙️ Configuración
           </NavLink>
