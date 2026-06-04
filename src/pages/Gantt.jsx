@@ -94,68 +94,91 @@ function Gantt() {
   }
 
   function exportarExcel() {
-  if (!proyectoSeleccionado) return
-  const accionesProyecto = acciones.filter(a => a.proyecto_id === proyectoSeleccionado.id)
-  const datos = []
-  datos.push(['Actividad', 'Tipo', 'Fecha Inicio', 'Fecha Fin', 'Progreso'])
-  accionesProyecto.forEach(accion => {
-    datos.push([accion.nombre, 'Acción', accion.fecha_inicio || '', accion.fecha_fin || '', progresoAccion(accion.id) + '%'])
-    ensayos.filter(e => e.accion_id === accion.id).forEach(ensayo => {
-      datos.push(['  ' + ensayo.nombre, ensayo.tipo, ensayo.fecha_inicio || '', ensayo.fecha_fin || '', progresoEnsayo(ensayo.id) + '%'])
+    if (!proyectoSeleccionado) return
+    const accionesProyecto = acciones.filter(a => a.proyecto_id === proyectoSeleccionado.id)
+    const datos = []
+    datos.push(['Actividad', 'Tipo', 'Fecha Inicio', 'Fecha Fin', 'Progreso'])
+    accionesProyecto.forEach(accion => {
+      datos.push([accion.nombre, 'Acción', accion.fecha_inicio || '', accion.fecha_fin || '', progresoAccion(accion.id) + '%'])
+      ensayos.filter(e => e.accion_id === accion.id).forEach(ensayo => {
+        datos.push(['  ' + ensayo.nombre, ensayo.tipo, ensayo.fecha_inicio || '', ensayo.fecha_fin || '', progresoEnsayo(ensayo.id) + '%'])
+      })
     })
-  })
-  const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.aoa_to_sheet(datos)
-  ws['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 10 }]
-  XLSX.utils.book_append_sheet(wb, ws, 'Gantt')
-  XLSX.writeFile(wb, `gantt_${proyectoSeleccionado.nombre}.xlsx`)
-}
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.aoa_to_sheet(datos)
+    ws['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 10 }]
+    XLSX.utils.book_append_sheet(wb, ws, 'Gantt')
+    XLSX.writeFile(wb, `gantt_${proyectoSeleccionado.nombre}.xlsx`)
+  }
 
-function exportarPDF() {
-  if (!proyectoSeleccionado) return
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-  const accionesProyecto = acciones.filter(a => a.proyecto_id === proyectoSeleccionado.id)
-  
-  doc.setFontSize(16)
-  doc.setTextColor(0, 149, 59)
-  doc.text(`Diagrama de Gantt — ${proyectoSeleccionado.nombre}`, 14, 15)
-  doc.setFontSize(10)
-  doc.setTextColor(100, 100, 100)
-  doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 14, 22)
-
-  const filas = []
-  accionesProyecto.forEach(accion => {
-    filas.push([
-      { content: accion.nombre, styles: { fontStyle: 'bold', fillColor: [240, 253, 244] } },
-      { content: 'Acción', styles: { fillColor: [240, 253, 244] } },
-      { content: accion.fecha_inicio || '-', styles: { fillColor: [240, 253, 244] } },
-      { content: accion.fecha_fin || '-', styles: { fillColor: [240, 253, 244] } },
-      { content: progresoAccion(accion.id) + '%', styles: { fillColor: [240, 253, 244], textColor: [0, 149, 59], fontStyle: 'bold' } }
-    ])
-    ensayos.filter(e => e.accion_id === accion.id).forEach(ensayo => {
+  function exportarPDF() {
+    if (!proyectoSeleccionado) return
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const accionesProyecto = acciones.filter(a => a.proyecto_id === proyectoSeleccionado.id)
+    doc.setFontSize(16)
+    doc.setTextColor(0, 149, 59)
+    doc.text(`Diagrama de Gantt — ${proyectoSeleccionado.nombre}`, 14, 15)
+    doc.setFontSize(10)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 14, 22)
+    const filas = []
+    accionesProyecto.forEach(accion => {
       filas.push([
-        '  ' + ensayo.nombre,
-        ensayo.tipo === 'ensayo' ? 'Ensayo' : 'Informe',
-        ensayo.fecha_inicio || '-',
-        ensayo.fecha_fin || '-',
-        progresoEnsayo(ensayo.id) + '%'
+        { content: accion.nombre, styles: { fontStyle: 'bold', fillColor: [240, 253, 244] } },
+        { content: 'Acción', styles: { fillColor: [240, 253, 244] } },
+        { content: accion.fecha_inicio || '-', styles: { fillColor: [240, 253, 244] } },
+        { content: accion.fecha_fin || '-', styles: { fillColor: [240, 253, 244] } },
+        { content: progresoAccion(accion.id) + '%', styles: { fillColor: [240, 253, 244], textColor: [0, 149, 59], fontStyle: 'bold' } }
       ])
+      ensayos.filter(e => e.accion_id === accion.id).forEach(ensayo => {
+        filas.push([
+          '  ' + ensayo.nombre,
+          ensayo.tipo === 'ensayo' ? 'Ensayo' : 'Informe',
+          ensayo.fecha_inicio || '-',
+          ensayo.fecha_fin || '-',
+          progresoEnsayo(ensayo.id) + '%'
+        ])
+      })
     })
-  })
+    autoTable(doc, {
+      startY: 28,
+      head: [['Actividad', 'Tipo', 'Fecha Inicio', 'Fecha Fin', 'Progreso']],
+      body: filas,
+      headStyles: { fillColor: [0, 149, 59], textColor: 255, fontStyle: 'bold' },
+      columnStyles: { 0: { cellWidth: 100 }, 4: { halign: 'center' } },
+      styles: { fontSize: 9, cellPadding: 3 },
+      alternateRowStyles: { fillColor: [249, 250, 251] }
+    })
+    doc.save(`gantt_${proyectoSeleccionado.nombre}.pdf`)
+  }
 
-  autoTable(doc, {
-    startY: 28,
-    head: [['Actividad', 'Tipo', 'Fecha Inicio', 'Fecha Fin', 'Progreso']],
-    body: filas,
-    headStyles: { fillColor: [0, 149, 59], textColor: 255, fontStyle: 'bold' },
-    columnStyles: { 0: { cellWidth: 100 }, 4: { halign: 'center' } },
-    styles: { fontSize: 9, cellPadding: 3 },
-    alternateRowStyles: { fillColor: [249, 250, 251] }
-  })
+  if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando Gantt...</p></div>
 
-  doc.save(`gantt_${proyectoSeleccionado.nombre}.pdf`)
-}
+  // FIX: pantalla de selección ANTES de usar proyectoSeleccionado
+  if (!proyectoSeleccionado) {
+    return (
+      <div className="proyectos-container">
+        <div className="proyectos-header">
+          <h1>📊 Diagrama de Gantt</h1>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+          {proyectos.map(p => (
+            <div key={p.id} onClick={() => setProyectoSeleccionado(p)} style={{ background: 'white', borderRadius: '12px', padding: '24px', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${p.color || '#00953B'}`, transition: 'box-shadow 0.2s' }}
+              onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'}
+              onMouseOut={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)'}>
+              <h3 style={{ margin: '0 0 8px', fontSize: '16px', color: '#373A36' }}>{p.nombre}</h3>
+              <span style={{ fontSize: '12px', color: '#888' }}>{p.tipo === 'fijo' ? '📌 Fijo' : '⏱ Temporal'}</span>
+            </div>
+          ))}
+          {proyectos.length === 0 && (
+            <p style={{ color: '#888', gridColumn: '1/-1' }}>No hay proyectos disponibles.</p>
+          )}
+        </div>
+      </div>
+    )
+  }
 
+  // A partir de aquí proyectoSeleccionado ya nunca es null
   const accionesProyecto = acciones.filter(a => a.proyecto_id === proyectoSeleccionado.id)
   const fechasValidas = [
     ...accionesProyecto.filter(a => a.fecha_inicio).map(a => a.fecha_inicio),
@@ -189,7 +212,6 @@ function exportarPDF() {
       </div>
 
       <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', overflow: 'auto' }}>
-        {/* CABECERA AÑOS */}
         <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', position: 'sticky', top: 0, background: 'white', zIndex: 10 }}>
           <div style={{ width: COL_NOMBRE, minWidth: COL_NOMBRE, padding: '12px 16px', fontWeight: '700', fontSize: '14px', borderRight: '2px solid #e5e7eb', color: '#373A36' }}>Actividad</div>
           <div style={{ display: 'flex' }}>
@@ -208,7 +230,6 @@ function exportarPDF() {
           </div>
         </div>
 
-        {/* CABECERA MESES */}
         <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 41, background: 'white', zIndex: 9 }}>
           <div style={{ width: COL_NOMBRE, minWidth: COL_NOMBRE, borderRight: '2px solid #e5e7eb' }}></div>
           {meses.map(mes => (
@@ -218,7 +239,6 @@ function exportarPDF() {
           ))}
         </div>
 
-        {/* FILAS */}
         {accionesProyecto.length === 0 && (
           <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
             <p>No hay acciones en este proyecto.</p>
@@ -235,7 +255,6 @@ function exportarPDF() {
 
           return (
             <div key={accion.id}>
-              {/* FILA ACCION */}
               <div style={{ display: 'flex', borderBottom: '1px solid #f3f4f6', background: '#f8f9fa' }}>
                 <div style={{ width: COL_NOMBRE, minWidth: COL_NOMBRE, padding: '10px 16px', borderRight: '2px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button onClick={() => setExpandidos(prev => ({ ...prev, [accion.id]: !prev[accion.id] }))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#6b7280', padding: '0 2px' }}>
@@ -263,7 +282,6 @@ function exportarPDF() {
                 })}
               </div>
 
-              {/* FILAS ENSAYOS */}
               {expandido && ensayosAccion.map(ensayo => {
                 const progEnsayo = progresoEnsayo(ensayo.id)
                 const inicioE = getYearMonth(ensayo.fecha_inicio)
@@ -295,7 +313,6 @@ function exportarPDF() {
           )
         })}
 
-        {/* LEYENDA */}
         <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '24px', height: '12px', background: proyectoSeleccionado.color || '#00953B', borderRadius: '6px' }}></div><span style={{ fontSize: '12px', color: '#555' }}>Acción</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '24px', height: '10px', background: '#3b82f6', borderRadius: '5px' }}></div><span style={{ fontSize: '12px', color: '#555' }}>Ensayo</span></div>
@@ -304,7 +321,6 @@ function exportarPDF() {
         </div>
       </div>
 
-      {/* MODAL EDITAR FECHAS */}
       {editando && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '400px' }}>
