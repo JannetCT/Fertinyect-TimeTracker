@@ -61,13 +61,19 @@ function Layout({ usuario, children }) {
             ⚙️ Configuración
           </NavLink>
         </nav>
-        <div className="sidebar-footer">
-          {usuario.foto && <img src={usuario.foto} alt={usuario.nombre} className="avatar" />}
-          <div className="user-info">
-            <p className="user-name">{usuario.nombre}</p>
-            <p className="user-role">{usuario.rol === 'admin' ? 'Director' : 'Investigadora'}</p>
+        <div className="sidebar-footer" style={{ flexDirection: 'column', gap: '12px', padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+            {usuario.foto && <img src={usuario.foto} alt={usuario.nombre} className="avatar" />}
+            <div className="user-info">
+              <p className="user-name">{usuario.nombre}</p>
+              <p className="user-role">{usuario.rol === 'admin' ? 'Director' : 'Investigadora'}</p>
+            </div>
           </div>
-          <button onClick={handleLogout} className="btn-logout" title="Cerrar sesión">↩</button>
+          <button onClick={handleLogout} style={{ width: '100%', padding: '8px', background: '#1f2937', color: '#9ca3af', border: '1px solid #374151', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.2s' }}
+            onMouseOver={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#dc2626' }}
+            onMouseOut={e => { e.currentTarget.style.background = '#1f2937'; e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.borderColor = '#374151' }}>
+            ↩ Cerrar sesión
+          </button>
         </div>
       </aside>
       <main className="main-content">
