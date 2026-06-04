@@ -8,7 +8,7 @@ function Layout({ usuario, children }) {
 
   function handleLogout() {
     logout()
-    navigate('/')
+    window.location.href = '/'
   }
 
   return (
