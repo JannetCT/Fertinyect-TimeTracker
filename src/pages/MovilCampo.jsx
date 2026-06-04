@@ -185,7 +185,7 @@ export default function MovilCampo() {
     setGuardando(true)
     const id = Date.now().toString()
     const diaCalculado = getDiaSemana(formNueva.fecha_exacta) || 'por_asignar'
-    await escribirFila('tareas_planner', [id, usuario.id, formNueva.tarea_padre_id || '', formNueva.tarea_padre_tipo || '', formNueva.nombre, diaCalculado, formNueva.fecha_exacta || hoy, formNueva.fecha_limite || '', 'pendiente', new Date().toISOString(), formNueva.etiqueta || ''], accessToken)
+    await escribirFila('tareas_planner', [id, usuario.id, formNueva.tarea_padre_id || '', formNueva.tarea_padre_tipo || '', formNueva.nombre, diaCalculado, formNueva.fecha_exacta || '',
     setModalNueva(false)
     setFormNueva({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '' })
     setGuardando(false)
