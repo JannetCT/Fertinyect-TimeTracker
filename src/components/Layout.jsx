@@ -19,9 +19,9 @@ const NAV_CONFIG = { to: '/configuracion', icon: '⚙️', label: 'Config' }
 const MOBILE_NAV = [
   { to: '/planner', icon: '📅', label: 'Planner' },
   { to: '/proyectos', icon: '📁', label: 'Proyectos' },
+  { to: '/soporte', icon: '🛠️', label: 'Soporte' },
   { to: '/calendario-equipo', icon: '🗓', label: 'Calendario' },
   { to: '/movil-campo', icon: '🌿', label: 'Campo' },
-  { to: '/configuracion', icon: '⚙️', label: 'Más' },
 ]
 
 function Layout({ usuario, children }) {
