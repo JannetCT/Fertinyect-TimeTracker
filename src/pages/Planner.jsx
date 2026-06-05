@@ -557,7 +557,7 @@ function Planner() {
                   {formTarea.tarea_padre_tipo && (
                     <select value={formTarea.tarea_padre_id} onChange={e => setFormTarea({...formTarea, tarea_padre_id: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
                       <option value="">Selecciona tarea padre...</option>
-                      {(formTarea.tarea_padre_tipo === 'proyecto' ? todasTareasProyecto : todasTareasSoporte).filter(t => t.asignados && t.asignados.split(',').includes(usuario.id)).map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                      {(formTarea.tarea_padre_tipo === 'proyecto' ? todasTareasProyecto : todasTareasSoporte).filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(String(usuario.id))).map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                     </select>
                   )}
                 </div>
