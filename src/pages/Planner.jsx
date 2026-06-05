@@ -251,17 +251,20 @@ function Planner() {
     cargarDatos()
   }
 
-  async function crearTareaPlanner() {
-    if (!formTarea.nombre) return
-    const id = Date.now().toString()
-    const fechaExacta = formTarea.fecha_exacta && formTarea.fecha_exacta.trim() !== '' ? formTarea.fecha_exacta : ''
-    const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
-    const usuarioDestino = formTarea.asignadoA || String(usuario.id)
-    await escribirFila('tareas_planner', [id, usuarioDestino, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechaExacta, 'pendiente', new Date().toISOString(), formTarea.etiqueta || ''], accessToken)
-    setModalNuevaTarea(false)
-    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
-    cargarDatos()
+ async function crearTareaPlanner() {
+  if (!formTarea.nombre) return
+  const fechaExacta = formTarea.fecha_exacta && formTarea.fecha_exacta.trim() !== '' ? formTarea.fecha_exacta : ''
+  const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
+  const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',') : [misId]
+  for (const uid of asignados) {
+    const id = Date.now().toString() + uid
+    await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechaExacta, 'pendiente', new Date().toISOString(), formTarea.etiqueta || ''], accessToken)
   }
+  setModalNuevaTarea(false)
+  setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
+  cargarDatos()
+}
+
 
   async function crearEvento() {
     if (!formEvento.titulo || !formEvento.fecha_exacta) return
