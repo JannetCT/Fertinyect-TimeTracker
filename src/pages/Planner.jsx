@@ -108,6 +108,9 @@ function Planner() {
   const [tareasPlanner, setTareasPlanner] = useState([])
   const [eventos, setEventos] = useState([])
   const [proyectos, setProyectos] = useState([])
+  const [estadosProyecto, setEstadosProyecto] = useState([])
+  const [acciones, setAcciones] = useState([])
+  const [ensayos, setEnsayos] = useState([])
   const [categoriasSoporte, setCategoriasSoporte] = useState([])
   const [proyectosSoporte, setProyectosSoporte] = useState([])
   const [subcarpetasSoporte, setSubcarpetasSoporte] = useState([])
@@ -119,7 +122,7 @@ function Planner() {
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
   const [modalNuevoEvento, setModalNuevoEvento] = useState(false)
   const [modalEditarEvento, setModalEditarEvento] = useState(null)
-  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
+  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
   const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion' })
   const [cronActivo, setCronActivo] = useState(null)
   const [tiempoActual, setTiempoActual] = useState(0)
@@ -140,12 +143,15 @@ function Planner() {
 
   async function cargarDatos() {
     try {
-      const [t, ts, tp, ev, p, cs, ps, ss] = await Promise.all([
+      const [t, ts, tp, ev, p, ep, ac, en, cs, ps, ss] = await Promise.all([
         leerHoja('tareas', accessToken),
         leerHoja('tareas_soporte', accessToken),
         leerHoja('tareas_planner', accessToken),
         leerHoja('eventos', accessToken),
         leerHoja('proyectos', accessToken),
+        leerHoja('estados_proyecto', accessToken),
+        leerHoja('acciones', accessToken),
+        leerHoja('ensayos', accessToken),
         leerHoja('categorias_soporte', accessToken),
         leerHoja('proyectos_soporte', accessToken),
         leerHoja('subcarpetas_soporte', accessToken),
@@ -156,6 +162,9 @@ function Planner() {
       setTareasPlanner(tp.filter(t => String(t.usuario_id) === misId))
       setEventos(ev.filter(e => e.usuario_id === misId))
       setProyectos(p)
+      setEstadosProyecto(ep)
+      setAcciones(ac)
+      setEnsayos(en)
       setCategoriasSoporte(cs)
       setProyectosSoporte(ps)
       setSubcarpetasSoporte(ss)
@@ -251,20 +260,19 @@ function Planner() {
     cargarDatos()
   }
 
- async function crearTareaPlanner() {
-  if (!formTarea.nombre) return
-  const fechaExacta = formTarea.fecha_exacta && formTarea.fecha_exacta.trim() !== '' ? formTarea.fecha_exacta : ''
-  const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
-  const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',') : [misId]
-  for (const uid of asignados) {
-    const id = Date.now().toString() + uid
-    await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechaExacta, 'pendiente', new Date().toISOString(), formTarea.etiqueta || ''], accessToken)
+  async function crearTareaPlanner() {
+    if (!formTarea.nombre) return
+    const fechaExacta = formTarea.fecha_exacta && formTarea.fecha_exacta.trim() !== '' ? formTarea.fecha_exacta : ''
+    const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
+    const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
+    for (const uid of asignados) {
+      const id = Date.now().toString() + uid
+      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechaExacta, 'pendiente', new Date().toISOString(), formTarea.etiqueta || ''], accessToken)
+    }
+    setModalNuevaTarea(false)
+    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
+    cargarDatos()
   }
-  setModalNuevaTarea(false)
-  setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
-  cargarDatos()
-}
-
 
   async function crearEvento() {
     if (!formEvento.titulo || !formEvento.fecha_exacta) return
@@ -338,6 +346,29 @@ function Planner() {
       dias.push({ fecha: getISODate(new Date(d)), mes: new Date(d).getMonth() === mes })
     }
     return dias
+  }
+
+  function opcionesProyecto() {
+    const opciones = []
+    proyectos.filter(p => p.fecha_creacion !== 'eliminado').forEach(proy => {
+      opciones.push({ id: `proy_${proy.id}`, label: `📋 ${proy.nombre}`, tipo: 'proyecto_proyecto', realId: proy.id })
+      estadosProyecto.filter(e => e.proyecto_id === proy.id).forEach(estado => {
+        opciones.push({ id: `estado_${estado.id}`, label: `  📌 ${estado.nombre}`, tipo: 'proyecto_estado', realId: estado.id })
+        acciones.filter(a => a.estado_id === estado.id).forEach(accion => {
+          opciones.push({ id: `accion_${accion.id}`, label: `    ⚡ ${accion.nombre}`, tipo: 'proyecto_accion', realId: accion.id })
+          ensayos.filter(en => en.accion_id === accion.id).forEach(ensayo => {
+            opciones.push({ id: `ensayo_${ensayo.id}`, label: `      🧪 ${ensayo.nombre}`, tipo: 'proyecto_ensayo', realId: ensayo.id })
+            todasTareasProyecto.filter(t => t.ensayo_id === ensayo.id).forEach(tarea => {
+              opciones.push({ id: `tarea_${tarea.id}`, label: `        ✅ ${tarea.nombre}`, tipo: 'proyecto', realId: tarea.id })
+            })
+          })
+          todasTareasProyecto.filter(t => t.accion_id === accion.id && !t.ensayo_id).forEach(tarea => {
+            opciones.push({ id: `tarea_${tarea.id}`, label: `      ✅ ${tarea.nombre}`, tipo: 'proyecto', realId: tarea.id })
+          })
+        })
+      })
+    })
+    return opciones
   }
 
   function opcionesSoporte() {
@@ -583,33 +614,33 @@ function Planner() {
 
               {/* ASIGNAR A */}
               <div>
-  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Asignar a:</label>
-  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-    {USUARIOS_EQUIPO.map(u => {
-      const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
-      const seleccionado = asignados.includes(u.id)
-      return (
-        <button key={u.id}
-          onClick={e => {
-            e.stopPropagation(); e.preventDefault()
-            const actual = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
-            const nuevo = actual.includes(u.id) ? actual.filter(id => id !== u.id) : [...actual, u.id]
-            if (nuevo.length === 0) return
-            setFormTarea({...formTarea, asignadoA: nuevo.join(',')})
-          }}
-          style={{ padding: '6px 14px', borderRadius: '20px', border: '2px solid', borderColor: seleccionado ? '#00953B' : '#e5e7eb', background: seleccionado ? '#f0fdf4' : 'white', color: seleccionado ? '#00953B' : '#6b7280', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
-          {u.nombre}{u.id === misId ? ' (yo)' : ''}
-        </button>
-      )
-    })}
-  </div>
-</div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Asignar a:</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {USUARIOS_EQUIPO.map(u => {
+                    const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
+                    const seleccionado = asignados.includes(u.id)
+                    return (
+                      <button key={u.id}
+                        onClick={e => {
+                          e.stopPropagation(); e.preventDefault()
+                          const actual = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
+                          const nuevo = actual.includes(u.id) ? actual.filter(id => id !== u.id) : [...actual, u.id]
+                          if (nuevo.length === 0) return
+                          setFormTarea({...formTarea, asignadoA: nuevo.join(',')})
+                        }}
+                        style={{ padding: '6px 14px', borderRadius: '20px', border: '2px solid', borderColor: seleccionado ? '#00953B' : '#e5e7eb', background: seleccionado ? '#f0fdf4' : 'white', color: seleccionado ? '#00953B' : '#6b7280', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+                        {u.nombre}{u.id === misId ? ' (yo)' : ''}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
               {/* TIPO */}
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Tipo:</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setFormTarea({...formTarea, tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: ''})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'libre' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'libre' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'libre' ? '#00953B' : '#373A36' }}>📝 Libre</button>
+                  <button onClick={() => setFormTarea({...formTarea, tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: ''})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'libre' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'libre' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'libre' ? '#00953B' : '#373A36' }}>📝 Libre</button>
                   <button onClick={() => setFormTarea({...formTarea, tipo: 'subtarea'})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'subtarea' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'subtarea' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'subtarea' ? '#00953B' : '#373A36' }}>🔗 Subtarea</button>
                 </div>
               </div>
@@ -617,23 +648,33 @@ function Planner() {
               {formTarea.tipo === 'subtarea' && (
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Ligar a:</label>
-                  <select value={formTarea.tarea_padre_tipo === 'proyecto' ? 'proyecto' : formTarea.tarea_padre_tipo ? 'soporte' : ''}
-                    onChange={e => setFormTarea({...formTarea, tarea_padre_tipo: e.target.value, tarea_padre_id: '', _opcionSoporteId: ''})}
+                  <select
+                    value={formTarea._tipoLigar || ''}
+                    onChange={e => setFormTarea({...formTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: ''})}
                     style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
                     <option value="">Selecciona tipo...</option>
                     <option value="proyecto">De Proyectos I+D</option>
                     <option value="soporte">De Soporte</option>
                   </select>
 
-                  {formTarea.tarea_padre_tipo === 'proyecto' && (
-                    <select value={formTarea.tarea_padre_id} onChange={e => setFormTarea({...formTarea, tarea_padre_id: e.target.value})}
+                  {/* SELECTOR PROYECTOS JERÁRQUICO */}
+                  {formTarea._tipoLigar === 'proyecto' && (
+                    <select
+                      value={formTarea._opcionProyectoId || ''}
+                      onChange={e => {
+                        const opcion = opcionesProyecto().find(o => o.id === e.target.value)
+                        if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})
+                      }}
                       style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                      <option value="">Selecciona tarea padre...</option>
-                      {todasTareasProyecto.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)).map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                      <option value="">Selecciona elemento de proyecto...</option>
+                      {opcionesProyecto().map(op => (
+                        <option key={op.id} value={op.id}>{op.label}</option>
+                      ))}
                     </select>
                   )}
 
-                  {formTarea.tarea_padre_tipo && formTarea.tarea_padre_tipo !== 'proyecto' && (
+                  {/* SELECTOR SOPORTE JERÁRQUICO */}
+                  {formTarea._tipoLigar === 'soporte' && (
                     <select
                       value={formTarea._opcionSoporteId || ''}
                       onChange={e => {
@@ -660,7 +701,7 @@ function Planner() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' }) }}
+              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _tipoLigar: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' }) }}
                 style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
               <button onClick={crearTareaPlanner}
                 style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear</button>
