@@ -47,6 +47,9 @@ function EtiquetasBadge({ etiqueta }) {
   )
 }
 
+const FORM_NUEVA_VACIO = { nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' }
+const FORM_EVENTO_VACIO = { titulo: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', descripcion: '' }
+
 export default function MovilCampo() {
   const { usuario, accessToken } = useAuth()
   const navigate = useNavigate()
@@ -63,7 +66,9 @@ export default function MovilCampo() {
   const [tiempoActual, setTiempoActual] = useState(0)
   const [modalEditar, setModalEditar] = useState(null)
   const [modalNueva, setModalNueva] = useState(false)
-  const [formNueva, setFormNueva] = useState({ nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
+  const [modalEvento, setModalEvento] = useState(false)
+  const [formNueva, setFormNueva] = useState(FORM_NUEVA_VACIO)
+  const [formEvento, setFormEvento] = useState(FORM_EVENTO_VACIO)
   const [guardando, setGuardando] = useState(false)
   const intervalRef = useRef(null)
   const hoy = getISODate(new Date())
@@ -91,10 +96,10 @@ export default function MovilCampo() {
         leerHoja('categorias_soporte', accessToken),
         leerHoja('usuarios', accessToken),
       ])
-      const misId = usuario.id
-      setTareas(t.filter(x => x.asignados && x.asignados.split(',').includes(misId)))
-      setTareasSoporte(ts.filter(x => x.asignados && x.asignados.split(',').includes(misId)))
-      setTareasPlanner(tp.filter(x => x.usuario_id === misId))
+      const misId = String(usuario.id)
+      setTareas(t.filter(x => x.asignados && x.asignados.split(',').map(s => s.trim()).includes(misId)))
+      setTareasSoporte(ts.filter(x => x.asignados && x.asignados.split(',').map(s => s.trim()).includes(misId)))
+      setTareasPlanner(tp.filter(x => String(x.usuario_id) === misId))
       setProyectos(p)
       setCategoriasSoporte(cs)
       setTodasTareasProyecto(t)
@@ -170,13 +175,15 @@ export default function MovilCampo() {
     if (!modalEditar) return
     setGuardando(true)
     const t = modalEditar
-    const diaCalculado = getDiaSemana(t.fecha_exacta) || t.dia_semana || 'por_asignar'
+    // FIX: si fecha_exacta está vacía, ir a por_asignar
+    const fechaExacta = t.fecha_exacta && t.fecha_exacta.trim() !== '' ? t.fecha_exacta : ''
+    const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
     if (t._tipo === 'proyecto') {
-      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, t.fecha_exacta || '', t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechaExacta, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     } else if (t._tipo === 'soporte') {
-      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, t.fecha_exacta || '', t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechaExacta, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     } else {
-      await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_exacta || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, fechaExacta, t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     }
     setModalEditar(null)
     setGuardando(false)
@@ -187,14 +194,25 @@ export default function MovilCampo() {
     if (!formNueva.nombre) return
     setGuardando(true)
     const id = Date.now().toString()
-    const diaCalculado = getDiaSemana(formNueva.fecha_exacta) || 'por_asignar'
-    // Si asigna a otra persona, usar su ID; si no, usar el propio
-    const usuarioDestino = formNueva.asignadoA || usuario.id
-    await escribirFila('tareas_planner', [id, usuarioDestino, formNueva.tarea_padre_id || '', formNueva.tarea_padre_tipo || '', formNueva.nombre, diaCalculado, formNueva.fecha_exacta || '', formNueva.fecha_limite || '', 'pendiente', new Date().toISOString(), formNueva.etiqueta || ''], accessToken)
+    // FIX: asegurar que fecha_exacta vacía realmente es vacía
+    const fechaExacta = formNueva.fecha_exacta && formNueva.fecha_exacta.trim() !== '' ? formNueva.fecha_exacta : ''
+    const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
+    const usuarioDestino = formNueva.asignadoA || String(usuario.id)
+    await escribirFila('tareas_planner', [id, usuarioDestino, formNueva.tarea_padre_id || '', formNueva.tarea_padre_tipo || '', formNueva.nombre, diaCalculado, fechaExacta, formNueva.fecha_limite || '', 'pendiente', new Date().toISOString(), formNueva.etiqueta || ''], accessToken)
     setModalNueva(false)
-    setFormNueva({ nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
+    setFormNueva(FORM_NUEVA_VACIO)
     setGuardando(false)
     cargarDatos()
+  }
+
+  async function crearEvento() {
+    if (!formEvento.titulo || !formEvento.fecha_exacta) return
+    setGuardando(true)
+    const id = Date.now().toString()
+    await escribirFila('eventos', [id, usuario.id, formEvento.titulo, formEvento.descripcion || '', formEvento.fecha_exacta, formEvento.hora_inicio || '', formEvento.hora_fin || '', formEvento.tipo, new Date().toISOString()], accessToken)
+    setModalEvento(false)
+    setFormEvento(FORM_EVENTO_VACIO)
+    setGuardando(false)
   }
 
   if (cargando) return (
@@ -203,8 +221,6 @@ export default function MovilCampo() {
       <p style={{ color: '#9ca3af', fontSize: '14px' }}>Cargando...</p>
     </div>
   )
-
-  const tareaActivaCron = cronActivo ? todasLasTareas().find(t => t.id === cronActivo.tareaId) : null
 
   return (
     <div style={{ minHeight: '100vh', background: '#111827', color: 'white', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: '100px' }}>
@@ -216,9 +232,14 @@ export default function MovilCampo() {
             <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'white' }}>🌿 Vista Campo</h1>
             <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9ca3af' }}>{usuario.nombre} · {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
           </div>
-          <button onClick={() => setModalNueva(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 16px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>
-            + Tarea
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setModalEvento(true)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
+              + Evento
+            </button>
+            <button onClick={() => setModalNueva(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
+              + Tarea
+            </button>
+          </div>
         </div>
       </div>
 
@@ -254,18 +275,10 @@ export default function MovilCampo() {
           const ctx = getContexto(tarea)
           const activa = cronActivo?.tareaId === tarea.id
           return (
-            <TarjetaMovil
-              key={tarea.id + tarea._tipo}
-              tarea={tarea}
-              ctx={ctx}
-              activa={activa}
-              pausada={activa && !cronActivo?.inicio}
-              tiempoActual={activa ? tiempoActual : 0}
-              onEditar={() => setModalEditar({ ...tarea })}
-              onIniciar={() => iniciarCronometro(tarea)}
-              onPausar={pausarCronometro}
-              onReanudar={reanudarCronometro}
-            />
+            <TarjetaMovil key={tarea.id + tarea._tipo} tarea={tarea} ctx={ctx} activa={activa}
+              pausada={activa && !cronActivo?.inicio} tiempoActual={activa ? tiempoActual : 0}
+              onEditar={() => setModalEditar({ ...tarea })} onIniciar={() => iniciarCronometro(tarea)}
+              onPausar={pausarCronometro} onReanudar={reanudarCronometro} />
           )
         })}
       </div>
@@ -280,18 +293,10 @@ export default function MovilCampo() {
             const ctx = getContexto(tarea)
             const activa = cronActivo?.tareaId === tarea.id
             return (
-              <TarjetaMovil
-                key={tarea.id + tarea._tipo}
-                tarea={tarea}
-                ctx={ctx}
-                activa={activa}
-                pausada={activa && !cronActivo?.inicio}
-                tiempoActual={activa ? tiempoActual : 0}
-                onEditar={() => setModalEditar({ ...tarea })}
-                onIniciar={() => iniciarCronometro(tarea)}
-                onPausar={pausarCronometro}
-                onReanudar={reanudarCronometro}
-              />
+              <TarjetaMovil key={tarea.id + tarea._tipo} tarea={tarea} ctx={ctx} activa={activa}
+                pausada={activa && !cronActivo?.inicio} tiempoActual={activa ? tiempoActual : 0}
+                onEditar={() => setModalEditar({ ...tarea })} onIniciar={() => iniciarCronometro(tarea)}
+                onPausar={pausarCronometro} onReanudar={reanudarCronometro} />
             )
           })}
         </div>
@@ -305,11 +310,8 @@ export default function MovilCampo() {
           { icon: '📁', label: 'Proyectos', ruta: '/proyectos' },
           { icon: '🖥', label: 'Escritorio', ruta: '/planner' },
         ].map(({ icon, label, ruta }) => (
-          <button
-            key={label}
-            onClick={() => navigate(ruta)}
-            style={{ flex: 1, padding: '12px 4px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
-          >
+          <button key={label} onClick={() => navigate(ruta)}
+            style={{ flex: 1, padding: '12px 4px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
             <span style={{ fontSize: '20px' }}>{icon}</span>
             <span style={{ fontSize: '10px', fontWeight: '600' }}>{label}</span>
           </button>
@@ -323,12 +325,9 @@ export default function MovilCampo() {
             <div style={{ width: '40px', height: '4px', background: '#374151', borderRadius: '2px', margin: '0 auto 20px' }} />
             <h2 style={{ margin: '0 0 20px', color: 'white', fontSize: '18px' }}>Editar tarea</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <input
-                value={modalEditar.nombre || ''}
-                onChange={e => setModalEditar({ ...modalEditar, nombre: e.target.value })}
+              <input value={modalEditar.nombre || ''} onChange={e => setModalEditar({ ...modalEditar, nombre: e.target.value })}
                 placeholder="Nombre de la tarea"
-                style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }}
-              />
+                style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
               <div>
                 <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha exacta (opcional)</label>
                 <input type="date" value={modalEditar.fecha_exacta || ''} onChange={e => setModalEditar({ ...modalEditar, fecha_exacta: e.target.value })}
@@ -356,7 +355,7 @@ export default function MovilCampo() {
               </div>
               {modalEditar._tipo === 'planner' && (
                 <div>
-                  <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Ligar a proyecto/soporte (opcional)</label>
+                  <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Ligar a (opcional)</label>
                   <select value={modalEditar.tarea_padre_tipo || ''} onChange={e => setModalEditar({ ...modalEditar, tarea_padre_tipo: e.target.value, tarea_padre_id: '' })}
                     style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%', marginBottom: '8px' }}>
                     <option value="">Sin ligar</option>
@@ -366,9 +365,9 @@ export default function MovilCampo() {
                   {modalEditar.tarea_padre_tipo && (
                     <select value={modalEditar.tarea_padre_id || ''} onChange={e => setModalEditar({ ...modalEditar, tarea_padre_id: e.target.value })}
                       style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%' }}>
-                      <option value="">Selecciona tarea padre...</option>
+                      <option value="">Selecciona...</option>
                       {(modalEditar.tarea_padre_tipo === 'proyecto' ? todasTareasProyecto : todasTareasSoporte)
-                        .filter(t => t.asignados && t.asignados.split(',').includes(usuario.id))
+                        .filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(String(usuario.id)))
                         .map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                     </select>
                   )}
@@ -392,22 +391,18 @@ export default function MovilCampo() {
             <div style={{ width: '40px', height: '4px', background: '#374151', borderRadius: '2px', margin: '0 auto 20px' }} />
             <h2 style={{ margin: '0 0 20px', color: 'white', fontSize: '18px' }}>Nueva tarea</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <input
-                value={formNueva.nombre}
-                onChange={e => setFormNueva({ ...formNueva, nombre: e.target.value })}
+              <input value={formNueva.nombre} onChange={e => setFormNueva({ ...formNueva, nombre: e.target.value })}
                 placeholder="Nombre de la tarea *"
-                style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }}
-              />
+                style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
 
               {/* ASIGNAR A */}
               <div>
                 <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Asignar a</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {usuarios.map(u => {
-                    const seleccionado = formNueva.asignadoA === u.id || (!formNueva.asignadoA && u.id === usuario.id)
+                    const seleccionado = formNueva.asignadoA === String(u.id) || (!formNueva.asignadoA && String(u.id) === String(usuario.id))
                     return (
-                      <button key={u.id}
-                        onClick={e => { e.stopPropagation(); e.preventDefault(); setFormNueva({ ...formNueva, asignadoA: u.id }) }}
+                      <button key={u.id} onClick={e => { e.stopPropagation(); e.preventDefault(); setFormNueva({ ...formNueva, asignadoA: String(u.id) }) }}
                         style={{ padding: '10px 16px', borderRadius: '20px', border: '2px solid', borderColor: seleccionado ? '#00953B' : '#374151', background: seleccionado ? '#064e3b' : '#111827', color: seleccionado ? '#6ee7b7' : '#9ca3af', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
                         {u.nombre.split(' ')[0]}
                       </button>
@@ -454,18 +449,71 @@ export default function MovilCampo() {
                     style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%' }}>
                     <option value="">Selecciona...</option>
                     {(formNueva.tarea_padre_tipo === 'proyecto' ? todasTareasProyecto : todasTareasSoporte)
-                      .filter(t => t.asignados && t.asignados.split(',').includes(usuario.id))
+                      .filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(String(usuario.id)))
                       .map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                   </select>
                 )}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNueva(false); setFormNueva({ nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' }) }}
+              <button onClick={() => { setModalNueva(false); setFormNueva(FORM_NUEVA_VACIO) }}
                 style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>Cancelar</button>
               <button onClick={crearTarea} disabled={guardando || !formNueva.nombre}
                 style={{ flex: 2, padding: '16px', borderRadius: '12px', border: 'none', background: formNueva.nombre ? '#00953B' : '#374151', color: 'white', fontSize: '16px', cursor: 'pointer', fontWeight: '700' }}>
                 {guardando ? 'Creando...' : 'Crear tarea'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NUEVO EVENTO */}
+      {modalEvento && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }}>
+          <div style={{ background: '#1f2937', borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ width: '40px', height: '4px', background: '#374151', borderRadius: '2px', margin: '0 auto 20px' }} />
+            <h2 style={{ margin: '0 0 20px', color: 'white', fontSize: '18px' }}>Nuevo evento</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <input value={formEvento.titulo} onChange={e => setFormEvento({ ...formEvento, titulo: e.target.value })}
+                placeholder="Título *"
+                style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
+              <div>
+                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Tipo</label>
+                <select value={formEvento.tipo} onChange={e => setFormEvento({ ...formEvento, tipo: e.target.value })}
+                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%' }}>
+                  <option value="reunion">Reunión</option>
+                  <option value="formacion">Formación</option>
+                  <option value="evento">Evento</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha *</label>
+                <input type="date" value={formEvento.fecha_exacta} onChange={e => setFormEvento({ ...formEvento, fecha_exacta: e.target.value })}
+                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Hora inicio</label>
+                  <input type="time" value={formEvento.hora_inicio} onChange={e => setFormEvento({ ...formEvento, hora_inicio: e.target.value })}
+                    style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Hora fin</label>
+                  <input type="time" value={formEvento.hora_fin} onChange={e => setFormEvento({ ...formEvento, hora_fin: e.target.value })}
+                    style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
+                </div>
+              </div>
+              <textarea value={formEvento.descripcion} onChange={e => setFormEvento({ ...formEvento, descripcion: e.target.value })}
+                placeholder="Descripción (opcional)"
+                style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%', height: '80px', resize: 'none' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+              <button onClick={() => { setModalEvento(false); setFormEvento(FORM_EVENTO_VACIO) }}
+                style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>Cancelar</button>
+              <button onClick={crearEvento} disabled={guardando || !formEvento.titulo || !formEvento.fecha_exacta}
+                style={{ flex: 2, padding: '16px', borderRadius: '12px', border: 'none', background: formEvento.titulo && formEvento.fecha_exacta ? '#7c3aed' : '#374151', color: 'white', fontSize: '16px', cursor: 'pointer', fontWeight: '700' }}>
+                {guardando ? 'Creando...' : 'Crear evento'}
               </button>
             </div>
           </div>
@@ -493,15 +541,9 @@ function TarjetaMovil({ tarea, ctx, activa, pausada, tiempoActual, onEditar, onI
           )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-          {!activa && (
-            <button onClick={onIniciar} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 16px', fontSize: '20px', cursor: 'pointer', minWidth: '52px' }}>▶</button>
-          )}
-          {activa && !pausada && (
-            <button onClick={onPausar} style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 16px', fontSize: '20px', cursor: 'pointer', minWidth: '52px' }}>⏸</button>
-          )}
-          {activa && pausada && (
-            <button onClick={onReanudar} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 16px', fontSize: '20px', cursor: 'pointer', minWidth: '52px' }}>▶</button>
-          )}
+          {!activa && <button onClick={onIniciar} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 16px', fontSize: '20px', cursor: 'pointer', minWidth: '52px' }}>▶</button>}
+          {activa && !pausada && <button onClick={onPausar} style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 16px', fontSize: '20px', cursor: 'pointer', minWidth: '52px' }}>⏸</button>}
+          {activa && pausada && <button onClick={onReanudar} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 16px', fontSize: '20px', cursor: 'pointer', minWidth: '52px' }}>▶</button>}
           <button onClick={onEditar} style={{ background: '#374151', color: '#9ca3af', border: 'none', borderRadius: '10px', padding: '10px 14px', fontSize: '16px', cursor: 'pointer' }}>✏️</button>
         </div>
       </div>
