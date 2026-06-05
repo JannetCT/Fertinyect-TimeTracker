@@ -537,35 +537,70 @@ function Planner() {
         </>
       )}
 
-      {/* MODAL EDITAR TAREA */}
-      {modalEditarTarea && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ marginBottom: '24px' }}>Editar tarea</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <input value={modalEditarTarea.nombre || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, nombre: e.target.value})}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <InputFechaPlanner label="Fecha exacta (opcional):" value={modalEditarTarea.fecha_exacta}
-                onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_exacta: val})} />
-              <InputFechaPlanner label="Fecha límite (opcional):" value={modalEditarTarea.fecha_limite}
-                onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_limite: val})} />
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
-                <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => eliminarTarea(modalEditarTarea)}
-                style={{ padding: '10px 14px', borderRadius: '8px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>🗑 Eliminar</button>
-              <button onClick={() => setModalEditarTarea(null)}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={guardarEditarTarea}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
-            </div>
-          </div>
-        </div>
-      )}
+  {/* MODAL EDITAR TAREA */}
+{modalEditarTarea && (
+  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+    <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
+      <h2 style={{ marginBottom: '24px' }}>Editar tarea</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <input value={modalEditarTarea.nombre || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, nombre: e.target.value})}
+          style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
 
+        {modalEditarTarea._tipo === 'planner' && (
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Enlazar a (opcional):</label>
+            <select value={modalEditarTarea._tipoLigar || ''}
+              onChange={e => setModalEditarTarea({...modalEditarTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionProyectoId: '', _opcionSoporteId: ''})}
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
+              <option value="">Sin enlazar</option>
+              <option value="proyecto">De Proyectos I+D</option>
+              <option value="soporte">De Soporte</option>
+            </select>
+            {modalEditarTarea._tipoLigar === 'proyecto' && (
+              <select value={modalEditarTarea._opcionProyectoId || ''}
+                onChange={e => {
+                  const opcion = opcionesProyecto().find(o => o.id === e.target.value)
+                  if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})
+                }}
+                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                <option value="">Selecciona elemento...</option>
+                {opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
+              </select>
+            )}
+            {modalEditarTarea._tipoLigar === 'soporte' && (
+              <select value={modalEditarTarea._opcionSoporteId || ''}
+                onChange={e => {
+                  const opcion = opcionesSoporte().find(o => o.id === e.target.value)
+                  if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})
+                }}
+                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                <option value="">Selecciona elemento...</option>
+                {opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
+              </select>
+            )}
+          </div>
+        )}
+
+        <InputFechaPlanner label="Fecha exacta (opcional):" value={modalEditarTarea.fecha_exacta}
+          onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_exacta: val})} />
+        <InputFechaPlanner label="Fecha límite (opcional):" value={modalEditarTarea.fecha_limite}
+          onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_limite: val})} />
+        <div>
+          <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
+          <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+        <button onClick={() => eliminarTarea(modalEditarTarea)}
+          style={{ padding: '10px 14px', borderRadius: '8px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>🗑 Eliminar</button>
+        <button onClick={() => setModalEditarTarea(null)}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+        <button onClick={guardarEditarTarea}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
+      </div>
+    </div>
+  </div>
+)}
       {/* MODAL EDITAR EVENTO */}
       {modalEditarEvento && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
