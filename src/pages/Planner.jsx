@@ -231,7 +231,7 @@ function Planner() {
     } else if (t._tipo === 'soporte') {
       await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechaExacta, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     } else {
-      await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, fechaExacta, t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechaExacta, t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     }
     setModalEditarTarea(null)
     cargarDatos()
@@ -257,7 +257,7 @@ function Planner() {
     const fechaExacta = formTarea.fecha_exacta && formTarea.fecha_exacta.trim() !== '' ? formTarea.fecha_exacta : ''
     const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
     const usuarioDestino = formTarea.asignadoA || String(usuario.id)
-    await escribirFila('tareas_planner', [id, usuarioDestino, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, fechaExacta, formTarea.fecha_limite || '', 'pendiente', new Date().toISOString(), formTarea.etiqueta || ''], accessToken)
+    await escribirFila('tareas_planner', [id, usuarioDestino, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechaExacta, 'pendiente', new Date().toISOString(), formTarea.etiqueta || ''], accessToken)
     setModalNuevaTarea(false)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
     cargarDatos()
