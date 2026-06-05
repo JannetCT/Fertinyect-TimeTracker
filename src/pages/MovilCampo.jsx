@@ -47,6 +47,29 @@ function EtiquetasBadge({ etiqueta }) {
   )
 }
 
+function InputFecha({ label, value, onChange }) {
+  return (
+    <div>
+      <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>{label}</label>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="date"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ flex: 1, padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: value ? 'white' : '#6b7280', fontSize: '16px' }}
+        />
+        {value && (
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onChange('') }}
+            style={{ padding: '14px 16px', borderRadius: '12px', background: '#374151', color: '#9ca3af', border: 'none', cursor: 'pointer', fontSize: '16px', fontWeight: '700' }}>
+            ✕
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const FORM_NUEVA_VACIO = { nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' }
 const FORM_EVENTO_VACIO = { titulo: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', descripcion: '' }
 
@@ -175,7 +198,6 @@ export default function MovilCampo() {
     if (!modalEditar) return
     setGuardando(true)
     const t = modalEditar
-    // FIX: si fecha_exacta está vacía, ir a por_asignar
     const fechaExacta = t.fecha_exacta && t.fecha_exacta.trim() !== '' ? t.fecha_exacta : ''
     const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
     if (t._tipo === 'proyecto') {
@@ -194,7 +216,6 @@ export default function MovilCampo() {
     if (!formNueva.nombre) return
     setGuardando(true)
     const id = Date.now().toString()
-    // FIX: asegurar que fecha_exacta vacía realmente es vacía
     const fechaExacta = formNueva.fecha_exacta && formNueva.fecha_exacta.trim() !== '' ? formNueva.fecha_exacta : ''
     const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
     const usuarioDestino = formNueva.asignadoA || String(usuario.id)
@@ -328,16 +349,10 @@ export default function MovilCampo() {
               <input value={modalEditar.nombre || ''} onChange={e => setModalEditar({ ...modalEditar, nombre: e.target.value })}
                 placeholder="Nombre de la tarea"
                 style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
-              <div>
-                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha exacta (opcional)</label>
-                <input type="date" value={modalEditar.fecha_exacta || ''} onChange={e => setModalEditar({ ...modalEditar, fecha_exacta: e.target.value })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha límite (opcional)</label>
-                <input type="date" value={modalEditar.fecha_limite || ''} onChange={e => setModalEditar({ ...modalEditar, fecha_limite: e.target.value })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
-              </div>
+              <InputFecha label="Fecha exacta (opcional)" value={modalEditar.fecha_exacta || ''}
+                onChange={val => setModalEditar({ ...modalEditar, fecha_exacta: val })} />
+              <InputFecha label="Fecha límite (opcional)" value={modalEditar.fecha_limite || ''}
+                onChange={val => setModalEditar({ ...modalEditar, fecha_limite: val })} />
               <div>
                 <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Prioridad</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -411,16 +426,11 @@ export default function MovilCampo() {
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha exacta (opcional)</label>
-                <input type="date" value={formNueva.fecha_exacta} onChange={e => setFormNueva({ ...formNueva, fecha_exacta: e.target.value })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha límite (opcional)</label>
-                <input type="date" value={formNueva.fecha_limite} onChange={e => setFormNueva({ ...formNueva, fecha_limite: e.target.value })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
-              </div>
+              <InputFecha label="Fecha exacta (opcional)" value={formNueva.fecha_exacta}
+                onChange={val => setFormNueva({ ...formNueva, fecha_exacta: val })} />
+              <InputFecha label="Fecha límite (opcional)" value={formNueva.fecha_limite}
+                onChange={val => setFormNueva({ ...formNueva, fecha_limite: val })} />
+
               <div>
                 <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Prioridad</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -487,11 +497,8 @@ export default function MovilCampo() {
                   <option value="otro">Otro</option>
                 </select>
               </div>
-              <div>
-                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha *</label>
-                <input type="date" value={formEvento.fecha_exacta} onChange={e => setFormEvento({ ...formEvento, fecha_exacta: e.target.value })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
-              </div>
+              <InputFecha label="Fecha *" value={formEvento.fecha_exacta}
+                onChange={val => setFormEvento({ ...formEvento, fecha_exacta: val })} />
               <div style={{ display: 'flex', gap: '8px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Hora inicio</label>
