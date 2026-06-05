@@ -57,12 +57,13 @@ export default function MovilCampo() {
   const [categoriasSoporte, setCategoriasSoporte] = useState([])
   const [todasTareasProyecto, setTodasTareasProyecto] = useState([])
   const [todasTareasSoporte, setTodasTareasSoporte] = useState([])
+  const [usuarios, setUsuarios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [cronActivo, setCronActivo] = useState(null)
   const [tiempoActual, setTiempoActual] = useState(0)
   const [modalEditar, setModalEditar] = useState(null)
   const [modalNueva, setModalNueva] = useState(false)
-  const [formNueva, setFormNueva] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '' })
+  const [formNueva, setFormNueva] = useState({ nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
   const [guardando, setGuardando] = useState(false)
   const intervalRef = useRef(null)
   const hoy = getISODate(new Date())
@@ -82,12 +83,13 @@ export default function MovilCampo() {
 
   async function cargarDatos() {
     try {
-      const [t, ts, tp, p, cs] = await Promise.all([
+      const [t, ts, tp, p, cs, u] = await Promise.all([
         leerHoja('tareas', accessToken),
         leerHoja('tareas_soporte', accessToken),
         leerHoja('tareas_planner', accessToken),
         leerHoja('proyectos', accessToken),
         leerHoja('categorias_soporte', accessToken),
+        leerHoja('usuarios', accessToken),
       ])
       const misId = usuario.id
       setTareas(t.filter(x => x.asignados && x.asignados.split(',').includes(misId)))
@@ -97,6 +99,7 @@ export default function MovilCampo() {
       setCategoriasSoporte(cs)
       setTodasTareasProyecto(t)
       setTodasTareasSoporte(ts)
+      setUsuarios(u)
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
@@ -185,9 +188,11 @@ export default function MovilCampo() {
     setGuardando(true)
     const id = Date.now().toString()
     const diaCalculado = getDiaSemana(formNueva.fecha_exacta) || 'por_asignar'
-    await escribirFila('tareas_planner', [id, usuario.id, formNueva.tarea_padre_id || '', formNueva.tarea_padre_tipo || '', formNueva.nombre, diaCalculado, formNueva.fecha_exacta || '', formNueva.fecha_limite || '', 'pendiente', new Date().toISOString(), formNueva.etiqueta || ''], accessToken)
+    // Si asigna a otra persona, usar su ID; si no, usar el propio
+    const usuarioDestino = formNueva.asignadoA || usuario.id
+    await escribirFila('tareas_planner', [id, usuarioDestino, formNueva.tarea_padre_id || '', formNueva.tarea_padre_tipo || '', formNueva.nombre, diaCalculado, formNueva.fecha_exacta || '', formNueva.fecha_limite || '', 'pendiente', new Date().toISOString(), formNueva.etiqueta || ''], accessToken)
     setModalNueva(false)
-    setFormNueva({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '' })
+    setFormNueva({ nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
     setGuardando(false)
     cargarDatos()
   }
@@ -298,11 +303,11 @@ export default function MovilCampo() {
           { icon: '📅', label: 'Planner', ruta: '/planner' },
           { icon: '🗓', label: 'Calendario', ruta: '/calendario-equipo' },
           { icon: '📁', label: 'Proyectos', ruta: '/proyectos' },
-          { icon: '🖥', label: 'Escritorio', ruta: null },
+          { icon: '🖥', label: 'Escritorio', ruta: '/planner' },
         ].map(({ icon, label, ruta }) => (
           <button
             key={label}
-            onClick={() => ruta ? navigate(ruta) : navigate('/planner')}
+            onClick={() => navigate(ruta)}
             style={{ flex: 1, padding: '12px 4px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
           >
             <span style={{ fontSize: '20px' }}>{icon}</span>
@@ -317,7 +322,6 @@ export default function MovilCampo() {
           <div style={{ background: '#1f2937', borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ width: '40px', height: '4px', background: '#374151', borderRadius: '2px', margin: '0 auto 20px' }} />
             <h2 style={{ margin: '0 0 20px', color: 'white', fontSize: '18px' }}>Editar tarea</h2>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <input
                 value={modalEditar.nombre || ''}
@@ -326,22 +330,14 @@ export default function MovilCampo() {
                 style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }}
               />
               <div>
-                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha exacta</label>
-                <input
-                  type="date"
-                  value={modalEditar.fecha_exacta || ''}
-                  onChange={e => setModalEditar({ ...modalEditar, fecha_exacta: e.target.value })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }}
-                />
+                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha exacta (opcional)</label>
+                <input type="date" value={modalEditar.fecha_exacta || ''} onChange={e => setModalEditar({ ...modalEditar, fecha_exacta: e.target.value })}
+                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
               </div>
               <div>
-                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha límite</label>
-                <input
-                  type="date"
-                  value={modalEditar.fecha_limite || ''}
-                  onChange={e => setModalEditar({ ...modalEditar, fecha_limite: e.target.value })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }}
-                />
+                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha límite (opcional)</label>
+                <input type="date" value={modalEditar.fecha_limite || ''} onChange={e => setModalEditar({ ...modalEditar, fecha_limite: e.target.value })}
+                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
               </div>
               <div>
                 <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Prioridad</label>
@@ -358,37 +354,27 @@ export default function MovilCampo() {
                   })}
                 </div>
               </div>
-
-              {/* Ligar a proyecto o soporte */}
               {modalEditar._tipo === 'planner' && (
                 <div>
                   <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Ligar a proyecto/soporte (opcional)</label>
-                  <select
-                    value={modalEditar.tarea_padre_tipo || ''}
-                    onChange={e => setModalEditar({ ...modalEditar, tarea_padre_tipo: e.target.value, tarea_padre_id: '' })}
-                    style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%', marginBottom: '8px' }}
-                  >
+                  <select value={modalEditar.tarea_padre_tipo || ''} onChange={e => setModalEditar({ ...modalEditar, tarea_padre_tipo: e.target.value, tarea_padre_id: '' })}
+                    style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%', marginBottom: '8px' }}>
                     <option value="">Sin ligar</option>
                     <option value="proyecto">De Proyectos</option>
                     <option value="soporte">De Soporte</option>
                   </select>
                   {modalEditar.tarea_padre_tipo && (
-                    <select
-                      value={modalEditar.tarea_padre_id || ''}
-                      onChange={e => setModalEditar({ ...modalEditar, tarea_padre_id: e.target.value })}
-                      style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%' }}
-                    >
+                    <select value={modalEditar.tarea_padre_id || ''} onChange={e => setModalEditar({ ...modalEditar, tarea_padre_id: e.target.value })}
+                      style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%' }}>
                       <option value="">Selecciona tarea padre...</option>
                       {(modalEditar.tarea_padre_tipo === 'proyecto' ? todasTareasProyecto : todasTareasSoporte)
                         .filter(t => t.asignados && t.asignados.split(',').includes(usuario.id))
-                        .map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)
-                      }
+                        .map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                     </select>
                   )}
                 </div>
               )}
             </div>
-
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
               <button onClick={() => setModalEditar(null)} style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>Cancelar</button>
               <button onClick={guardarEdicion} disabled={guardando} style={{ flex: 2, padding: '16px', borderRadius: '12px', border: 'none', background: '#00953B', color: 'white', fontSize: '16px', cursor: 'pointer', fontWeight: '700' }}>
@@ -405,7 +391,6 @@ export default function MovilCampo() {
           <div style={{ background: '#1f2937', borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ width: '40px', height: '4px', background: '#374151', borderRadius: '2px', margin: '0 auto 20px' }} />
             <h2 style={{ margin: '0 0 20px', color: 'white', fontSize: '18px' }}>Nueva tarea</h2>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <input
                 value={formNueva.nombre}
@@ -413,23 +398,33 @@ export default function MovilCampo() {
                 placeholder="Nombre de la tarea *"
                 style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }}
               />
+
+              {/* ASIGNAR A */}
               <div>
-                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha exacta</label>
-                <input
-                  type="date"
-                  value={formNueva.fecha_exacta}
-                  onChange={e => setFormNueva({ ...formNueva, fecha_exacta: e.target.value })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }}
-                />
+                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Asignar a</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {usuarios.map(u => {
+                    const seleccionado = formNueva.asignadoA === u.id || (!formNueva.asignadoA && u.id === usuario.id)
+                    return (
+                      <button key={u.id}
+                        onClick={e => { e.stopPropagation(); e.preventDefault(); setFormNueva({ ...formNueva, asignadoA: u.id }) }}
+                        style={{ padding: '10px 16px', borderRadius: '20px', border: '2px solid', borderColor: seleccionado ? '#00953B' : '#374151', background: seleccionado ? '#064e3b' : '#111827', color: seleccionado ? '#6ee7b7' : '#9ca3af', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+                        {u.nombre.split(' ')[0]}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha exacta (opcional)</label>
+                <input type="date" value={formNueva.fecha_exacta} onChange={e => setFormNueva({ ...formNueva, fecha_exacta: e.target.value })}
+                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
               </div>
               <div>
                 <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha límite (opcional)</label>
-                <input
-                  type="date"
-                  value={formNueva.fecha_limite}
-                  onChange={e => setFormNueva({ ...formNueva, fecha_limite: e.target.value })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }}
-                />
+                <input type="date" value={formNueva.fecha_limite} onChange={e => setFormNueva({ ...formNueva, fecha_limite: e.target.value })}
+                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
               </div>
               <div>
                 <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Prioridad</label>
@@ -448,34 +443,28 @@ export default function MovilCampo() {
               </div>
               <div>
                 <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Ligar a (opcional)</label>
-                <select
-                  value={formNueva.tarea_padre_tipo}
-                  onChange={e => setFormNueva({ ...formNueva, tarea_padre_tipo: e.target.value, tarea_padre_id: '' })}
-                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%', marginBottom: '8px' }}
-                >
+                <select value={formNueva.tarea_padre_tipo} onChange={e => setFormNueva({ ...formNueva, tarea_padre_tipo: e.target.value, tarea_padre_id: '' })}
+                  style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%', marginBottom: '8px' }}>
                   <option value="">Sin ligar</option>
                   <option value="proyecto">De Proyectos</option>
                   <option value="soporte">De Soporte</option>
                 </select>
                 {formNueva.tarea_padre_tipo && (
-                  <select
-                    value={formNueva.tarea_padre_id}
-                    onChange={e => setFormNueva({ ...formNueva, tarea_padre_id: e.target.value })}
-                    style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%' }}
-                  >
+                  <select value={formNueva.tarea_padre_id} onChange={e => setFormNueva({ ...formNueva, tarea_padre_id: e.target.value })}
+                    style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '15px', width: '100%' }}>
                     <option value="">Selecciona...</option>
                     {(formNueva.tarea_padre_tipo === 'proyecto' ? todasTareasProyecto : todasTareasSoporte)
                       .filter(t => t.asignados && t.asignados.split(',').includes(usuario.id))
-                      .map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)
-                    }
+                      .map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                   </select>
                 )}
               </div>
             </div>
-
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-              <button onClick={() => setModalNueva(false)} style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>Cancelar</button>
-              <button onClick={crearTarea} disabled={guardando || !formNueva.nombre} style={{ flex: 2, padding: '16px', borderRadius: '12px', border: 'none', background: formNueva.nombre ? '#00953B' : '#374151', color: 'white', fontSize: '16px', cursor: 'pointer', fontWeight: '700' }}>
+              <button onClick={() => { setModalNueva(false); setFormNueva({ nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' }) }}
+                style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>Cancelar</button>
+              <button onClick={crearTarea} disabled={guardando || !formNueva.nombre}
+                style={{ flex: 2, padding: '16px', borderRadius: '12px', border: 'none', background: formNueva.nombre ? '#00953B' : '#374151', color: 'white', fontSize: '16px', cursor: 'pointer', fontWeight: '700' }}>
                 {guardando ? 'Creando...' : 'Crear tarea'}
               </button>
             </div>
