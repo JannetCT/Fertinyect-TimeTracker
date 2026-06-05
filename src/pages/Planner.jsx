@@ -583,20 +583,27 @@ function Planner() {
 
               {/* ASIGNAR A */}
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Asignar a:</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {USUARIOS_EQUIPO.map(u => {
-                    const seleccionado = (formTarea.asignadoA || misId) === u.id
-                    return (
-                      <button key={u.id}
-                        onClick={e => { e.stopPropagation(); e.preventDefault(); setFormTarea({...formTarea, asignadoA: u.id}) }}
-                        style={{ padding: '6px 14px', borderRadius: '20px', border: '2px solid', borderColor: seleccionado ? '#00953B' : '#e5e7eb', background: seleccionado ? '#f0fdf4' : 'white', color: seleccionado ? '#00953B' : '#6b7280', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
-                        {u.nombre}{u.id === misId ? ' (yo)' : ''}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Asignar a:</label>
+  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+    {USUARIOS_EQUIPO.map(u => {
+      const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
+      const seleccionado = asignados.includes(u.id)
+      return (
+        <button key={u.id}
+          onClick={e => {
+            e.stopPropagation(); e.preventDefault()
+            const actual = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
+            const nuevo = actual.includes(u.id) ? actual.filter(id => id !== u.id) : [...actual, u.id]
+            if (nuevo.length === 0) return
+            setFormTarea({...formTarea, asignadoA: nuevo.join(',')})
+          }}
+          style={{ padding: '6px 14px', borderRadius: '20px', border: '2px solid', borderColor: seleccionado ? '#00953B' : '#e5e7eb', background: seleccionado ? '#f0fdf4' : 'white', color: seleccionado ? '#00953B' : '#6b7280', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+          {u.nombre}{u.id === misId ? ' (yo)' : ''}
+        </button>
+      )
+    })}
+  </div>
+</div>
 
               {/* TIPO */}
               <div>
