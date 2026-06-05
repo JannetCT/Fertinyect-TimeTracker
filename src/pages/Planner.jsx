@@ -6,6 +6,12 @@ const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
 const DIAS_LABEL = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes' }
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
+const USUARIOS_EQUIPO = [
+  { id: '1', nombre: 'Lorenzo' },
+  { id: '2', nombre: 'Ahlam' },
+  { id: '3', nombre: 'Jannet' },
+]
+
 function formatTiempo(s) {
   return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`
 }
@@ -113,7 +119,7 @@ function Planner() {
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
   const [modalNuevoEvento, setModalNuevoEvento] = useState(false)
   const [modalEditarEvento, setModalEditarEvento] = useState(null)
-  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '' })
+  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
   const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion' })
   const [cronActivo, setCronActivo] = useState(null)
   const [tiempoActual, setTiempoActual] = useState(0)
@@ -250,9 +256,10 @@ function Planner() {
     const id = Date.now().toString()
     const fechaExacta = formTarea.fecha_exacta && formTarea.fecha_exacta.trim() !== '' ? formTarea.fecha_exacta : ''
     const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
-    await escribirFila('tareas_planner', [id, usuario.id, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, fechaExacta, formTarea.fecha_limite || '', 'pendiente', new Date().toISOString(), formTarea.etiqueta || ''], accessToken)
+    const usuarioDestino = formTarea.asignadoA || String(usuario.id)
+    await escribirFila('tareas_planner', [id, usuarioDestino, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, fechaExacta, formTarea.fecha_limite || '', 'pendiente', new Date().toISOString(), formTarea.etiqueta || ''], accessToken)
     setModalNuevaTarea(false)
-    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '' })
+    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
     cargarDatos()
   }
 
@@ -330,7 +337,6 @@ function Planner() {
     return dias
   }
 
-  // Construir opciones jerárquicas para el selector de soporte
   function opcionesSoporte() {
     const opciones = []
     categoriasSoporte.forEach(cat => {
@@ -358,6 +364,7 @@ function Planner() {
 
   const diasSemana = getDiasDeSemana(semanaBase)
   const hoy = getISODate(new Date())
+  const misId = String(usuario.id)
 
   return (
     <div className="planner-container">
@@ -567,43 +574,63 @@ function Planner() {
       {modalNuevaTarea && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ marginBottom: '24px' }}>Nueva tarea personal</h2>
+            <h2 style={{ marginBottom: '24px' }}>Nueva tarea</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre de la tarea *" value={formTarea.nombre} onChange={e => setFormTarea({...formTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+
+              {/* ASIGNAR A */}
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Asignar a:</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {USUARIOS_EQUIPO.map(u => {
+                    const seleccionado = (formTarea.asignadoA || misId) === u.id
+                    return (
+                      <button key={u.id}
+                        onClick={e => { e.stopPropagation(); e.preventDefault(); setFormTarea({...formTarea, asignadoA: u.id}) }}
+                        style={{ padding: '6px 14px', borderRadius: '20px', border: '2px solid', borderColor: seleccionado ? '#00953B' : '#e5e7eb', background: seleccionado ? '#f0fdf4' : 'white', color: seleccionado ? '#00953B' : '#6b7280', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+                        {u.nombre}{u.id === misId ? ' (yo)' : ''}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* TIPO */}
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Tipo:</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => setFormTarea({...formTarea, tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: ''})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'libre' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'libre' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'libre' ? '#00953B' : '#373A36' }}>📝 Libre</button>
+                  <button onClick={() => setFormTarea({...formTarea, tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: ''})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'libre' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'libre' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'libre' ? '#00953B' : '#373A36' }}>📝 Libre</button>
                   <button onClick={() => setFormTarea({...formTarea, tipo: 'subtarea'})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'subtarea' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'subtarea' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'subtarea' ? '#00953B' : '#373A36' }}>🔗 Subtarea</button>
                 </div>
               </div>
+
               {formTarea.tipo === 'subtarea' && (
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Ligar a:</label>
-                  <select value={formTarea.tarea_padre_tipo} onChange={e => setFormTarea({...formTarea, tarea_padre_tipo: e.target.value, tarea_padre_id: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
+                  <select value={formTarea.tarea_padre_tipo === 'proyecto' ? 'proyecto' : formTarea.tarea_padre_tipo ? 'soporte' : ''}
+                    onChange={e => setFormTarea({...formTarea, tarea_padre_tipo: e.target.value, tarea_padre_id: '', _opcionSoporteId: ''})}
+                    style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
                     <option value="">Selecciona tipo...</option>
                     <option value="proyecto">De Proyectos I+D</option>
                     <option value="soporte">De Soporte</option>
                   </select>
 
-                  {/* SELECTOR PROYECTOS I+D */}
                   {formTarea.tarea_padre_tipo === 'proyecto' && (
-                    <select value={formTarea.tarea_padre_id} onChange={e => setFormTarea({...formTarea, tarea_padre_id: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                    <select value={formTarea.tarea_padre_id} onChange={e => setFormTarea({...formTarea, tarea_padre_id: e.target.value})}
+                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
                       <option value="">Selecciona tarea padre...</option>
-                      {todasTareasProyecto.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(String(usuario.id))).map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                      {todasTareasProyecto.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)).map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                     </select>
                   )}
 
-                  {/* SELECTOR SOPORTE JERÁRQUICO */}
-                  {formTarea.tarea_padre_tipo === 'soporte' && (
+                  {formTarea.tarea_padre_tipo && formTarea.tarea_padre_tipo !== 'proyecto' && (
                     <select
-                      value={formTarea.tarea_padre_id}
+                      value={formTarea._opcionSoporteId || ''}
                       onChange={e => {
                         const opcion = opcionesSoporte().find(o => o.id === e.target.value)
-                        setFormTarea({...formTarea, tarea_padre_id: opcion?.realId || '', tarea_padre_tipo: opcion?.tipo || 'soporte'})
+                        if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})
                       }}
-                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}
-                    >
+                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
                       <option value="">Selecciona elemento de soporte...</option>
                       {opcionesSoporte().map(op => (
                         <option key={op.id} value={op.id}>{op.label}</option>
@@ -612,6 +639,7 @@ function Planner() {
                   )}
                 </div>
               )}
+
               <InputFechaPlanner label="Fecha exacta (opcional):" value={formTarea.fecha_exacta}
                 onChange={val => setFormTarea({...formTarea, fecha_exacta: val})} />
               <InputFechaPlanner label="Fecha límite (opcional):" value={formTarea.fecha_limite}
@@ -622,8 +650,10 @@ function Planner() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '' }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={crearTareaPlanner} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear</button>
+              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' }) }}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={crearTareaPlanner}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear</button>
             </div>
           </div>
         </div>
@@ -659,8 +689,10 @@ function Planner() {
               <textarea placeholder="Descripción (opcional)" value={formEvento.descripcion} onChange={e => setFormEvento({...formEvento, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNuevoEvento(false); setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion' }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={crearEvento} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear evento</button>
+              <button onClick={() => { setModalNuevoEvento(false); setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion' }) }}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={crearEvento}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear evento</button>
             </div>
           </div>
         </div>
