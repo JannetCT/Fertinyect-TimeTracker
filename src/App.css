@@ -5,8 +5,8 @@
 }
 
 :root {
-  --verde: #10B981;
-  --verde-oscuro: #059669;
+  --verde: #00953B;
+  --verde-oscuro: #007a30;
   --gris: #6B7280;
   --gris-claro: #F3F4F6;
   --gris-borde: #E5E7EB;
@@ -29,14 +29,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #064e3b, #10B981);
+  background: linear-gradient(135deg, #064e3b, #00953B);
+  padding: 16px;
 }
 
 .login-card {
   background: white;
   border-radius: 16px;
   padding: 48px;
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
   text-align: center;
 }
@@ -64,7 +66,7 @@ body {
 
 .btn-google:hover { border-color: var(--verde); background: #f0fdf4; }
 
-/* LAYOUT */
+/* LAYOUT ESCRITORIO */
 .app-layout {
   display: flex;
   min-height: 100vh;
@@ -78,6 +80,9 @@ body {
   flex-direction: column;
   position: fixed;
   height: 100vh;
+  z-index: 100;
+  top: 0;
+  left: 0;
 }
 
 .sidebar-header {
@@ -93,6 +98,7 @@ body {
   padding: 16px 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .nav-item {
@@ -102,6 +108,7 @@ body {
   text-decoration: none;
   font-size: 0.9rem;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .nav-item:hover { background: #1F2937; color: white; }
@@ -111,8 +118,8 @@ body {
   padding: 16px;
   border-top: 1px solid #374151;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .avatar { width: 32px; height: 32px; border-radius: 50%; }
@@ -136,6 +143,7 @@ body {
   flex: 1;
   padding: 32px;
   overflow-y: auto;
+  min-height: 100vh;
 }
 
 /* LOADING */
@@ -238,24 +246,17 @@ body {
 .tarea-nombre { font-size: 0.85rem; font-weight: 500; margin-bottom: 4px; }
 .tarea-nombre.tachado { text-decoration: line-through; color: var(--texto-suave); }
 .tarea-proyecto { font-size: 0.75rem; color: var(--texto-suave); margin-bottom: 6px; }
-
 .tarea-footer { display: flex; justify-content: flex-end; }
 
-.estado-badge {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-weight: 500;
-}
-
+.estado-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; }
 .estado-pendiente { background: #FEF3C7; color: #92400E; }
 .estado-en-curso { background: #D1FAE5; color: #065F46; }
 .estado-pausada { background: #FEE2E2; color: #991B1B; }
 .estado-completada { background: #D1FAE5; color: #065F46; }
 
 /* PROYECTOS */
-.proyectos-header { display: flex; justify-content: space-between; align-items: center; }
-.filtros { display: flex; gap: 8px; }
+.proyectos-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.filtros { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .select-filtro {
   padding: 8px 12px;
@@ -276,7 +277,7 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
-.proyecto-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.proyecto-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .proyecto-header h3 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
 
 .tipo-badge {
@@ -299,7 +300,6 @@ body {
 }
 
 .barra-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
-
 .tareas-lista { display: flex; flex-direction: column; gap: 6px; }
 
 .tarea-fila {
@@ -309,18 +309,13 @@ body {
   padding: 6px 0;
   border-bottom: 1px solid var(--gris-claro);
   font-size: 0.85rem;
+  flex-wrap: wrap;
 }
 
 .tarea-fila.completada .tarea-nombre-small { text-decoration: line-through; color: var(--texto-suave); }
-.tarea-nombre-small { flex: 1; }
+.tarea-nombre-small { flex: 1; min-width: 120px; }
 .tarea-asignado { color: var(--texto-suave); font-size: 0.8rem; }
-
-.estado-small {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 12px;
-}
-
+.estado-small { font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; }
 .sin-tareas { color: var(--texto-suave); font-size: 0.85rem; padding: 8px 0; }
 
 /* GRÁFICAS Y DASHBOARD */
@@ -328,59 +323,43 @@ body {
 
 .metrica-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
   margin-bottom: 24px;
 }
 
 .metrica-card {
   background: white;
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .metrica-card h4 { font-size: 0.8rem; color: var(--texto-suave); margin-bottom: 8px; }
-.metrica-valor { font-size: 1.75rem; font-weight: 700; color: var(--texto); }
+.metrica-valor { font-size: 1.5rem; font-weight: 700; color: var(--texto); }
 
 .grafica-card {
   background: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px;
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .grafica-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 16px; }
-
 .barras-horizontales { display: flex; flex-direction: column; gap: 12px; }
-
-.barra-h-row { display: flex; align-items: center; gap: 12px; }
-.barra-h-label { width: 120px; font-size: 0.85rem; text-align: right; color: var(--texto-suave); }
+.barra-h-row { display: flex; align-items: center; gap: 8px; }
+.barra-h-label { width: 100px; font-size: 0.8rem; text-align: right; color: var(--texto-suave); }
 .barra-h-track { flex: 1; height: 8px; background: var(--gris-claro); border-radius: 4px; overflow: hidden; }
 .barra-h-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
-.barra-h-valor { width: 40px; font-size: 0.85rem; font-weight: 600; }
+.barra-h-valor { width: 36px; font-size: 0.8rem; font-weight: 600; }
 
-.barras-verticales {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  height: 150px;
-}
-
-.barra-v-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100%;
-}
-
+.barras-verticales { display: flex; align-items: flex-end; gap: 12px; height: 150px; }
+.barra-v-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
 .barra-v-valor { font-size: 0.75rem; color: var(--texto-suave); margin-bottom: 4px; }
 .barra-v-track { flex: 1; width: 100%; background: var(--gris-claro); border-radius: 4px; display: flex; align-items: flex-end; overflow: hidden; }
 .barra-v-fill { width: 100%; background: var(--verde); border-radius: 4px; transition: height 0.5s; }
 .barra-v-label { font-size: 0.8rem; color: var(--texto-suave); margin-top: 4px; }
-
 .sin-datos { color: var(--texto-suave); font-size: 0.85rem; }
 
 /* CONFIGURACIÓN */
@@ -394,25 +373,13 @@ body {
 
 .config-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
 .config-desc { color: var(--texto-suave); font-size: 0.9rem; margin-bottom: 20px; }
-
 .etiquetas-lista { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
-
 .etiqueta-fila { display: flex; align-items: center; gap: 8px; }
-
-.etiqueta-preview {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: white;
-}
-
+.etiqueta-preview { padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 500; color: white; }
 .etiqueta-color-code { font-size: 0.75rem; color: var(--texto-suave); }
-
 .nueva-etiqueta-form { border-top: 1px solid var(--gris-borde); padding-top: 20px; }
 .nueva-etiqueta-form h4 { font-size: 0.9rem; margin-bottom: 12px; }
-
-.form-row { display: flex; gap: 8px; align-items: center; }
+.form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 .input-text {
   flex: 1;
@@ -448,12 +415,109 @@ body {
 .btn-primary:hover { background: var(--verde-oscuro); }
 .btn-primary:disabled { background: var(--gris); cursor: not-allowed; }
 
-/* RESPONSIVE MÓVIL */
-@media (max-width: 768px) {
-  .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; }
-  .sidebar-nav { flex-direction: row; padding: 8px; }
-  .nav-item { padding: 8px 12px; font-size: 0.8rem; }
-  .main-content { margin-left: 0; padding: 16px; }
-  .planner-grid { flex-direction: column; }
-  .planner-column { min-width: auto; }
+/* PRINT */
+@media print {
+  .sidebar { display: none !important; }
+  .planner-header { display: none !important; }
+  .proyectos-header button { display: none !important; }
+  body { background: white !important; }
 }
+
+/* ============================================
+   RESPONSIVE MÓVIL — max-width: 768px
+   ============================================ */
+@media (max-width: 768px) {
+
+  /* SIDEBAR → se oculta, reemplazado por nav inferior */
+  .sidebar {
+    display: none;
+  }
+
+  /* NAV INFERIOR MÓVIL */
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #111827;
+    border-top: 1px solid #374151;
+    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px;
+    color: #9CA3AF;
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 600;
+    gap: 3px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+
+  .mobile-nav-item.active { color: #00953B; }
+  .mobile-nav-item span.icon { font-size: 20px; }
+
+  /* MAIN CONTENT */
+  .main-content {
+    margin-left: 0;
+    padding: 12px 12px 80px 12px;
+    min-height: 100vh;
+  }
+
+  /* HEADERS */
+  .planner-header, .proyectos-header, .graficas-header, .dashboard-header, .configuracion-header {
+    margin-bottom: 16px;
+  }
+
+  .planner-header h1, .proyectos-header h1, .graficas-header h1, .dashboard-header h1, .configuracion-header h1 {
+    font-size: 1.2rem;
+  }
+
+  /* PLANNER — columnas apiladas */
+  .planner-grid {
+    flex-direction: column;
+    gap: 8px;
+    overflow-x: visible;
+  }
+
+  .planner-column {
+    min-width: auto;
+    width: 100%;
+  }
+
+  /* MÉTRICAS */
+  .metrica-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .metrica-card { padding: 12px; }
+  .metrica-valor { font-size: 1.25rem; }
+
+  /* GRÁFICAS */
+  .grafica-card { padding: 16px; }
+  .barra-h-label { width: 70px; font-size: 0.75rem; }
+
+  /* LOGIN */
+  .login-card { padding: 32px 24px; }
+
+  /* PROYECTOS */
+  .proyecto-card { padding: 16px; }
+  .proyecto-header { flex-direction: column; }
+
+  /* CONFIG */
+  .config-card { padding: 16px; }
+}
+
+/* Ocultar nav móvil en escritorio */
+.mobile-nav { display: none; }
