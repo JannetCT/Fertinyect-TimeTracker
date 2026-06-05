@@ -417,7 +417,7 @@ export default function MovilCampo() {
                 <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Fecha exacta</label>
                 <input
                   type="date"
-                  value={formNueva.fecha_exacta || hoy}
+                  value={formNueva.fecha_exacta}
                   onChange={e => setFormNueva({ ...formNueva, fecha_exacta: e.target.value })}
                   style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }}
                 />
