@@ -103,6 +103,8 @@ function Planner() {
   const [eventos, setEventos] = useState([])
   const [proyectos, setProyectos] = useState([])
   const [categoriasSoporte, setCategoriasSoporte] = useState([])
+  const [proyectosSoporte, setProyectosSoporte] = useState([])
+  const [subcarpetasSoporte, setSubcarpetasSoporte] = useState([])
   const [todasTareasProyecto, setTodasTareasProyecto] = useState([])
   const [todasTareasSoporte, setTodasTareasSoporte] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -132,21 +134,25 @@ function Planner() {
 
   async function cargarDatos() {
     try {
-      const [t, ts, tp, ev, p, cs] = await Promise.all([
+      const [t, ts, tp, ev, p, cs, ps, ss] = await Promise.all([
         leerHoja('tareas', accessToken),
         leerHoja('tareas_soporte', accessToken),
         leerHoja('tareas_planner', accessToken),
         leerHoja('eventos', accessToken),
         leerHoja('proyectos', accessToken),
-        leerHoja('categorias_soporte', accessToken)
+        leerHoja('categorias_soporte', accessToken),
+        leerHoja('proyectos_soporte', accessToken),
+        leerHoja('subcarpetas_soporte', accessToken),
       ])
-      const misId = usuario.id
-      setTareas(t.filter(t => t.asignados && t.asignados.split(',').includes(misId)))
-      setTareasSoporte(ts.filter(t => t.asignados && t.asignados.split(',').includes(misId)))
-      setTareasPlanner(tp.filter(t => t.usuario_id === misId))
+      const misId = String(usuario.id)
+      setTareas(t.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
+      setTareasSoporte(ts.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
+      setTareasPlanner(tp.filter(t => String(t.usuario_id) === misId))
       setEventos(ev.filter(e => e.usuario_id === misId))
       setProyectos(p)
       setCategoriasSoporte(cs)
+      setProyectosSoporte(ps)
+      setSubcarpetasSoporte(ss)
       setTodasTareasProyecto(t)
       setTodasTareasSoporte(ts)
     } catch (err) { console.error(err) }
@@ -322,6 +328,30 @@ function Planner() {
       dias.push({ fecha: getISODate(new Date(d)), mes: new Date(d).getMonth() === mes })
     }
     return dias
+  }
+
+  // Construir opciones jerárquicas para el selector de soporte
+  function opcionesSoporte() {
+    const opciones = []
+    categoriasSoporte.forEach(cat => {
+      opciones.push({ id: `cat_${cat.id}`, label: `🗂 ${cat.nombre}`, tipo: 'soporte_categoria', realId: cat.id })
+      proyectosSoporte.filter(p => p.categoria_id === cat.id).forEach(proy => {
+        opciones.push({ id: `proy_${proy.id}`, label: `  📁 ${proy.nombre}`, tipo: 'soporte_proyecto', realId: proy.id })
+        subcarpetasSoporte.filter(s => s.proyecto_soporte_id === proy.id).forEach(sub => {
+          opciones.push({ id: `sub_${sub.id}`, label: `    📂 ${sub.nombre}`, tipo: 'soporte_subcarpeta', realId: sub.id })
+          todasTareasSoporte.filter(t => t.subcarpeta_id === sub.id).forEach(tarea => {
+            opciones.push({ id: `tarea_${tarea.id}`, label: `      ✅ ${tarea.nombre}`, tipo: 'soporte', realId: tarea.id })
+          })
+        })
+        todasTareasSoporte.filter(t => t.proyecto_soporte_id === proy.id && !t.subcarpeta_id).forEach(tarea => {
+          opciones.push({ id: `tarea_${tarea.id}`, label: `    ✅ ${tarea.nombre}`, tipo: 'soporte', realId: tarea.id })
+        })
+      })
+      todasTareasSoporte.filter(t => t.categoria_id === cat.id && !t.proyecto_soporte_id).forEach(tarea => {
+        opciones.push({ id: `tarea_${tarea.id}`, label: `  ✅ ${tarea.nombre}`, tipo: 'soporte', realId: tarea.id })
+      })
+    })
+    return opciones
   }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando planner...</p></div>
@@ -549,15 +579,35 @@ function Planner() {
               </div>
               {formTarea.tipo === 'subtarea' && (
                 <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Ligar a:</label>
                   <select value={formTarea.tarea_padre_tipo} onChange={e => setFormTarea({...formTarea, tarea_padre_tipo: e.target.value, tarea_padre_id: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
-                    <option value="">Tipo de tarea padre...</option>
-                    <option value="proyecto">De Proyectos</option>
+                    <option value="">Selecciona tipo...</option>
+                    <option value="proyecto">De Proyectos I+D</option>
                     <option value="soporte">De Soporte</option>
                   </select>
-                  {formTarea.tarea_padre_tipo && (
+
+                  {/* SELECTOR PROYECTOS I+D */}
+                  {formTarea.tarea_padre_tipo === 'proyecto' && (
                     <select value={formTarea.tarea_padre_id} onChange={e => setFormTarea({...formTarea, tarea_padre_id: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
                       <option value="">Selecciona tarea padre...</option>
-                      {(formTarea.tarea_padre_tipo === 'proyecto' ? todasTareasProyecto : todasTareasSoporte).filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(String(usuario.id))).map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                      {todasTareasProyecto.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(String(usuario.id))).map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                    </select>
+                  )}
+
+                  {/* SELECTOR SOPORTE JERÁRQUICO */}
+                  {formTarea.tarea_padre_tipo === 'soporte' && (
+                    <select
+                      value={formTarea.tarea_padre_id}
+                      onChange={e => {
+                        const opcion = opcionesSoporte().find(o => o.id === e.target.value)
+                        setFormTarea({...formTarea, tarea_padre_id: opcion?.realId || '', tarea_padre_tipo: opcion?.tipo || 'soporte'})
+                      }}
+                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}
+                    >
+                      <option value="">Selecciona elemento de soporte...</option>
+                      {opcionesSoporte().map(op => (
+                        <option key={op.id} value={op.id}>{op.label}</option>
+                      ))}
                     </select>
                   )}
                 </div>
