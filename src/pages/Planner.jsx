@@ -464,6 +464,7 @@ function Planner() {
             <button onClick={() => detenerCronometro(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>✅ Completar</button>
           </div>
         )}
+        </div>
 
       {/* PESTAÑAS FILTRO */}
       <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #e5e7eb', marginBottom: '4px' }}>
