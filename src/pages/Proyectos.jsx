@@ -187,18 +187,19 @@ export default function Proyectos() {
     cargarDatos()
   }
 
-  async function guardarEditAccion() {
-    if (!editAccion) return
-    await actualizarFila('acciones', editAccion.id, [
-      editAccion.id, editAccion.estado_id, editAccion.proyecto_id,
-      editAccion.nombre, editAccion.descripcion, editAccion.fecha_creacion,
-      editAccion.fecha_inicio, editAccion.fecha_fin,
-      editAccion.fecha_inicio_original || editAccion.fecha_inicio,
-      editAccion.fecha_fin_original || editAccion.fecha_fin
-    ], accessToken)
-    setEditAccion(null)
-    cargarDatos()
-  }
+ async function guardarEditAccion() {
+  if (!editAccion) return
+  await actualizarFila('acciones', editAccion.id, [
+    editAccion.id, editAccion.estado_id, editAccion.proyecto_id,
+    editAccion.nombre, editAccion.descripcion, editAccion.fecha_creacion,
+    editAccion.fecha_inicio, editAccion.fecha_fin,
+    editAccion.fecha_inicio_original || editAccion.fecha_inicio,
+    editAccion.fecha_fin_original || editAccion.fecha_fin,
+    editAccion.estado || 'pendiente'
+  ], accessToken)
+  setEditAccion(null)
+  cargarDatos()
+}
 
   async function crearEnsayo() {
     if (!nuevoEnsayo.nombre || !modalEnsayo) return
@@ -214,19 +215,20 @@ export default function Proyectos() {
     cargarDatos()
   }
 
-  async function guardarEditEnsayo() {
-    if (!editEnsayo) return
-    await actualizarFila('ensayos', editEnsayo.id, [
-      editEnsayo.id, editEnsayo.accion_id, editEnsayo.proyecto_id,
-      editEnsayo.tipo, editEnsayo.nombre, editEnsayo.descripcion, editEnsayo.fecha_creacion,
-      editEnsayo.fecha_inicio, editEnsayo.fecha_fin,
-      editEnsayo.fecha_inicio_original || editEnsayo.fecha_inicio,
-      editEnsayo.fecha_fin_original || editEnsayo.fecha_fin
-    ], accessToken)
-    setVistaEnsayo(editEnsayo)
-    setEditEnsayo(null)
-    cargarDatos()
-  }
+ async function guardarEditEnsayo() {
+  if (!editEnsayo) return
+  await actualizarFila('ensayos', editEnsayo.id, [
+    editEnsayo.id, editEnsayo.accion_id, editEnsayo.proyecto_id,
+    editEnsayo.tipo, editEnsayo.nombre, editEnsayo.descripcion, editEnsayo.fecha_creacion,
+    editEnsayo.fecha_inicio, editEnsayo.fecha_fin,
+    editEnsayo.fecha_inicio_original || editEnsayo.fecha_inicio,
+    editEnsayo.fecha_fin_original || editEnsayo.fecha_fin,
+    editEnsayo.estado || 'pendiente'
+  ], accessToken)
+  setVistaEnsayo(editEnsayo)
+  setEditEnsayo(null)
+  cargarDatos()
+}
 
   async function crearTarea() {
     if (!nuevaTarea.nombre || !modalTarea) return
@@ -577,6 +579,14 @@ export default function Proyectos() {
                   <input type="date" value={editAccion.fecha_fin || ''} onChange={e => setEditAccion({...editAccion, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
               </div>
+              <div>
+  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
+  <select value={editAccion.estado || 'pendiente'} onChange={e => setEditAccion({...editAccion, estado: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+    <option value="pendiente">Pendiente</option>
+    <option value="en_curso">En curso</option>
+    <option value="completado">Completado</option>
+  </select>
+</div>
               {editAccion.fecha_inicio_original && (
                 <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
                   📌 Fechas originales: {editAccion.fecha_inicio_original} → {editAccion.fecha_fin_original || '?'}
@@ -628,6 +638,14 @@ export default function Proyectos() {
                   <input type="date" value={editEnsayo.fecha_fin || ''} onChange={e => setEditEnsayo({...editEnsayo, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
               </div>
+              <div>
+  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
+  <select value={editEnsayo.estado || 'pendiente'} onChange={e => setEditEnsayo({...editEnsayo, estado: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+    <option value="pendiente">Pendiente</option>
+    <option value="en_curso">En curso</option>
+    <option value="completado">Completado</option>
+  </select>
+</div>
               {editEnsayo.fecha_inicio_original && (
                 <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
                   📌 Fechas originales: {editEnsayo.fecha_inicio_original} → {editEnsayo.fecha_fin_original || '?'}
