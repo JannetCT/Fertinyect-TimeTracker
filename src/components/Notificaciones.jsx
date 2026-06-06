@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja } from '../services/googlesheets'
+import { leerHoja } from '../services/googleSheets'
 
 const HORA_VENCIMIENTO_HOY = 15 // 15:00 hora España
 
