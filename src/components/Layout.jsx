@@ -14,7 +14,7 @@ const NAV_ITEMS = [
 ]
 
 const NAV_ADMIN = { to: '/dashboard', icon: '🎯', label: 'Dashboard' }
-const NAV_CONFIG = { to: '/configuracion', icon: '⚙️', label: 'Config' }
+
 
 const MOBILE_NAV = [
   { to: '/planner', icon: '📅', label: 'Planner' },
@@ -55,9 +55,7 @@ function Layout({ usuario, children }) {
               {NAV_ADMIN.icon} {NAV_ADMIN.label}
             </NavLink>
           )}
-          <NavLink to={NAV_CONFIG.to} className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-            {NAV_CONFIG.icon} {NAV_CONFIG.label}
-          </NavLink>
+
         </nav>
         <div className="sidebar-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
