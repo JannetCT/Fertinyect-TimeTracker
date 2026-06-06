@@ -67,17 +67,46 @@ function EtiquetasBadge({ etiqueta }) {
 
 function BotonesPrioridad({ etiqueta, onChange }) {
   const lista = etiqueta ? etiqueta.split(',').filter(e => e.trim() !== '') : []
+  const predefinidas = Object.keys(PRIORIDADES)
+  const personalizadas = lista.filter(e => !predefinidas.includes(e.toLowerCase().trim()))
+  const [inputCustom, setInputCustom] = useState('')
+
   return (
-    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-      {Object.entries(PRIORIDADES).map(([key, val]) => {
-        const activa = lista.includes(key)
-        return (
-          <button key={key} onClick={(e) => { e.stopPropagation(); e.preventDefault(); onChange(toggleEtiqueta(etiqueta, key)) }}
-            style={{ padding: '6px 12px', borderRadius: '20px', border: '2px solid', borderColor: activa ? val.color : '#e5e7eb', background: activa ? val.bg : 'white', color: activa ? val.color : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
-            {val.emoji} {key.charAt(0).toUpperCase() + key.slice(1)}
-          </button>
-        )
-      })}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {Object.entries(PRIORIDADES).map(([key, val]) => {
+          const activa = lista.includes(key)
+          return (
+            <button key={key} onClick={(e) => { e.stopPropagation(); e.preventDefault(); onChange(toggleEtiqueta(etiqueta, key)) }}
+              style={{ padding: '6px 12px', borderRadius: '20px', border: '2px solid', borderColor: activa ? val.color : '#e5e7eb', background: activa ? val.bg : 'white', color: activa ? val.color : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+              {val.emoji} {key.charAt(0).toUpperCase() + key.slice(1)}
+            </button>
+          )
+        })}
+      </div>
+      {personalizadas.length > 0 && (
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {personalizadas.map((et, i) => (
+            <span key={i} onClick={() => onChange(toggleEtiqueta(etiqueta, et))}
+              style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: '#f3f4f6', color: '#6b7280', cursor: 'pointer', border: '1px solid #e5e7eb' }}>
+              🏷 {et} ✕
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <input
+          placeholder="Etiqueta personalizada..."
+          value={inputCustom}
+          onChange={e => setInputCustom(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && inputCustom.trim()) { onChange(toggleEtiqueta(etiqueta, inputCustom.trim())); setInputCustom('') }}}
+          style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px' }}
+        />
+        <button onClick={() => { if (inputCustom.trim()) { onChange(toggleEtiqueta(etiqueta, inputCustom.trim())); setInputCustom('') }}}
+          style={{ padding: '6px 12px', borderRadius: '8px', background: '#f3f4f6', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+          + Añadir
+        </button>
+      </div>
     </div>
   )
 }
@@ -118,6 +147,7 @@ function Planner() {
   const [todasTareasSoporte, setTodasTareasSoporte] = useState([])
   const [cargando, setCargando] = useState(true)
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
+  const [filtroEtiqueta, setFiltroEtiqueta] = useState('')
   const [modalEditarTarea, setModalEditarTarea] = useState(null)
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
   const [modalNuevoEvento, setModalNuevoEvento] = useState(false)
@@ -264,6 +294,7 @@ function Planner() {
     if (!formTarea.nombre) return
     const fechaExacta = formTarea.fecha_exacta && formTarea.fecha_exacta.trim() !== '' ? formTarea.fecha_exacta : ''
     const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
+    const misId = String(usuario.id)
     const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
     for (const uid of asignados) {
       const id = Date.now().toString() + uid
@@ -302,6 +333,7 @@ function Planner() {
   function tareasDeDia(fechaStr) {
     return todasLasTareas().filter(t => {
       if (t.estado === 'completada' && !mostrarCompletadas) return false
+      if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
       return t.fecha_exacta === fechaStr
     })
   }
@@ -309,6 +341,7 @@ function Planner() {
   function tareasBacklog() {
     return todasLasTareas().filter(t => {
       if (t.estado === 'completada' && !mostrarCompletadas) return false
+      if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
       return !t.fecha_exacta || t.fecha_exacta === ''
     })
   }
@@ -422,6 +455,16 @@ function Planner() {
             <button onClick={() => detenerCronometro(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>✅ Completar</button>
           </div>
         )}
+
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>Filtrar:</span>
+          {[{ key: '', label: 'Todas' }, ...Object.entries(PRIORIDADES).map(([k, v]) => ({ key: k, label: `${v.emoji} ${k.charAt(0).toUpperCase() + k.slice(1)}` }))].map(({ key, label }) => (
+            <button key={key} onClick={() => setFiltroEtiqueta(key)}
+              style={{ padding: '5px 12px', borderRadius: '20px', border: '1px solid', borderColor: filtroEtiqueta === key ? '#00953B' : '#e5e7eb', background: filtroEtiqueta === key ? '#f0fdf4' : 'white', color: filtroEtiqueta === key ? '#00953B' : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+              {label}
+            </button>
+          ))}
+        </div>
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button onClick={() => setMostrarCompletadas(prev => !prev)} style={{ background: mostrarCompletadas ? '#f0fdf4' : '#f3f4f6', color: mostrarCompletadas ? '#00953B' : '#6b7280', border: '1px solid ' + (mostrarCompletadas ? '#00953B' : '#e5e7eb'), borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
@@ -537,70 +580,69 @@ function Planner() {
         </>
       )}
 
-  {/* MODAL EDITAR TAREA */}
-{modalEditarTarea && (
-  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-    <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
-      <h2 style={{ marginBottom: '24px' }}>Editar tarea</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <input value={modalEditarTarea.nombre || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, nombre: e.target.value})}
-          style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-
-        {modalEditarTarea._tipo === 'planner' && (
-          <div>
-            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Enlazar a (opcional):</label>
-            <select value={modalEditarTarea._tipoLigar || ''}
-              onChange={e => setModalEditarTarea({...modalEditarTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionProyectoId: '', _opcionSoporteId: ''})}
-              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
-              <option value="">Sin enlazar</option>
-              <option value="proyecto">De Proyectos I+D</option>
-              <option value="soporte">De Soporte</option>
-            </select>
-            {modalEditarTarea._tipoLigar === 'proyecto' && (
-              <select value={modalEditarTarea._opcionProyectoId || ''}
-                onChange={e => {
-                  const opcion = opcionesProyecto().find(o => o.id === e.target.value)
-                  if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})
-                }}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                <option value="">Selecciona elemento...</option>
-                {opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
-              </select>
-            )}
-            {modalEditarTarea._tipoLigar === 'soporte' && (
-              <select value={modalEditarTarea._opcionSoporteId || ''}
-                onChange={e => {
-                  const opcion = opcionesSoporte().find(o => o.id === e.target.value)
-                  if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})
-                }}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                <option value="">Selecciona elemento...</option>
-                {opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
-              </select>
-            )}
+      {/* MODAL EDITAR TAREA */}
+      {modalEditarTarea && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 style={{ marginBottom: '24px' }}>Editar tarea</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input value={modalEditarTarea.nombre || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, nombre: e.target.value})}
+                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              {modalEditarTarea._tipo === 'planner' && (
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Enlazar a (opcional):</label>
+                  <select value={modalEditarTarea._tipoLigar || ''}
+                    onChange={e => setModalEditarTarea({...modalEditarTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionProyectoId: '', _opcionSoporteId: ''})}
+                    style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
+                    <option value="">Sin enlazar</option>
+                    <option value="proyecto">De Proyectos I+D</option>
+                    <option value="soporte">De Soporte</option>
+                  </select>
+                  {modalEditarTarea._tipoLigar === 'proyecto' && (
+                    <select value={modalEditarTarea._opcionProyectoId || ''}
+                      onChange={e => {
+                        const opcion = opcionesProyecto().find(o => o.id === e.target.value)
+                        if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})
+                      }}
+                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                      <option value="">Selecciona elemento...</option>
+                      {opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
+                    </select>
+                  )}
+                  {modalEditarTarea._tipoLigar === 'soporte' && (
+                    <select value={modalEditarTarea._opcionSoporteId || ''}
+                      onChange={e => {
+                        const opcion = opcionesSoporte().find(o => o.id === e.target.value)
+                        if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})
+                      }}
+                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                      <option value="">Selecciona elemento...</option>
+                      {opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
+              <InputFechaPlanner label="Fecha exacta (opcional):" value={modalEditarTarea.fecha_exacta}
+                onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_exacta: val})} />
+              <InputFechaPlanner label="Fecha límite (opcional):" value={modalEditarTarea.fecha_limite}
+                onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_limite: val})} />
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
+                <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button onClick={() => eliminarTarea(modalEditarTarea)}
+                style={{ padding: '10px 14px', borderRadius: '8px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>🗑 Eliminar</button>
+              <button onClick={() => setModalEditarTarea(null)}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={guardarEditarTarea}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
+            </div>
           </div>
-        )}
-
-        <InputFechaPlanner label="Fecha exacta (opcional):" value={modalEditarTarea.fecha_exacta}
-          onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_exacta: val})} />
-        <InputFechaPlanner label="Fecha límite (opcional):" value={modalEditarTarea.fecha_limite}
-          onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_limite: val})} />
-        <div>
-          <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
-          <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
         </div>
-      </div>
-      <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-        <button onClick={() => eliminarTarea(modalEditarTarea)}
-          style={{ padding: '10px 14px', borderRadius: '8px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>🗑 Eliminar</button>
-        <button onClick={() => setModalEditarTarea(null)}
-          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-        <button onClick={guardarEditarTarea}
-          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
+
       {/* MODAL EDITAR EVENTO */}
       {modalEditarEvento && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
@@ -646,8 +688,6 @@ function Planner() {
             <h2 style={{ marginBottom: '24px' }}>Nueva tarea</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre de la tarea *" value={formTarea.nombre} onChange={e => setFormTarea({...formTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-
-              {/* ASIGNAR A */}
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Asignar a:</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -670,8 +710,6 @@ function Planner() {
                   })}
                 </div>
               </div>
-
-              {/* TIPO */}
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Tipo:</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -679,57 +717,33 @@ function Planner() {
                   <button onClick={() => setFormTarea({...formTarea, tipo: 'subtarea'})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '2px solid ' + (formTarea.tipo === 'subtarea' ? '#00953B' : '#e5e7eb'), background: formTarea.tipo === 'subtarea' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: formTarea.tipo === 'subtarea' ? '#00953B' : '#373A36' }}>🔗 Subtarea</button>
                 </div>
               </div>
-
               {formTarea.tipo === 'subtarea' && (
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Ligar a:</label>
-                  <select
-                    value={formTarea._tipoLigar || ''}
-                    onChange={e => setFormTarea({...formTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: ''})}
+                  <select value={formTarea._tipoLigar || ''} onChange={e => setFormTarea({...formTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: ''})}
                     style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
                     <option value="">Selecciona tipo...</option>
                     <option value="proyecto">De Proyectos I+D</option>
                     <option value="soporte">De Soporte</option>
                   </select>
-
-                  {/* SELECTOR PROYECTOS JERÁRQUICO */}
                   {formTarea._tipoLigar === 'proyecto' && (
-                    <select
-                      value={formTarea._opcionProyectoId || ''}
-                      onChange={e => {
-                        const opcion = opcionesProyecto().find(o => o.id === e.target.value)
-                        if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})
-                      }}
+                    <select value={formTarea._opcionProyectoId || ''} onChange={e => { const opcion = opcionesProyecto().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id}) }}
                       style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
                       <option value="">Selecciona elemento de proyecto...</option>
-                      {opcionesProyecto().map(op => (
-                        <option key={op.id} value={op.id}>{op.label}</option>
-                      ))}
+                      {opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
                     </select>
                   )}
-
-                  {/* SELECTOR SOPORTE JERÁRQUICO */}
                   {formTarea._tipoLigar === 'soporte' && (
-                    <select
-                      value={formTarea._opcionSoporteId || ''}
-                      onChange={e => {
-                        const opcion = opcionesSoporte().find(o => o.id === e.target.value)
-                        if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})
-                      }}
+                    <select value={formTarea._opcionSoporteId || ''} onChange={e => { const opcion = opcionesSoporte().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id}) }}
                       style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
                       <option value="">Selecciona elemento de soporte...</option>
-                      {opcionesSoporte().map(op => (
-                        <option key={op.id} value={op.id}>{op.label}</option>
-                      ))}
+                      {opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
                     </select>
                   )}
                 </div>
               )}
-
-              <InputFechaPlanner label="Fecha exacta (opcional):" value={formTarea.fecha_exacta}
-                onChange={val => setFormTarea({...formTarea, fecha_exacta: val})} />
-              <InputFechaPlanner label="Fecha límite (opcional):" value={formTarea.fecha_limite}
-                onChange={val => setFormTarea({...formTarea, fecha_limite: val})} />
+              <InputFechaPlanner label="Fecha exacta (opcional):" value={formTarea.fecha_exacta} onChange={val => setFormTarea({...formTarea, fecha_exacta: val})} />
+              <InputFechaPlanner label="Fecha límite (opcional):" value={formTarea.fecha_limite} onChange={val => setFormTarea({...formTarea, fecha_limite: val})} />
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
                 <BotonesPrioridad etiqueta={formTarea.etiqueta} onChange={val => setFormTarea({...formTarea, etiqueta: val})} />
