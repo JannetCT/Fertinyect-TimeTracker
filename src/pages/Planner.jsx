@@ -468,7 +468,7 @@ function Planner() {
         </div>
 
       {/* PESTAÑAS FILTRO */}
-      <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #e5e7eb', marginBottom: '4px' }}>
+      <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #e5e7eb', marginBottom: '4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
         {[
           { key: '', label: 'Todas' },
           { key: 'urgente', label: '🔴 Urgente' },
