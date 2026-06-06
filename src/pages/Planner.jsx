@@ -456,23 +456,56 @@ function Planner() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>Filtrar:</span>
-          {[{ key: '', label: 'Todas' }, ...Object.entries(PRIORIDADES).map(([k, v]) => ({ key: k, label: `${v.emoji} ${k.charAt(0).toUpperCase() + k.slice(1)}` }))].map(({ key, label }) => (
-            <button key={key} onClick={() => setFiltroEtiqueta(key)}
-              style={{ padding: '5px 12px', borderRadius: '20px', border: '1px solid', borderColor: filtroEtiqueta === key ? '#00953B' : '#e5e7eb', background: filtroEtiqueta === key ? '#f0fdf4' : 'white', color: filtroEtiqueta === key ? '#00953B' : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+ <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button onClick={() => setMostrarCompletadas(prev => !prev)} style={{ background: mostrarCompletadas ? '#f0fdf4' : '#f3f4f6', color: mostrarCompletadas ? '#00953B' : '#6b7280', border: '1px solid ' + (mostrarCompletadas ? '#00953B' : '#e5e7eb'), borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
             {mostrarCompletadas ? '✅ Ocultar completadas' : '☑️ Ver completadas'}
           </button>
           <button onClick={() => setModalNuevoEvento(true)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Evento</button>
           <button onClick={() => setModalNuevaTarea(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Tarea</button>
         </div>
+      </div>
+
+      {/* PESTAÑAS FILTRO */}
+      <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #e5e7eb', marginBottom: '4px' }}>
+        {[
+          { key: '', label: 'Todas' },
+          { key: 'urgente', label: '🔴 Urgente' },
+          { key: 'importante', label: '🟡 Importante' },
+          { key: 'delegar', label: '🔵 Delegar' },
+        ].map(({ key, label }) => {
+          const count = key === ''
+            ? todasLasTareas().filter(t => t.estado !== 'completada').length
+            : todasLasTareas().filter(t => t.estado !== 'completada' && t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(key)).length
+          const activa = filtroEtiqueta === key
+          return (
+            <button key={key} onClick={() => setFiltroEtiqueta(key)} style={{
+              padding: '8px 16px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activa ? '2px solid #00953B' : '2px solid transparent',
+              color: activa ? '#00953B' : '#6b7280',
+              fontWeight: activa ? '600' : '400',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginBottom: '-1px',
+            }}>
+              {label}
+              <span style={{
+                background: activa ? '#00953B' : '#f3f4f6',
+                color: activa ? 'white' : '#6b7280',
+                borderRadius: '20px',
+                padding: '1px 7px',
+                fontSize: '11px',
+                fontWeight: '600',
+              }}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {vista === 'semana' && (
