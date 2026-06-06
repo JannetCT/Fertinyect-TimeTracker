@@ -89,8 +89,8 @@ export default function Proyectos() {
   const [confirmEliminar, setConfirmEliminar] = useState(null)
 
   const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: '' })
-  const [nuevaAccion, setNuevaAccion] = useState({ nombre: '', descripcion: '' })
-  const [nuevoEnsayo, setNuevoEnsayo] = useState({ nombre: '', tipo: 'ensayo', descripcion: '' })
+  const [nuevaAccion, setNuevaAccion] = useState({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
+  const [nuevoEnsayo, setNuevoEnsayo] = useState({ nombre: '', tipo: 'ensayo', descripcion: '', fecha_inicio: '', fecha_fin: '' })
   const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
   const [nuevoEstado, setNuevoEstado] = useState({ nombre: '' })
 
@@ -152,15 +152,37 @@ export default function Proyectos() {
   async function crearAccion() {
     if (!nuevaAccion.nombre || !modalAccion) return
     const id = Date.now().toString()
-    await escribirFila('acciones', [id, modalAccion.estado_id, modalAccion.proyecto_id, nuevaAccion.nombre, nuevaAccion.descripcion, new Date().toISOString()], accessToken)
+    await escribirFila('acciones', [
+      id,
+      modalAccion.estado_id,
+      modalAccion.proyecto_id,
+      nuevaAccion.nombre,
+      nuevaAccion.descripcion,
+      new Date().toISOString(),
+      nuevaAccion.fecha_inicio,
+      nuevaAccion.fecha_fin,
+      nuevaAccion.fecha_inicio,  // fecha_inicio_original
+      nuevaAccion.fecha_fin       // fecha_fin_original
+    ], accessToken)
     setModalAccion(null)
-    setNuevaAccion({ nombre: '', descripcion: '' })
+    setNuevaAccion({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
     cargarDatos()
   }
 
   async function guardarEditAccion() {
     if (!editAccion) return
-    await actualizarFila('acciones', editAccion.id, [editAccion.id, editAccion.estado_id, editAccion.proyecto_id, editAccion.nombre, editAccion.descripcion, editAccion.fecha_creacion], accessToken)
+    await actualizarFila('acciones', editAccion.id, [
+      editAccion.id,
+      editAccion.estado_id,
+      editAccion.proyecto_id,
+      editAccion.nombre,
+      editAccion.descripcion,
+      editAccion.fecha_creacion,
+      editAccion.fecha_inicio,
+      editAccion.fecha_fin,
+      editAccion.fecha_inicio_original || editAccion.fecha_inicio,  // preservar original
+      editAccion.fecha_fin_original || editAccion.fecha_fin          // preservar original
+    ], accessToken)
     setEditAccion(null)
     cargarDatos()
   }
@@ -168,15 +190,39 @@ export default function Proyectos() {
   async function crearEnsayo() {
     if (!nuevoEnsayo.nombre || !modalEnsayo) return
     const id = Date.now().toString()
-    await escribirFila('ensayos', [id, modalEnsayo.accion_id, modalEnsayo.proyecto_id, nuevoEnsayo.tipo, nuevoEnsayo.nombre, nuevoEnsayo.descripcion, new Date().toISOString()], accessToken)
+    await escribirFila('ensayos', [
+      id,
+      modalEnsayo.accion_id,
+      modalEnsayo.proyecto_id,
+      nuevoEnsayo.tipo,
+      nuevoEnsayo.nombre,
+      nuevoEnsayo.descripcion,
+      new Date().toISOString(),
+      nuevoEnsayo.fecha_inicio,
+      nuevoEnsayo.fecha_fin,
+      nuevoEnsayo.fecha_inicio,  // fecha_inicio_original
+      nuevoEnsayo.fecha_fin       // fecha_fin_original
+    ], accessToken)
     setModalEnsayo(null)
-    setNuevoEnsayo({ nombre: '', tipo: 'ensayo', descripcion: '' })
+    setNuevoEnsayo({ nombre: '', tipo: 'ensayo', descripcion: '', fecha_inicio: '', fecha_fin: '' })
     cargarDatos()
   }
 
   async function guardarEditEnsayo() {
     if (!editEnsayo) return
-    await actualizarFila('ensayos', editEnsayo.id, [editEnsayo.id, editEnsayo.accion_id, editEnsayo.proyecto_id, editEnsayo.tipo, editEnsayo.nombre, editEnsayo.descripcion, editEnsayo.fecha_creacion], accessToken)
+    await actualizarFila('ensayos', editEnsayo.id, [
+      editEnsayo.id,
+      editEnsayo.accion_id,
+      editEnsayo.proyecto_id,
+      editEnsayo.tipo,
+      editEnsayo.nombre,
+      editEnsayo.descripcion,
+      editEnsayo.fecha_creacion,
+      editEnsayo.fecha_inicio,
+      editEnsayo.fecha_fin,
+      editEnsayo.fecha_inicio_original || editEnsayo.fecha_inicio,  // preservar original
+      editEnsayo.fecha_fin_original || editEnsayo.fecha_fin          // preservar original
+    ], accessToken)
     setVistaEnsayo(editEnsayo)
     setEditEnsayo(null)
     cargarDatos()
@@ -187,7 +233,21 @@ export default function Proyectos() {
     const id = Date.now().toString()
     const asignadosStr = nuevaTarea.asignados.join(',')
     const diaRec = [nuevaTarea.dia_recomendado, nuevaTarea.fecha_recomendada].filter(Boolean).join(' ')
-    await escribirFila('tareas', [id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', diaRec, nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString()], accessToken)
+    await escribirFila('tareas', [
+      id,
+      modalTarea.ensayo_id,
+      modalTarea.accion_id,
+      modalTarea.proyecto_id,
+      nuevaTarea.nombre,
+      asignadosStr,
+      'por_asignar',
+      diaRec,
+      nuevaTarea.fecha_limite,
+      'pendiente',
+      new Date().toISOString(),
+      '',                          // etiqueta
+      nuevaTarea.fecha_limite      // fecha_limite_original
+    ], accessToken)
     setModalTarea(null)
     setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
     cargarDatos()
@@ -197,23 +257,39 @@ export default function Proyectos() {
     if (!editTarea) return
     const asignadosStr = Array.isArray(editTarea.asignados) ? editTarea.asignados.join(',') : editTarea.asignados
     const diaRec = [editTarea.dia_recomendado, editTarea.fecha_recomendada].filter(Boolean).join(' ')
-    await actualizarFila('tareas', editTarea.id, [editTarea.id, editTarea.ensayo_id, editTarea.accion_id, editTarea.proyecto_id, editTarea.nombre, asignadosStr, editTarea.dia_semana, diaRec, editTarea.fecha_limite, editTarea.estado, editTarea.fecha_creacion], accessToken)
+    await actualizarFila('tareas', editTarea.id, [
+      editTarea.id,
+      editTarea.ensayo_id,
+      editTarea.accion_id,
+      editTarea.proyecto_id,
+      editTarea.nombre,
+      asignadosStr,
+      editTarea.dia_semana,
+      diaRec,
+      editTarea.fecha_limite,
+      editTarea.estado,
+      editTarea.fecha_creacion,
+      editTarea.etiqueta || '',
+      editTarea.fecha_limite_original || editTarea.fecha_limite  // preservar original
+    ], accessToken)
     setEditTarea(null)
     cargarDatos()
   }
-async function eliminarYReordenarEstados(estadoId, proyectoId) {
-  const todosEstados = await leerHoja('estados_proyecto', accessToken)
-  const estadosRestantes = todosEstados
-    .filter(e => e.proyecto_id === proyectoId && e.id !== estadoId)
-    .sort((a, b) => Number(a.orden) - Number(b.orden))
-  await marcarEliminado('estados_proyecto', estadoId, accessToken)
-  for (let i = 0; i < estadosRestantes.length; i++) {
-    await actualizarFila('estados_proyecto', estadosRestantes[i].id, [
-      estadosRestantes[i].id, estadosRestantes[i].proyecto_id,
-      estadosRestantes[i].nombre, i + 1, estadosRestantes[i].activo
-    ], accessToken)
+
+  async function eliminarYReordenarEstados(estadoId, proyectoId) {
+    const todosEstados = await leerHoja('estados_proyecto', accessToken)
+    const estadosRestantes = todosEstados
+      .filter(e => e.proyecto_id === proyectoId && e.id !== estadoId)
+      .sort((a, b) => Number(a.orden) - Number(b.orden))
+    await marcarEliminado('estados_proyecto', estadoId, accessToken)
+    for (let i = 0; i < estadosRestantes.length; i++) {
+      await actualizarFila('estados_proyecto', estadosRestantes[i].id, [
+        estadosRestantes[i].id, estadosRestantes[i].proyecto_id,
+        estadosRestantes[i].nombre, i + 1, estadosRestantes[i].activo
+      ], accessToken)
+    }
   }
-}
+
   async function ejecutarEliminar() {
     if (!confirmEliminar) return
     const { tipo, item } = confirmEliminar
@@ -406,6 +482,14 @@ async function eliminarYReordenarEstados(estadoId, proyectoId) {
                       <div>
                         <p style={{ margin: 0, fontWeight: '600', fontSize: '14px' }}>{accion.nombre}</p>
                         {accion.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{accion.descripcion}</p>}
+                        {(accion.fecha_inicio || accion.fecha_fin) && (
+                          <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6b7280' }}>
+                            📅 {accion.fecha_inicio || '?'} → {accion.fecha_fin || '?'}
+                            {accion.fecha_fin && new Date(accion.fecha_fin) < new Date() && accion.fecha_fin !== accion.fecha_fin_original &&
+                              <span style={{ color: '#dc2626', marginLeft: '6px' }}>⚠️ Extendida</span>
+                            }
+                          </p>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         <BtnAccion tipo="editar" onClick={() => setEditAccion({...accion})}>✏️</BtnAccion>
@@ -419,6 +503,7 @@ async function eliminarYReordenarEstados(estadoId, proyectoId) {
                           <div onClick={() => setVistaEnsayo(ensayo)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1 }} onMouseOver={e => e.currentTarget.style.opacity = '0.7'} onMouseOut={e => e.currentTarget.style.opacity = '1'}>
                             <span style={{ background: ensayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7', color: ensayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: '600' }}>{ensayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}</span>
                             <span style={{ fontSize: '13px' }}>{ensayo.nombre}</span>
+                            {(ensayo.fecha_inicio || ensayo.fecha_fin) && <span style={{ fontSize: '11px', color: '#6b7280' }}>📅 {ensayo.fecha_inicio || '?'} → {ensayo.fecha_fin || '?'}</span>}
                           </div>
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                             <span style={{ fontSize: '12px', color: '#888' }}>{tareasDeEnsayo(ensayo.id).length} tareas</span>
@@ -478,6 +563,16 @@ async function eliminarYReordenarEstados(estadoId, proyectoId) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre de la acción *" value={nuevaAccion.nombre} onChange={e => setNuevaAccion({...nuevaAccion, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
               <textarea placeholder="Descripción (opcional)" value={nuevaAccion.descripcion} onChange={e => setNuevaAccion({...nuevaAccion, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio (opcional)</label>
+                  <input type="date" value={nuevaAccion.fecha_inicio} onChange={e => setNuevaAccion({...nuevaAccion, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
+                  <input type="date" value={nuevaAccion.fecha_fin} onChange={e => setNuevaAccion({...nuevaAccion, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+              </div>
             </div>
           </Modal>
         )}
@@ -487,6 +582,21 @@ async function eliminarYReordenarEstados(estadoId, proyectoId) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre *" value={editAccion.nombre} onChange={e => setEditAccion({...editAccion, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
               <textarea placeholder="Descripción" value={editAccion.descripcion || ''} onChange={e => setEditAccion({...editAccion, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
+                  <input type="date" value={editAccion.fecha_inicio || ''} onChange={e => setEditAccion({...editAccion, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
+                  <input type="date" value={editAccion.fecha_fin || ''} onChange={e => setEditAccion({...editAccion, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+              </div>
+              {editAccion.fecha_inicio_original && (
+                <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
+                  📌 Fechas originales: {editAccion.fecha_inicio_original} → {editAccion.fecha_fin_original || '?'}
+                </div>
+              )}
             </div>
           </Modal>
         )}
@@ -500,6 +610,16 @@ async function eliminarYReordenarEstados(estadoId, proyectoId) {
               </select>
               <input placeholder="Nombre *" value={nuevoEnsayo.nombre} onChange={e => setNuevoEnsayo({...nuevoEnsayo, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
               <textarea placeholder="Descripción (opcional)" value={nuevoEnsayo.descripcion} onChange={e => setNuevoEnsayo({...nuevoEnsayo, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio (opcional)</label>
+                  <input type="date" value={nuevoEnsayo.fecha_inicio} onChange={e => setNuevoEnsayo({...nuevoEnsayo, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
+                  <input type="date" value={nuevoEnsayo.fecha_fin} onChange={e => setNuevoEnsayo({...nuevoEnsayo, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+              </div>
             </div>
           </Modal>
         )}
@@ -513,6 +633,21 @@ async function eliminarYReordenarEstados(estadoId, proyectoId) {
               </select>
               <input placeholder="Nombre *" value={editEnsayo.nombre} onChange={e => setEditEnsayo({...editEnsayo, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
               <textarea placeholder="Descripción" value={editEnsayo.descripcion || ''} onChange={e => setEditEnsayo({...editEnsayo, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
+                  <input type="date" value={editEnsayo.fecha_inicio || ''} onChange={e => setEditEnsayo({...editEnsayo, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
+                  <input type="date" value={editEnsayo.fecha_fin || ''} onChange={e => setEditEnsayo({...editEnsayo, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+              </div>
+              {editEnsayo.fecha_inicio_original && (
+                <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
+                  📌 Fechas originales: {editEnsayo.fecha_inicio_original} → {editEnsayo.fecha_fin_original || '?'}
+                </div>
+              )}
             </div>
           </Modal>
         )}
