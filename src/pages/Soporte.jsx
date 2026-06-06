@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
@@ -63,6 +64,8 @@ function Breadcrumb({ items }) {
 
 export default function Soporte() {
   const { accessToken } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const [categorias, setCategorias] = useState([])
   const [proyectosSoporte, setProyectosSoporte] = useState([])
   const [subcarpetas, setSubcarpetas] = useState([])
@@ -86,6 +89,40 @@ export default function Soporte() {
   const [formTarea, setFormTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
+
+  // Navegación desde campanita
+  useEffect(() => {
+    if (cargando) return
+    const subcarpetaId = searchParams.get('subcarpeta')
+    const proyectoId = searchParams.get('proyecto')
+    const categoriaId = searchParams.get('categoria')
+
+    if (subcarpetaId) {
+      const sub = subcarpetas.find(s => s.id === subcarpetaId)
+      if (sub) {
+        const proy = proyectosSoporte.find(p => p.id === sub.proyecto_soporte_id)
+        if (proy) {
+          const cat = categorias.find(c => c.id === proy.categoria_id)
+          if (cat) setVistaCategoria(cat)
+          setVistaProyecto(proy)
+        }
+        setVistaSubcarpeta(sub)
+      }
+      setSearchParams({})
+    } else if (proyectoId) {
+      const proy = proyectosSoporte.find(p => p.id === proyectoId)
+      if (proy) {
+        const cat = categorias.find(c => c.id === proy.categoria_id)
+        if (cat) setVistaCategoria(cat)
+        setVistaProyecto(proy)
+      }
+      setSearchParams({})
+    } else if (categoriaId) {
+      const cat = categorias.find(c => c.id === categoriaId)
+      if (cat) setVistaCategoria(cat)
+      setSearchParams({})
+    }
+  }, [cargando, searchParams])
 
   async function cargarDatos() {
     try {
@@ -143,8 +180,6 @@ export default function Soporte() {
 
   function proyectosDeCategoria(catId) { return proyectosSoporte.filter(p => p.categoria_id === catId) }
   function subcarpetasDeProyecto(pId) { return subcarpetas.filter(s => s.proyecto_soporte_id === pId) }
-  function tareasDeNivel(campo, id) { return tareas.filter(t => t[campo] === id) }
-
   const tareasDirectasCategoria = (catId) => tareas.filter(t => t.categoria_id === catId && !t.proyecto_soporte_id)
   const tareasDirectasProyecto = (pId) => tareas.filter(t => t.proyecto_soporte_id === pId && !t.subcarpeta_id)
   const tareasDirectasSubcarpeta = (sId) => tareas.filter(t => t.subcarpeta_id === sId)
@@ -179,7 +214,7 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
           }} />}
-        {editItem && editItem._tipo !== 'subcarpeta' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} form={form} setForm={setForm} usuarios={usuarios} guardarEdit={guardarEdit} />}
+        {editItem && editItem._tipo !== 'subcarpeta' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
         {editItem && editItem._tipo === 'subcarpeta' && <Modal titulo="Editar subcarpeta" onClose={() => setEditItem(null)} onSave={() => guardarEdit('subcarpetas_soporte', [editItem.id, editItem.proyecto_soporte_id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
@@ -208,7 +243,6 @@ export default function Soporte() {
             <button onClick={() => setModalTarea({ proyecto_soporte_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id })} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
           </div>
         </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {subcarpetasAqui.map(sub => (
             <div key={sub.id} onClick={() => setVistaSubcarpeta(sub)} style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #3b82f6', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -232,7 +266,6 @@ export default function Soporte() {
           )}
           {subcarpetasAqui.length === 0 && tareasDirectas.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}><p>Sin contenido aún.</p></div>}
         </div>
-
         {modalSubcarpeta && <Modal titulo="Nueva subcarpeta" onClose={() => setModalSubcarpeta(null)} onSave={() => { const id = Date.now().toString(); crear('subcarpetas_soporte', [id, modalSubcarpeta.proyecto_soporte_id, modalSubcarpeta.categoria_id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
         {modalTarea && <ModalTarea titulo="Nueva tarea directa" contexto={vistaProyecto.nombre} formTarea={formTarea} setFormTarea={setFormTarea} usuarios={usuarios}
           onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' }) }}
@@ -241,7 +274,7 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
           }} />}
-        {editItem && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} form={form} setForm={setForm} usuarios={usuarios} guardarEdit={guardarEdit} />}
+        {editItem && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
@@ -265,7 +298,6 @@ export default function Soporte() {
             <button onClick={() => setModalTarea({ categoria_id: vistaCategoria.id })} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
           </div>
         </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {proyectosAqui.map(proy => (
             <div key={proy.id} onClick={() => setVistaProyecto(proy)} style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #3b82f6', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -286,7 +318,6 @@ export default function Soporte() {
           )}
           {proyectosAqui.length === 0 && tareasDirectas.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}><p>Sin contenido aún.</p></div>}
         </div>
-
         {modalProyecto && <Modal titulo="Nuevo proyecto de soporte" onClose={() => setModalProyecto(null)} onSave={() => { const id = Date.now().toString(); crear('proyectos_soporte', [id, modalProyecto.categoria_id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
         {modalTarea && <ModalTarea titulo="Nueva tarea directa" contexto={vistaCategoria.nombre} formTarea={formTarea} setFormTarea={setFormTarea} usuarios={usuarios}
           onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' }) }}
@@ -295,7 +326,7 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_soporte', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
           }} />}
-        {editItem && <Modal titulo="Editar categoría" onClose={() => setEditItem(null)} onSave={() => guardarEdit('categorias_soporte', [editItem.id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
+        {editItem && editItem._tipo === 'categoria' && <Modal titulo="Editar categoría" onClose={() => setEditItem(null)} onSave={() => guardarEdit('categorias_soporte', [editItem.id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
@@ -375,9 +406,7 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
   )
 }
 
-function ModalEditTarea({ editItem, setEditItem, form, setForm, usuarios, guardarEdit }) {
-  const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
-  const asignados = Array.isArray(editItem.asignados) ? editItem.asignados : (editItem.asignados ? editItem.asignados.split(',').filter(Boolean) : [])
+function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>

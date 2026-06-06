@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
 
 const FASES_DEFAULT = [
@@ -65,6 +66,8 @@ function BtnAccion({ onClick, tipo, children }) {
 
 export default function Proyectos() {
   const { accessToken } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const [proyectos, setProyectos] = useState([])
   const [estados, setEstados] = useState([])
   const [acciones, setAcciones] = useState([])
@@ -95,6 +98,27 @@ export default function Proyectos() {
   const [nuevoEstado, setNuevoEstado] = useState({ nombre: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
+
+  // Navegación desde campanita — se ejecuta cuando los datos ya están cargados
+  useEffect(() => {
+    if (cargando) return
+    const ensayoId = searchParams.get('ensayo')
+    const proyectoId = searchParams.get('proyecto')
+
+    if (ensayoId) {
+      const ensayo = ensayos.find(e => e.id === ensayoId)
+      if (ensayo) {
+        const proyecto = proyectos.find(p => p.id === ensayo.proyecto_id)
+        if (proyecto) setVistaProyecto(proyecto)
+        setVistaEnsayo(ensayo)
+      }
+      setSearchParams({})
+    } else if (proyectoId) {
+      const proyecto = proyectos.find(p => p.id === proyectoId)
+      if (proyecto) setVistaProyecto(proyecto)
+      setSearchParams({})
+    }
+  }, [cargando, searchParams])
 
   async function cargarDatos() {
     try {
@@ -153,16 +177,10 @@ export default function Proyectos() {
     if (!nuevaAccion.nombre || !modalAccion) return
     const id = Date.now().toString()
     await escribirFila('acciones', [
-      id,
-      modalAccion.estado_id,
-      modalAccion.proyecto_id,
-      nuevaAccion.nombre,
-      nuevaAccion.descripcion,
-      new Date().toISOString(),
-      nuevaAccion.fecha_inicio,
-      nuevaAccion.fecha_fin,
-      nuevaAccion.fecha_inicio,  // fecha_inicio_original
-      nuevaAccion.fecha_fin       // fecha_fin_original
+      id, modalAccion.estado_id, modalAccion.proyecto_id,
+      nuevaAccion.nombre, nuevaAccion.descripcion, new Date().toISOString(),
+      nuevaAccion.fecha_inicio, nuevaAccion.fecha_fin,
+      nuevaAccion.fecha_inicio, nuevaAccion.fecha_fin
     ], accessToken)
     setModalAccion(null)
     setNuevaAccion({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
@@ -172,16 +190,11 @@ export default function Proyectos() {
   async function guardarEditAccion() {
     if (!editAccion) return
     await actualizarFila('acciones', editAccion.id, [
-      editAccion.id,
-      editAccion.estado_id,
-      editAccion.proyecto_id,
-      editAccion.nombre,
-      editAccion.descripcion,
-      editAccion.fecha_creacion,
-      editAccion.fecha_inicio,
-      editAccion.fecha_fin,
-      editAccion.fecha_inicio_original || editAccion.fecha_inicio,  // preservar original
-      editAccion.fecha_fin_original || editAccion.fecha_fin          // preservar original
+      editAccion.id, editAccion.estado_id, editAccion.proyecto_id,
+      editAccion.nombre, editAccion.descripcion, editAccion.fecha_creacion,
+      editAccion.fecha_inicio, editAccion.fecha_fin,
+      editAccion.fecha_inicio_original || editAccion.fecha_inicio,
+      editAccion.fecha_fin_original || editAccion.fecha_fin
     ], accessToken)
     setEditAccion(null)
     cargarDatos()
@@ -191,17 +204,10 @@ export default function Proyectos() {
     if (!nuevoEnsayo.nombre || !modalEnsayo) return
     const id = Date.now().toString()
     await escribirFila('ensayos', [
-      id,
-      modalEnsayo.accion_id,
-      modalEnsayo.proyecto_id,
-      nuevoEnsayo.tipo,
-      nuevoEnsayo.nombre,
-      nuevoEnsayo.descripcion,
-      new Date().toISOString(),
-      nuevoEnsayo.fecha_inicio,
-      nuevoEnsayo.fecha_fin,
-      nuevoEnsayo.fecha_inicio,  // fecha_inicio_original
-      nuevoEnsayo.fecha_fin       // fecha_fin_original
+      id, modalEnsayo.accion_id, modalEnsayo.proyecto_id,
+      nuevoEnsayo.tipo, nuevoEnsayo.nombre, nuevoEnsayo.descripcion, new Date().toISOString(),
+      nuevoEnsayo.fecha_inicio, nuevoEnsayo.fecha_fin,
+      nuevoEnsayo.fecha_inicio, nuevoEnsayo.fecha_fin
     ], accessToken)
     setModalEnsayo(null)
     setNuevoEnsayo({ nombre: '', tipo: 'ensayo', descripcion: '', fecha_inicio: '', fecha_fin: '' })
@@ -211,17 +217,11 @@ export default function Proyectos() {
   async function guardarEditEnsayo() {
     if (!editEnsayo) return
     await actualizarFila('ensayos', editEnsayo.id, [
-      editEnsayo.id,
-      editEnsayo.accion_id,
-      editEnsayo.proyecto_id,
-      editEnsayo.tipo,
-      editEnsayo.nombre,
-      editEnsayo.descripcion,
-      editEnsayo.fecha_creacion,
-      editEnsayo.fecha_inicio,
-      editEnsayo.fecha_fin,
-      editEnsayo.fecha_inicio_original || editEnsayo.fecha_inicio,  // preservar original
-      editEnsayo.fecha_fin_original || editEnsayo.fecha_fin          // preservar original
+      editEnsayo.id, editEnsayo.accion_id, editEnsayo.proyecto_id,
+      editEnsayo.tipo, editEnsayo.nombre, editEnsayo.descripcion, editEnsayo.fecha_creacion,
+      editEnsayo.fecha_inicio, editEnsayo.fecha_fin,
+      editEnsayo.fecha_inicio_original || editEnsayo.fecha_inicio,
+      editEnsayo.fecha_fin_original || editEnsayo.fecha_fin
     ], accessToken)
     setVistaEnsayo(editEnsayo)
     setEditEnsayo(null)
@@ -234,19 +234,10 @@ export default function Proyectos() {
     const asignadosStr = nuevaTarea.asignados.join(',')
     const diaRec = [nuevaTarea.dia_recomendado, nuevaTarea.fecha_recomendada].filter(Boolean).join(' ')
     await escribirFila('tareas', [
-      id,
-      modalTarea.ensayo_id,
-      modalTarea.accion_id,
-      modalTarea.proyecto_id,
-      nuevaTarea.nombre,
-      asignadosStr,
-      'por_asignar',
-      diaRec,
-      nuevaTarea.fecha_limite,
-      'pendiente',
-      new Date().toISOString(),
-      '',                          // etiqueta
-      nuevaTarea.fecha_limite      // fecha_limite_original
+      id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
+      nuevaTarea.nombre, asignadosStr, 'por_asignar', diaRec,
+      nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '',
+      nuevaTarea.fecha_limite
     ], accessToken)
     setModalTarea(null)
     setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
@@ -258,19 +249,11 @@ export default function Proyectos() {
     const asignadosStr = Array.isArray(editTarea.asignados) ? editTarea.asignados.join(',') : editTarea.asignados
     const diaRec = [editTarea.dia_recomendado, editTarea.fecha_recomendada].filter(Boolean).join(' ')
     await actualizarFila('tareas', editTarea.id, [
-      editTarea.id,
-      editTarea.ensayo_id,
-      editTarea.accion_id,
-      editTarea.proyecto_id,
-      editTarea.nombre,
-      asignadosStr,
-      editTarea.dia_semana,
-      diaRec,
-      editTarea.fecha_limite,
-      editTarea.estado,
-      editTarea.fecha_creacion,
+      editTarea.id, editTarea.ensayo_id, editTarea.accion_id, editTarea.proyecto_id,
+      editTarea.nombre, asignadosStr, editTarea.dia_semana, diaRec,
+      editTarea.fecha_limite, editTarea.estado, editTarea.fecha_creacion,
       editTarea.etiqueta || '',
-      editTarea.fecha_limite_original || editTarea.fecha_limite  // preservar original
+      editTarea.fecha_limite_original || editTarea.fecha_limite
     ], accessToken)
     setEditTarea(null)
     cargarDatos()
@@ -329,6 +312,7 @@ export default function Proyectos() {
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
+  // VISTA ENSAYO
   if (vistaEnsayo) {
     const tareasEnsayo = tareasDeEnsayo(vistaEnsayo.id)
     return (
@@ -442,6 +426,7 @@ export default function Proyectos() {
     )
   }
 
+  // VISTA PROYECTO
   if (vistaProyecto) {
     const estadosProyecto = estadosDeProyecto(vistaProyecto.id)
     return (
@@ -565,7 +550,7 @@ export default function Proyectos() {
               <textarea placeholder="Descripción (opcional)" value={nuevaAccion.descripcion} onChange={e => setNuevaAccion({...nuevaAccion, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio (opcional)</label>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
                   <input type="date" value={nuevaAccion.fecha_inicio} onChange={e => setNuevaAccion({...nuevaAccion, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -612,7 +597,7 @@ export default function Proyectos() {
               <textarea placeholder="Descripción (opcional)" value={nuevoEnsayo.descripcion} onChange={e => setNuevoEnsayo({...nuevoEnsayo, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio (opcional)</label>
+                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
                   <input type="date" value={nuevoEnsayo.fecha_inicio} onChange={e => setNuevoEnsayo({...nuevoEnsayo, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -657,13 +642,13 @@ export default function Proyectos() {
     )
   }
 
+  // LISTA PROYECTOS
   return (
     <div className="proyectos-container">
       <div className="proyectos-header">
         <h1>📁 Proyectos</h1>
         <button onClick={() => setModalProyecto(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nuevo proyecto</button>
       </div>
-
       <div className="proyectos-lista">
         {proyectosActivos.length === 0 && <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}><p style={{ fontSize: '48px' }}>📁</p><p>No hay proyectos. ¡Crea el primero!</p></div>}
         {proyectosActivos.map(proyecto => (
@@ -682,7 +667,6 @@ export default function Proyectos() {
           </div>
         ))}
       </div>
-
       {modalProyecto && (
         <Modal titulo="Nuevo proyecto" onClose={() => setModalProyecto(false)} onSave={crearProyecto}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

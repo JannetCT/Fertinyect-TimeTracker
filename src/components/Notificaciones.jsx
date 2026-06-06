@@ -37,12 +37,6 @@ function horaEspañaActual() {
   return parseInt(hora)
 }
 
-function rutaPorHoja(hoja) {
-  if (hoja === 'tareas_planner') return '/planner'
-  if (hoja === 'tareas_soporte') return '/soporte'
-  return '/proyectos'
-}
-
 export default function Notificaciones() {
   const { usuario, accessToken } = useAuth()
   const [abierto, setAbierto] = useState(false)
@@ -85,57 +79,134 @@ export default function Notificaciones() {
 
       const nuevasAlertas = []
 
-      const todasTareas = [
-        ...tareas.map(t => ({ ...t, _hoja: 'tareas' })),
-        ...tareasPlanner.map(t => ({ ...t, _hoja: 'tareas_planner' })),
-        ...tareasSoporte.map(t => ({ ...t, _hoja: 'tareas_soporte' })),
-      ]
-
-      for (const tarea of todasTareas) {
+      // ── TAREAS PLANNER ────────────────────────────────────────────
+      for (const tarea of tareasPlanner) {
         const esDeEstUsuario =
           !tarea.asignado_a ||
           tarea.asignado_a === usuario.id ||
           tarea.asignado_a === usuario.email ||
           tarea.asignado_a === usuario.nombre
-
         if (!esDeEstUsuario) continue
         if (tarea.estado === 'completada' || tarea.estado === 'completado') continue
-
         const fecha = tarea.fecha_limite
-
         if (esFechaPasada(fecha)) {
           nuevasAlertas.push({
-            id: `${tarea._hoja}-${tarea.id}`,
+            id: `tareas_planner-${tarea.id}`,
             tipo: 'vencida',
             texto: `Tarea vencida: ${tarea.nombre}`,
             subtexto: `Límite: ${fecha}`,
-            hoja: tarea._hoja,
-            tareaId: tarea.id,
+            url: '/planner',
           })
         } else if (esFechaHoy(fecha) && esHoyVencido) {
           nuevasAlertas.push({
-            id: `${tarea._hoja}-${tarea.id}-hoy`,
+            id: `tareas_planner-${tarea.id}-hoy`,
             tipo: 'vencida',
             texto: `Tarea de hoy sin completar: ${tarea.nombre}`,
             subtexto: 'Venció a las 15:00',
-            hoja: tarea._hoja,
-            tareaId: tarea.id,
+            url: '/planner',
           })
         } else if (esPróxima(fecha)) {
           nuevasAlertas.push({
-            id: `${tarea._hoja}-${tarea.id}-proxima`,
+            id: `tareas_planner-${tarea.id}-proxima`,
             tipo: 'proxima',
             texto: `Próxima a vencer: ${tarea.nombre}`,
             subtexto: `Límite: ${fecha}`,
-            hoja: tarea._hoja,
-            tareaId: tarea.id,
+            url: '/planner',
           })
         }
       }
 
+      // ── TAREAS SOPORTE ────────────────────────────────────────────
+      for (const tarea of tareasSoporte) {
+        const esDeEstUsuario =
+          !tarea.asignados ||
+          tarea.asignados.includes(usuario.id) ||
+          tarea.asignados.includes(usuario.email) ||
+          tarea.asignados.includes(usuario.nombre)
+        if (!esDeEstUsuario) continue
+        if (tarea.estado === 'completada' || tarea.estado === 'completado') continue
+        const fecha = tarea.fecha_limite
+
+        // Construir URL con el nivel más profundo disponible
+        let url = '/soporte'
+        if (tarea.subcarpeta_id) url = `/soporte?subcarpeta=${tarea.subcarpeta_id}`
+        else if (tarea.proyecto_soporte_id) url = `/soporte?proyecto=${tarea.proyecto_soporte_id}`
+        else if (tarea.categoria_id) url = `/soporte?categoria=${tarea.categoria_id}`
+
+        if (esFechaPasada(fecha)) {
+          nuevasAlertas.push({
+            id: `tareas_soporte-${tarea.id}`,
+            tipo: 'vencida',
+            texto: `Tarea soporte vencida: ${tarea.nombre}`,
+            subtexto: `Límite: ${fecha}`,
+            url,
+          })
+        } else if (esFechaHoy(fecha) && esHoyVencido) {
+          nuevasAlertas.push({
+            id: `tareas_soporte-${tarea.id}-hoy`,
+            tipo: 'vencida',
+            texto: `Tarea soporte de hoy sin completar: ${tarea.nombre}`,
+            subtexto: 'Venció a las 15:00',
+            url,
+          })
+        } else if (esPróxima(fecha)) {
+          nuevasAlertas.push({
+            id: `tareas_soporte-${tarea.id}-proxima`,
+            tipo: 'proxima',
+            texto: `Próxima a vencer (soporte): ${tarea.nombre}`,
+            subtexto: `Límite: ${fecha}`,
+            url,
+          })
+        }
+      }
+
+      // ── TAREAS PROYECTOS ──────────────────────────────────────────
+      for (const tarea of tareas) {
+        const esDeEstUsuario =
+          !tarea.asignados ||
+          tarea.asignados.includes(usuario.id) ||
+          tarea.asignados.includes(usuario.email) ||
+          tarea.asignados.includes(usuario.nombre)
+        if (!esDeEstUsuario) continue
+        if (tarea.estado === 'completada' || tarea.estado === 'completado') continue
+        const fecha = tarea.fecha_limite
+
+        let url = '/proyectos'
+        if (tarea.ensayo_id) url = `/proyectos?ensayo=${tarea.ensayo_id}`
+        else if (tarea.proyecto_id) url = `/proyectos?proyecto=${tarea.proyecto_id}`
+
+        if (esFechaPasada(fecha)) {
+          nuevasAlertas.push({
+            id: `tareas-${tarea.id}`,
+            tipo: 'vencida',
+            texto: `Tarea vencida: ${tarea.nombre}`,
+            subtexto: `Límite: ${fecha}`,
+            url,
+          })
+        } else if (esFechaHoy(fecha) && esHoyVencido) {
+          nuevasAlertas.push({
+            id: `tareas-${tarea.id}-hoy`,
+            tipo: 'vencida',
+            texto: `Tarea de hoy sin completar: ${tarea.nombre}`,
+            subtexto: 'Venció a las 15:00',
+            url,
+          })
+        } else if (esPróxima(fecha)) {
+          nuevasAlertas.push({
+            id: `tareas-${tarea.id}-proxima`,
+            tipo: 'proxima',
+            texto: `Próxima a vencer: ${tarea.nombre}`,
+            subtexto: `Límite: ${fecha}`,
+            url,
+          })
+        }
+      }
+
+      // ── ACCIONES ──────────────────────────────────────────────────
       for (const accion of acciones) {
         if (accion.estado === 'completada' || accion.estado === 'completado') continue
         const fecha = accion.fecha_fin
+        const url = `/proyectos?proyecto=${accion.proyecto_id}`
 
         if (esFechaPasada(fecha)) {
           nuevasAlertas.push({
@@ -143,8 +214,7 @@ export default function Notificaciones() {
             tipo: 'vencida',
             texto: `Acción vencida: ${accion.nombre}`,
             subtexto: `Proyección fin: ${fecha}`,
-            hoja: 'acciones',
-            tareaId: accion.id,
+            url,
           })
         } else if (esPróxima(fecha)) {
           nuevasAlertas.push({
@@ -152,15 +222,16 @@ export default function Notificaciones() {
             tipo: 'proxima',
             texto: `Acción próxima a vencer: ${accion.nombre}`,
             subtexto: `Proyección fin: ${fecha}`,
-            hoja: 'acciones',
-            tareaId: accion.id,
+            url,
           })
         }
       }
 
+      // ── ENSAYOS ───────────────────────────────────────────────────
       for (const ensayo of ensayos) {
         if (ensayo.estado === 'completado' || ensayo.estado === 'completada') continue
         const fecha = ensayo.fecha_fin
+        const url = `/proyectos?ensayo=${ensayo.id}`
 
         if (esFechaPasada(fecha)) {
           nuevasAlertas.push({
@@ -168,8 +239,7 @@ export default function Notificaciones() {
             tipo: 'vencida',
             texto: `Ensayo vencido: ${ensayo.nombre}`,
             subtexto: `Proyección fin: ${fecha}`,
-            hoja: 'ensayos',
-            tareaId: ensayo.id,
+            url,
           })
         } else if (esPróxima(fecha)) {
           nuevasAlertas.push({
@@ -177,8 +247,7 @@ export default function Notificaciones() {
             tipo: 'proxima',
             texto: `Ensayo próximo a vencer: ${ensayo.nombre}`,
             subtexto: `Proyección fin: ${fecha}`,
-            hoja: 'ensayos',
-            tareaId: ensayo.id,
+            url,
           })
         }
       }
@@ -192,9 +261,8 @@ export default function Notificaciones() {
   }
 
   function handleClickAlerta(alerta) {
-    const ruta = rutaPorHoja(alerta.hoja)
     setAbierto(false)
-    navigate(ruta)
+    navigate(alerta.url)
   }
 
   const vencidas = alertas.filter(a => a.tipo === 'vencida')
@@ -203,83 +271,46 @@ export default function Notificaciones() {
 
   return (
     <div ref={panelRef} style={{ position: 'relative' }}>
-      {/* BOTÓN CAMPANITA */}
       <button
         onClick={() => setAbierto(!abierto)}
         title="Notificaciones"
         style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '20px',
-          position: 'relative',
-          padding: '4px',
-          lineHeight: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px',
+          position: 'relative', padding: '4px', lineHeight: 1,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
         🔔
         {totalUrgentes > 0 && (
           <span style={{
-            position: 'absolute',
-            top: '-2px',
-            right: '-4px',
-            background: '#dc2626',
-            color: 'white',
-            borderRadius: '50%',
-            fontSize: '10px',
-            fontWeight: '700',
-            minWidth: '16px',
-            height: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            lineHeight: 1,
-            padding: '0 3px',
+            position: 'absolute', top: '-2px', right: '-4px',
+            background: '#dc2626', color: 'white', borderRadius: '50%',
+            fontSize: '10px', fontWeight: '700', minWidth: '16px', height: '16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            lineHeight: 1, padding: '0 3px',
           }}>
             {totalUrgentes}
           </span>
         )}
       </button>
 
-      {/* PANEL DE NOTIFICACIONES */}
       {abierto && (
         <div style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          width: '340px',
-          height: '100vh',
-          background: '#111827',
-          borderLeft: '1px solid #1f2937',
-          zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '-4px 0 20px rgba(0,0,0,0.4)',
+          position: 'fixed', top: 0, right: 0, width: '340px', height: '100vh',
+          background: '#111827', borderLeft: '1px solid #1f2937', zIndex: 1000,
+          display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.4)',
         }}>
           <div style={{
-            padding: '20px',
-            borderBottom: '1px solid #1f2937',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            padding: '20px', borderBottom: '1px solid #1f2937',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
             <div>
-              <h3 style={{ margin: 0, color: '#f9fafb', fontSize: '16px', fontWeight: '700' }}>
-                Notificaciones
-              </h3>
+              <h3 style={{ margin: 0, color: '#f9fafb', fontSize: '16px', fontWeight: '700' }}>Notificaciones</h3>
               <p style={{ margin: '2px 0 0', color: '#6b7280', fontSize: '12px' }}>
                 {alertas.length === 0 ? 'Todo al día ✓' : `${alertas.length} alertas activas`}
               </p>
             </div>
-            <button
-              onClick={() => setAbierto(false)}
-              style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '18px', cursor: 'pointer' }}
-            >
-              ✕
-            </button>
+            <button onClick={() => setAbierto(false)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '18px', cursor: 'pointer' }}>✕</button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
@@ -317,20 +348,11 @@ export default function Notificaciones() {
           </div>
 
           <div style={{ padding: '12px', borderTop: '1px solid #1f2937' }}>
-            <button
-              onClick={cargarAlertas}
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: '#1f2937',
-                color: '#9ca3af',
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: '600',
-              }}
-            >
+            <button onClick={cargarAlertas} style={{
+              width: '100%', padding: '8px', background: '#1f2937', color: '#9ca3af',
+              border: '1px solid #374151', borderRadius: '8px', cursor: 'pointer',
+              fontSize: '13px', fontWeight: '600',
+            }}>
               🔄 Actualizar
             </button>
           </div>
@@ -343,18 +365,13 @@ export default function Notificaciones() {
 function TarjetaAlerta({ alerta, onClick }) {
   const colorBorde = alerta.tipo === 'vencida' ? '#dc2626' : '#f59e0b'
   const colorFondo = alerta.tipo === 'vencida' ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.08)'
-
   return (
     <div
       onClick={onClick}
       style={{
-        background: colorFondo,
-        border: `1px solid ${colorBorde}`,
-        borderRadius: '8px',
-        padding: '10px 12px',
-        marginBottom: '8px',
-        cursor: 'pointer',
-        transition: 'opacity 0.15s',
+        background: colorFondo, border: `1px solid ${colorBorde}`,
+        borderRadius: '8px', padding: '10px 12px', marginBottom: '8px',
+        cursor: 'pointer', transition: 'opacity 0.15s',
       }}
       onMouseOver={e => e.currentTarget.style.opacity = '0.75'}
       onMouseOut={e => e.currentTarget.style.opacity = '1'}
