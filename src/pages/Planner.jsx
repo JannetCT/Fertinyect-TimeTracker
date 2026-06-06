@@ -437,7 +437,7 @@ function Planner() {
   return (
     <div className="planner-container">
       <div className="planner-header" style={{ flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: esMobile ? 'flex-start' : 'center', justifyContent: 'space-between', width: '100%', flexDirection: esMobile ? 'column' : 'row', gap: esMobile ? '8px' : '0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h1 style={{ margin: 0 }}>📅 Planner</h1>
             <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
