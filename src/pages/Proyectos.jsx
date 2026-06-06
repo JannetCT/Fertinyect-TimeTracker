@@ -638,6 +638,14 @@ export default function Proyectos() {
                   <input type="date" value={editEnsayo.fecha_fin || ''} onChange={e => setEditEnsayo({...editEnsayo, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
               </div>
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
+                <select value={editEnsayo.estado || 'pendiente'} onChange={e => setEditEnsayo({...editEnsayo, estado: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="en_curso">En curso</option>
+                  <option value="completado">Completado</option>
+                </select>
+              </div>
               
               {editEnsayo.fecha_inicio_original && (
                 <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
