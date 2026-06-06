@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { leerHoja } from '../services/googleSheets'
+import { useNavigate } from 'react-router-dom'
 
-const HORA_VENCIMIENTO_HOY = 15 // 15:00 hora España
+const HORA_VENCIMIENTO_HOY = 15
 
 function getHoy() {
-  return new Date().toISOString().split('T')[0] // yyyy-mm-dd
+  return new Date().toISOString().split('T')[0]
 }
 
 function esFechaPasada(fechaStr) {
   if (!fechaStr) return false
-  const hoy = getHoy()
-  return fechaStr < hoy
+  return fechaStr < getHoy()
 }
 
 function esFechaHoy(fechaStr) {
@@ -37,22 +37,28 @@ function horaEspañaActual() {
   return parseInt(hora)
 }
 
+function rutaPorHoja(hoja) {
+  if (hoja === 'tareas_planner') return '/planner'
+  if (hoja === 'tareas_soporte') return '/soporte'
+  return '/proyectos'
+}
+
 export default function Notificaciones() {
   const { usuario, accessToken } = useAuth()
   const [abierto, setAbierto] = useState(false)
   const [alertas, setAlertas] = useState([])
   const [cargando, setCargando] = useState(false)
   const panelRef = useRef(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (usuario) cargarAlertas()
     const intervalo = setInterval(() => {
       if (usuario) cargarAlertas()
-    }, 5 * 60 * 1000) // refresca cada 5 min
+    }, 5 * 60 * 1000)
     return () => clearInterval(intervalo)
   }, [usuario])
 
-  // Cierra el panel al hacer click fuera
   useEffect(() => {
     function handleClickFuera(e) {
       if (panelRef.current && !panelRef.current.contains(e.target)) {
@@ -79,7 +85,6 @@ export default function Notificaciones() {
 
       const nuevasAlertas = []
 
-      // ── TAREAS (las 3 hojas) ──────────────────────────────────────
       const todasTareas = [
         ...tareas.map(t => ({ ...t, _hoja: 'tareas' })),
         ...tareasPlanner.map(t => ({ ...t, _hoja: 'tareas_planner' })),
@@ -128,7 +133,6 @@ export default function Notificaciones() {
         }
       }
 
-      // ── ACCIONES ─────────────────────────────────────────────────
       for (const accion of acciones) {
         if (accion.estado === 'completada' || accion.estado === 'completado') continue
         const fecha = accion.fecha_fin
@@ -154,7 +158,6 @@ export default function Notificaciones() {
         }
       }
 
-      // ── ENSAYOS ──────────────────────────────────────────────────
       for (const ensayo of ensayos) {
         if (ensayo.estado === 'completado' || ensayo.estado === 'completada') continue
         const fecha = ensayo.fecha_fin
@@ -186,6 +189,12 @@ export default function Notificaciones() {
     } finally {
       setCargando(false)
     }
+  }
+
+  function handleClickAlerta(alerta) {
+    const ruta = rutaPorHoja(alerta.hoja)
+    setAbierto(false)
+    navigate(ruta)
   }
 
   const vencidas = alertas.filter(a => a.tipo === 'vencida')
@@ -250,7 +259,6 @@ export default function Notificaciones() {
           flexDirection: 'column',
           boxShadow: '-4px 0 20px rgba(0,0,0,0.4)',
         }}>
-          {/* Cabecera panel */}
           <div style={{
             padding: '20px',
             borderBottom: '1px solid #1f2937',
@@ -274,7 +282,6 @@ export default function Notificaciones() {
             </button>
           </div>
 
-          {/* Lista de alertas */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
             {cargando ? (
               <p style={{ color: '#6b7280', textAlign: 'center', marginTop: '40px' }}>Cargando...</p>
@@ -291,7 +298,7 @@ export default function Notificaciones() {
                       🔴 Vencidas ({vencidas.length})
                     </p>
                     {vencidas.map(alerta => (
-                      <TarjetaAlerta key={alerta.id} alerta={alerta} onCerrar={() => setAbierto(false)} />
+                      <TarjetaAlerta key={alerta.id} alerta={alerta} onClick={() => handleClickAlerta(alerta)} />
                     ))}
                   </div>
                 )}
@@ -301,7 +308,7 @@ export default function Notificaciones() {
                       🟡 Próximas a vencer ({proximas.length})
                     </p>
                     {proximas.map(alerta => (
-                      <TarjetaAlerta key={alerta.id} alerta={alerta} onCerrar={() => setAbierto(false)} />
+                      <TarjetaAlerta key={alerta.id} alerta={alerta} onClick={() => handleClickAlerta(alerta)} />
                     ))}
                   </div>
                 )}
@@ -309,7 +316,6 @@ export default function Notificaciones() {
             )}
           </div>
 
-          {/* Footer con botón refrescar */}
           <div style={{ padding: '12px', borderTop: '1px solid #1f2937' }}>
             <button
               onClick={cargarAlertas}
@@ -334,23 +340,30 @@ export default function Notificaciones() {
   )
 }
 
-function TarjetaAlerta({ alerta, onCerrar }) {
+function TarjetaAlerta({ alerta, onClick }) {
   const colorBorde = alerta.tipo === 'vencida' ? '#dc2626' : '#f59e0b'
   const colorFondo = alerta.tipo === 'vencida' ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.08)'
 
   return (
-    <div style={{
-      background: colorFondo,
-      border: `1px solid ${colorBorde}`,
-      borderRadius: '8px',
-      padding: '10px 12px',
-      marginBottom: '8px',
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        background: colorFondo,
+        border: `1px solid ${colorBorde}`,
+        borderRadius: '8px',
+        padding: '10px 12px',
+        marginBottom: '8px',
+        cursor: 'pointer',
+        transition: 'opacity 0.15s',
+      }}
+      onMouseOver={e => e.currentTarget.style.opacity = '0.75'}
+      onMouseOut={e => e.currentTarget.style.opacity = '1'}
+    >
       <p style={{ margin: 0, color: '#f9fafb', fontSize: '13px', fontWeight: '600', lineHeight: '1.4' }}>
         {alerta.texto}
       </p>
       <p style={{ margin: '2px 0 0', color: '#9ca3af', fontSize: '11px' }}>
-        {alerta.subtexto}
+        {alerta.subtexto} · <span style={{ color: '#60a5fa' }}>Ir →</span>
       </p>
     </div>
   )
