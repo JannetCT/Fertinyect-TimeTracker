@@ -478,25 +478,29 @@ export default function Proyectos() {
                           </p>
                         )}
                       </div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         <BtnAccion tipo="editar" onClick={() => setEditAccion({...accion})}>✏️</BtnAccion>
                         <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'accion', item: accion })}>🗑</BtnAccion>
-                        <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo/Informe</BtnAccion>
+                        <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo</BtnAccion>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {ensayosDeAccion(accion.id).map(ensayo => (
-                        <div key={ensayo.id} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div onClick={() => setVistaEnsayo(ensayo)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1 }} onMouseOver={e => e.currentTarget.style.opacity = '0.7'} onMouseOut={e => e.currentTarget.style.opacity = '1'}>
+         {ensayosDeAccion(accion.id).map(ensayo => (
+                        <div key={ensayo.id} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <span style={{ background: ensayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7', color: ensayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: '600' }}>{ensayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}</span>
-                            <span style={{ fontSize: '13px' }}>{ensayo.nombre}</span>
-                            {(ensayo.fecha_inicio || ensayo.fecha_fin) && <span style={{ fontSize: '11px', color: '#6b7280' }}>📅 {ensayo.fecha_inicio || '?'} → {ensayo.fecha_fin || '?'}</span>}
+                            <span style={{ fontSize: '13px', fontWeight: '600', flex: 1 }}>{ensayo.nombre}</span>
                           </div>
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          {(ensayo.fecha_inicio || ensayo.fecha_fin) && (
+                            <span style={{ fontSize: '11px', color: '#6b7280' }}>📅 {ensayo.fecha_inicio || '?'} → {ensayo.fecha_fin || '?'}</span>
+                          )}
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: '12px', color: '#888' }}>{tareasDeEnsayo(ensayo.id).length} tareas</span>
-                            <BtnAccion tipo="editar" onClick={() => setEditEnsayo({...ensayo})}>✏️</BtnAccion>
-                            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: ensayo })}>🗑</BtnAccion>
-                            <span onClick={() => setVistaEnsayo(ensayo)} style={{ color: '#00953B', fontSize: '14px', cursor: 'pointer' }}>→</span>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <BtnAccion tipo="editar" onClick={() => setEditEnsayo({...ensayo})}>✏️</BtnAccion>
+                              <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: ensayo })}>🗑</BtnAccion>
+                              <span onClick={() => setVistaEnsayo(ensayo)} style={{ color: '#00953B', fontSize: '14px', cursor: 'pointer', fontWeight: '700' }}>→ Ver</span>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -646,7 +650,7 @@ export default function Proyectos() {
                   <option value="completado">Completado</option>
                 </select>
               </div>
-              
+
               {editEnsayo.fecha_inicio_original && (
                 <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
                   📌 Fechas originales: {editEnsayo.fecha_inicio_original} → {editEnsayo.fecha_fin_original || '?'}
