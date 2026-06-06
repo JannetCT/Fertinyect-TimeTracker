@@ -1,6 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import logo from '../assets/logoblanco.png'
+import Notificaciones from './Notificaciones'
 
 const NAV_ITEMS = [
   { to: '/planner', icon: '📅', label: 'Planner' },
@@ -15,7 +16,6 @@ const NAV_ITEMS = [
 const NAV_ADMIN = { to: '/dashboard', icon: '🎯', label: 'Dashboard' }
 const NAV_CONFIG = { to: '/configuracion', icon: '⚙️', label: 'Config' }
 
-// En móvil solo mostramos los más importantes en la barra inferior
 const MOBILE_NAV = [
   { to: '/planner', icon: '📅', label: 'Planner' },
   { to: '/proyectos', icon: '📁', label: 'Proyectos' },
@@ -67,6 +67,12 @@ function Layout({ usuario, children }) {
               <p className="user-role">{usuario.rol === 'admin' ? 'Director' : 'Investigadora'}</p>
             </div>
           </div>
+
+          {/* CAMPANITA */}
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 6px' }}>
+            <Notificaciones />
+          </div>
+
           <button onClick={handleLogout} style={{ width: '100%', padding: '8px', background: '#1f2937', color: '#9ca3af', border: '1px solid #374151', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             onMouseOver={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#dc2626' }}
             onMouseOut={e => { e.currentTarget.style.background = '#1f2937'; e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.borderColor = '#374151' }}>
