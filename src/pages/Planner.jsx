@@ -545,7 +545,24 @@ function Planner() {
                     ))}
                     {tareasDelDia.map(tarea => (
                       <TarjetaTarea key={tarea.id + tarea._tipo} tarea={tarea} contexto={getContexto(tarea)}
-                        onEditar={() => setModalEditarTarea({...tarea})} onIniciar={() => iniciarCronometro(tarea)}
+                        onEditar={() => {
+  const tipoLigar = tarea.tarea_padre_tipo
+    ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto'
+    : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : ''
+    : ''
+  const opcionProyecto = tipoLigar === 'proyecto'
+    ? opcionesProyecto().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
+    : null
+  const opcionSoporte = tipoLigar === 'soporte'
+    ? opcionesSoporte().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
+    : null
+  setModalEditarTarea({
+    ...tarea,
+    _tipoLigar: tipoLigar,
+    _opcionProyectoId: opcionProyecto?.id || '',
+    _opcionSoporteId: opcionSoporte?.id || '',
+  })
+}} onIniciar={() => iniciarCronometro(tarea)}
                         activa={cronActivo?.tareaId === tarea.id} pausada={cronActivo?.tareaId === tarea.id && !cronActivo?.inicio}
                         tiempoActual={cronActivo?.tareaId === tarea.id ? tiempoActual : 0} />
                     ))}
@@ -561,7 +578,24 @@ function Planner() {
               <div className="column-tasks">
                 {tareasBacklog().map(tarea => (
                   <TarjetaTarea key={tarea.id + tarea._tipo} tarea={tarea} contexto={getContexto(tarea)}
-                    onEditar={() => setModalEditarTarea({...tarea})} onIniciar={() => iniciarCronometro(tarea)}
+                    onEditar={() => {
+  const tipoLigar = tarea.tarea_padre_tipo
+    ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto'
+    : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : ''
+    : ''
+  const opcionProyecto = tipoLigar === 'proyecto'
+    ? opcionesProyecto().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
+    : null
+  const opcionSoporte = tipoLigar === 'soporte'
+    ? opcionesSoporte().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
+    : null
+  setModalEditarTarea({
+    ...tarea,
+    _tipoLigar: tipoLigar,
+    _opcionProyectoId: opcionProyecto?.id || '',
+    _opcionSoporteId: opcionSoporte?.id || '',
+  })
+}} onIniciar={() => iniciarCronometro(tarea)}
                     activa={cronActivo?.tareaId === tarea.id} pausada={cronActivo?.tareaId === tarea.id && !cronActivo?.inicio}
                     tiempoActual={cronActivo?.tareaId === tarea.id ? tiempoActual : 0} />
                 ))}
