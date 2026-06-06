@@ -187,6 +187,7 @@ export default function CalendarioEquipo() {
     return items
   }
 
+  const esMobile = window.innerWidth < 768
   const hoy = getISODate(new Date())
   const diasMes = getDiasDelMes(mesBase.getFullYear(), mesBase.getMonth())
   const diasSemana = getDiasDeSemana(semanaBase)
@@ -270,73 +271,95 @@ export default function CalendarioEquipo() {
       )}
 
       {/* VISTA MES */}
-      {vista === 'mes' && (
-        <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          {/* Cabecera días */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-            {DIAS_CABECERA.map(d => (
-              <div key={d} style={{ padding: '8px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: '#6b7280' }}>{d}</div>
-            ))}
+    {vista === 'mes' && (
+  <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+      {DIAS_CABECERA.map(d => (
+        <div key={d} style={{ padding: '6px 2px', textAlign: 'center', fontSize: esMobile ? '10px' : '12px', fontWeight: '700', color: '#6b7280' }}>{d}</div>
+      ))}
+    </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      {diasMes.map(({ fecha, esMes }) => {
+        const items = getItemsDeDia(fecha)
+        const esHoyDia = fecha === hoy
+        return (
+          <div key={fecha} onClick={() => setDiaDetalle({ fecha, items })}
+            style={{ minHeight: esMobile ? '52px' : '100px', padding: esMobile ? '4px 2px' : '6px', borderRight: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', background: esHoyDia ? '#f0fdf4' : esMes ? 'white' : '#fafafa', opacity: esMes ? 1 : 0.4, cursor: 'pointer' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+              <span style={{ fontSize: esMobile ? '12px' : '13px', fontWeight: esHoyDia ? '700' : '400', color: esHoyDia ? '#00953B' : '#373A36' }}>
+                {new Date(fecha + 'T12:00:00').getDate()}
+              </span>
+              {items.length > 0 && <IndicadorCarga items={items} />}
+              {!esMobile && items.slice(0, 2).map((item, i) => (
+                <ChipPersona key={i} {...item} texto={item.texto} />
+              ))}
+              {!esMobile && items.length > 2 && (
+                <span style={{ fontSize: '10px', color: '#9ca3af' }}>+{items.length - 2} más</span>
+              )}
+            </div>
           </div>
-          {/* Días */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {diasMes.map(({ fecha, esMes }) => {
-              const items = getItemsDeDia(fecha)
-              const esHoyDia = fecha === hoy
-              return (
-                <div key={fecha} onClick={() => items.length > 0 && setDiaDetalle({ fecha, items })} style={{ minHeight: '100px', padding: '6px', borderRight: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', background: esHoyDia ? '#f0fdf4' : esMes ? 'white' : '#fafafa', opacity: esMes ? 1 : 0.4, cursor: items.length > 0 ? 'pointer' : 'default', transition: 'background 0.15s' }}
-                  onMouseOver={e => { if (items.length > 0) e.currentTarget.style.background = '#f0fdf4' }}
-                  onMouseOut={e => { e.currentTarget.style.background = esHoyDia ? '#f0fdf4' : esMes ? 'white' : '#fafafa' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: esHoyDia ? '700' : '400', color: esHoyDia ? '#00953B' : '#373A36' }}>
-                      {new Date(fecha + 'T12:00:00').getDate()}
-                    </span>
-                    {items.length > 0 && <IndicadorCarga items={items} />}
-                  </div>
-                  {items.slice(0, 3).map((item, i) => (
-                    <ChipPersona key={i} {...item} texto={item.texto} />
-                  ))}
-                  {items.length > 3 && (
-                    <span style={{ fontSize: '10px', color: '#9ca3af' }}>+{items.length - 3} más</span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+        )
+      })}
+    </div>
+  </div>
+)}
 
       {/* VISTA SEMANA */}
-      {vista === 'semana' && (
-        <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '2px solid #e5e7eb' }}>
-            {diasSemana.map((fecha, i) => {
-              const esHoyDia = fecha === hoy
-              return (
-                <div key={fecha} style={{ padding: '10px 8px', textAlign: 'center', background: esHoyDia ? '#00953B' : '#f9fafb', borderRight: i < 6 ? '1px solid #e5e7eb' : 'none' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: esHoyDia ? 'rgba(255,255,255,0.8)' : '#6b7280' }}>{DIAS_SEMANA_LABEL[i]}</div>
-                  <div style={{ fontSize: '18px', fontWeight: '700', color: esHoyDia ? 'white' : '#373A36' }}>{new Date(fecha + 'T12:00:00').getDate()}</div>
-                  <div style={{ fontSize: '11px', color: esHoyDia ? 'rgba(255,255,255,0.7)' : '#9ca3af' }}>{new Date(fecha + 'T12:00:00').toLocaleDateString('es-ES', { month: 'short' })}</div>
+ {vista === 'semana' && (
+  <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+    {esMobile ? (
+      // MÓVIL: lista vertical
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {diasSemana.map((fecha, i) => {
+          const items = getItemsDeDia(fecha)
+          const esHoyDia = fecha === hoy
+          if (items.length === 0 && !esHoyDia) return null
+          return (
+            <div key={fecha} style={{ borderBottom: '1px solid #f3f4f6', padding: '12px 16px', background: esHoyDia ? '#fafff9' : 'white' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: items.length > 0 ? '8px' : '0' }}>
+                <div style={{ background: esHoyDia ? '#00953B' : '#f3f4f6', color: esHoyDia ? 'white' : '#373A36', borderRadius: '8px', padding: '4px 10px', fontSize: '13px', fontWeight: '700' }}>
+                  {DIAS_SEMANA_LABEL[i]} {new Date(fecha + 'T12:00:00').getDate()}
                 </div>
-              )
-            })}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {diasSemana.map((fecha, i) => {
-              const items = getItemsDeDia(fecha)
-              const esHoyDia = fecha === hoy
-              return (
-                <div key={fecha} style={{ minHeight: '200px', padding: '8px', borderRight: i < 6 ? '1px solid #f3f4f6' : 'none', background: esHoyDia ? '#fafff9' : 'white' }}>
-                  {items.length === 0
-                    ? <p style={{ fontSize: '11px', color: '#d1d5db', textAlign: 'center', marginTop: '20px' }}>—</p>
-                    : items.map((item, j) => <ChipPersona key={j} {...item} />)
-                  }
-                </div>
-              )
-            })}
-          </div>
+                {items.length > 0 && <IndicadorCarga items={items} />}
+              </div>
+              {items.map((item, j) => <ChipPersona key={j} {...item} />)}
+            </div>
+          )
+        })}
+      </div>
+    ) : (
+      // ESCRITORIO: grid
+      <>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '2px solid #e5e7eb' }}>
+          {diasSemana.map((fecha, i) => {
+            const esHoyDia = fecha === hoy
+            return (
+              <div key={fecha} style={{ padding: '10px 8px', textAlign: 'center', background: esHoyDia ? '#00953B' : '#f9fafb', borderRight: i < 6 ? '1px solid #e5e7eb' : 'none' }}>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: esHoyDia ? 'rgba(255,255,255,0.8)' : '#6b7280' }}>{DIAS_SEMANA_LABEL[i]}</div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: esHoyDia ? 'white' : '#373A36' }}>{new Date(fecha + 'T12:00:00').getDate()}</div>
+                <div style={{ fontSize: '11px', color: esHoyDia ? 'rgba(255,255,255,0.7)' : '#9ca3af' }}>{new Date(fecha + 'T12:00:00').toLocaleDateString('es-ES', { month: 'short' })}</div>
+              </div>
+            )
+          })}
         </div>
-      )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+          {diasSemana.map((fecha, i) => {
+            const items = getItemsDeDia(fecha)
+            const esHoyDia = fecha === hoy
+            return (
+              <div key={fecha} style={{ minHeight: '200px', padding: '8px', borderRight: i < 6 ? '1px solid #f3f4f6' : 'none', background: esHoyDia ? '#fafff9' : 'white' }}>
+                {items.length === 0
+                  ? <p style={{ fontSize: '11px', color: '#d1d5db', textAlign: 'center', marginTop: '20px' }}>—</p>
+                  : items.map((item, j) => <ChipPersona key={j} {...item} />)
+                }
+              </div>
+            )
+          })}
+        </div>
+      </>
+    )}
+  </div>
+)}
 
       {/* MODAL DETALLE DÍA */}
       {diaDetalle && (
