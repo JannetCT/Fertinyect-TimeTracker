@@ -154,7 +154,12 @@ function Planner() {
   const [modalEditarEvento, setModalEditarEvento] = useState(null)
   const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
   const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion' })
-  const [cronActivo, setCronActivo] = useState(null)
+  const [cronActivo, setCronActivo] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fertinyect_cron')
+      return saved ? JSON.parse(saved) : null
+    } catch { return null }
+  })
   const [tiempoActual, setTiempoActual] = useState(0)
   const intervalRef = useRef(null)
 
@@ -206,33 +211,46 @@ function Planner() {
 
   function iniciarCronometro(tarea) {
     if (cronActivo) pausarYGuardar()
-    setCronActivo({ tareaId: tarea.id, tipo: tarea._tipo, nombre: tarea.nombre, inicio: Date.now(), acumulado: 0 })
+    const nuevo = { tareaId: tarea.id, tipo: tarea._tipo, nombre: tarea.nombre, inicio: Date.now(), acumulado: 0 }
+    setCronActivo(nuevo)
+    localStorage.setItem('fertinyect_cron', JSON.stringify(nuevo))
     setTiempoActual(0)
   }
 
-  function pausarYGuardar() {
+  async function pausarYGuardar() {
     if (!cronActivo?.inicio) return
     const elapsed = Math.floor((Date.now() - cronActivo.inicio) / 1000)
-    setCronActivo(prev => ({ ...prev, acumulado: prev.acumulado + elapsed, inicio: null }))
+    const nuevo = { ...cronActivo, acumulado: cronActivo.acumulado + elapsed, inicio: null }
+    setCronActivo(nuevo)
+    localStorage.setItem('fertinyect_cron', JSON.stringify(nuevo))
+    // Guardar tramo parcial en registros
+    const fin = new Date().toISOString()
+    const inicio = new Date(Date.now() - elapsed * 1000).toISOString()
+    await escribirFila('registros', [Date.now().toString(), cronActivo.tareaId, usuario.id, inicio, fin, elapsed, new Date().toDateString(), cronActivo.tipo, cronActivo.nombre], accessToken)
   }
 
-  function reanudarCronometro() {
-    setCronActivo(prev => ({ ...prev, inicio: Date.now() }))
+function reanudarCronometro() {
+    const nuevo = { ...cronActivo, inicio: Date.now() }
+    setCronActivo(nuevo)
+    localStorage.setItem('fertinyect_cron', JSON.stringify(nuevo))
   }
 
   async function detenerCronometro(completar = false) {
     if (!cronActivo) return
     const elapsed = cronActivo.inicio ? Math.floor((Date.now() - cronActivo.inicio) / 1000) : 0
-    const total = cronActivo.acumulado + elapsed
-    const fin = new Date().toISOString()
-    const inicio = new Date(Date.now() - total * 1000).toISOString()
-    await escribirFila('registros', [Date.now().toString(), cronActivo.tareaId, usuario.id, inicio, fin, total, new Date().toDateString(), cronActivo.tipo, cronActivo.nombre], accessToken)
+    // Solo guardar tramo final si había tiempo corriendo (no ya guardado en pausa)
+    if (elapsed > 0) {
+      const fin = new Date().toISOString()
+      const inicio = new Date(Date.now() - elapsed * 1000).toISOString()
+      await escribirFila('registros', [Date.now().toString(), cronActivo.tareaId, usuario.id, inicio, fin, elapsed, new Date().toDateString(), cronActivo.tipo, cronActivo.nombre], accessToken)
+    }
     if (completar) {
       const allTareas = [...tareas, ...tareasSoporte, ...tareasPlanner]
       const tarea = allTareas.find(t => t.id === cronActivo.tareaId)
       if (tarea) await actualizarEstado(tarea, cronActivo.tipo, 'completada')
     }
     setCronActivo(null)
+    localStorage.removeItem('fertinyect_cron')
     setTiempoActual(0)
     cargarDatos()
   }
