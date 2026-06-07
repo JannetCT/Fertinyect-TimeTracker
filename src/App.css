@@ -255,7 +255,14 @@ body {
 .estado-completada { background: #D1FAE5; color: #065F46; }
 
 /* PROYECTOS */
-.proyectos-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.proyectos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
 .filtros { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .select-filtro {

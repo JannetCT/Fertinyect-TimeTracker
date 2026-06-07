@@ -200,7 +200,7 @@ export default function Soporte() {
               <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaSubcarpeta.nombre}</h1>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Btn tipo="editar" onClick={() => { setEditItem({...vistaSubcarpeta, _tipo: 'subcarpeta'}); setForm({ nombre: vistaSubcarpeta.nombre, descripcion: vistaSubcarpeta.descripcion || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'subcarpetas_soporte', item: vistaSubcarpeta })}>🗑 Eliminar</Btn>
             <button onClick={() => setModalTarea({ subcarpeta_id: vistaSubcarpeta.id, proyecto_soporte_id: vistaProyecto?.id, categoria_id: vistaProyecto?.categoria_id })} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
@@ -236,7 +236,7 @@ export default function Soporte() {
               <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaProyecto.nombre}</h1>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Btn tipo="editar" onClick={() => { setEditItem({...vistaProyecto, _tipo: 'proyecto'}); setForm({ nombre: vistaProyecto.nombre, descripcion: vistaProyecto.descripcion || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'proyectos_soporte', item: vistaProyecto })}>🗑 Eliminar</Btn>
             <Btn tipo="añadir" onClick={() => setModalSubcarpeta({ proyecto_soporte_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id })}>+ Subcarpeta</Btn>
@@ -291,7 +291,7 @@ export default function Soporte() {
             <button onClick={() => setVistaCategoria(null)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Volver</button>
             <h1 style={{ margin: 0, fontSize: '20px' }}>🛠️ {vistaCategoria.nombre}</h1>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Btn tipo="editar" onClick={() => { setEditItem({...vistaCategoria, _tipo: 'categoria'}); setForm({ nombre: vistaCategoria.nombre, descripcion: vistaCategoria.descripcion || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'categorias_soporte', item: vistaCategoria })}>🗑 Eliminar</Btn>
             <Btn tipo="añadir" onClick={() => setModalProyecto({ categoria_id: vistaCategoria.id })}>+ Proyecto</Btn>
@@ -384,7 +384,7 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
           </div>
           <div>
             <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <select value={formTarea.dia_recomendado} onChange={e => setFormTarea({...formTarea, dia_recomendado: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
                 <option value="">Sin día específico</option>
                 {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
@@ -441,7 +441,7 @@ function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConf
                   {tarea.fecha_limite && <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>{vencida ? '⚠️' : '📅'} {tarea.fecha_limite}</span>}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button onClick={() => { setEditItem({...tarea, _tipo: 'tarea'}); setForm({ nombre: tarea.nombre, descripcion: '' }) }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>✏️</button>
                 <button onClick={() => setConfirmEliminar({ hoja: 'tareas_soporte', item: tarea })} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>🗑</button>
                 <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{tarea.estado || 'pendiente'}</span>
