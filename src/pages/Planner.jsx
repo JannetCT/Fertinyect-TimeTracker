@@ -582,6 +582,8 @@ function reanudarCronometro() {
     _opcionSoporteId: opcionSoporte?.id || '',
   })
 }} onIniciar={() => iniciarCronometro(tarea)}
+                        onPausar={pausarYGuardar}
+                        onReanudar={reanudarCronometro}
                         activa={cronActivo?.tareaId === tarea.id} pausada={cronActivo?.tareaId === tarea.id && !cronActivo?.inicio}
                         tiempoActual={cronActivo?.tareaId === tarea.id ? tiempoActual : 0} />
                     ))}
@@ -615,6 +617,8 @@ function reanudarCronometro() {
     _opcionSoporteId: opcionSoporte?.id || '',
   })
 }} onIniciar={() => iniciarCronometro(tarea)}
+                        onPausar={pausarYGuardar}
+                        onReanudar={reanudarCronometro}
                     activa={cronActivo?.tareaId === tarea.id} pausada={cronActivo?.tareaId === tarea.id && !cronActivo?.inicio}
                     tiempoActual={cronActivo?.tareaId === tarea.id ? tiempoActual : 0} />
                 ))}
@@ -888,7 +892,7 @@ function reanudarCronometro() {
   )
 }
 
-function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, activa, pausada, tiempoActual }) {
+function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanudar, activa, pausada, tiempoActual }) {
   const esCompletada = tarea.estado === 'completada'
   const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
   const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
@@ -901,7 +905,7 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, activa, pausada, t
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <p onClick={onEditar} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', flex: 1, margin: 0 }}>{tarea.nombre}</p>
         {!esCompletada && (
-          <button onClick={e => { e.stopPropagation(); onIniciar() }} style={{ background: activa && !pausada ? '#f59e0b' : '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '14px', marginLeft: '8px' }}>
+          <button onClick={e => { e.stopPropagation(); activa && !pausada ? onPausar() : pausada ? onReanudar() : onIniciar() }} style={{ background: activa && !pausada ? '#f59e0b' : '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '14px', marginLeft: '8px' }}>
             {activa && !pausada ? '⏸' : '▶️'}
           </button>
         )}
