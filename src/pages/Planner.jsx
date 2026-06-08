@@ -127,6 +127,21 @@ function InputFechaPlanner({ label, value, onChange }) {
   )
 }
 
+// Clave en localStorage para el cronómetro activo
+const CRON_KEY = 'fertinyect_cron'
+
+function saveCron(cron) {
+  if (cron) localStorage.setItem(CRON_KEY, JSON.stringify(cron))
+  else localStorage.removeItem(CRON_KEY)
+}
+
+function loadCron() {
+  try {
+    const s = localStorage.getItem(CRON_KEY)
+    return s ? JSON.parse(s) : null
+  } catch { return null }
+}
+
 function Planner() {
   const { usuario, accessToken } = useAuth()
   const [semanaBase, setSemanaBase] = useState(() => getLunesDeSemana(new Date()))
@@ -154,12 +169,7 @@ function Planner() {
   const [modalEditarEvento, setModalEditarEvento] = useState(null)
   const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
   const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion' })
-  const [cronActivo, setCronActivo] = useState(() => {
-    try {
-      const saved = localStorage.getItem('fertinyect_cron')
-      return saved ? JSON.parse(saved) : null
-    } catch { return null }
-  })
+  const [cronActivo, setCronActivo] = useState(() => loadCron())
   const [tiempoActual, setTiempoActual] = useState(0)
   const intervalRef = useRef(null)
 
@@ -167,11 +177,15 @@ function Planner() {
 
   useEffect(() => {
     if (cronActivo?.inicio) {
+      // Recalcular tiempo actual desde el inicio guardado
+      setTiempoActual(cronActivo.acumulado + Math.floor((Date.now() - cronActivo.inicio) / 1000))
       intervalRef.current = setInterval(() => {
         setTiempoActual(cronActivo.acumulado + Math.floor((Date.now() - cronActivo.inicio) / 1000))
       }, 1000)
     } else {
       clearInterval(intervalRef.current)
+      if (cronActivo) setTiempoActual(cronActivo.acumulado)
+      else setTiempoActual(0)
     }
     return () => clearInterval(intervalRef.current)
   }, [cronActivo])
@@ -209,40 +223,51 @@ function Planner() {
     finally { setCargando(false) }
   }
 
-  function iniciarCronometro(tarea) {
-    if (cronActivo) pausarYGuardar()
+  async function iniciarCronometro(tarea) {
+    // Si hay un cronómetro activo corriendo, pausarlo y guardar el tramo
+    if (cronActivo?.inicio) {
+      await _guardarTramo(cronActivo)
+    }
+    // Si la tarea que se quiere iniciar es la misma que está pausada, reanudarla
+    if (cronActivo && cronActivo.tareaId === tarea.id && !cronActivo.inicio) {
+      reanudarCronometro()
+      return
+    }
     const nuevo = { tareaId: tarea.id, tipo: tarea._tipo, nombre: tarea.nombre, inicio: Date.now(), acumulado: 0 }
     setCronActivo(nuevo)
-    localStorage.setItem('fertinyect_cron', JSON.stringify(nuevo))
-    setTiempoActual(0)
+    saveCron(nuevo)
+  }
+
+  async function _guardarTramo(cron) {
+    if (!cron?.inicio) return
+    const elapsed = Math.floor((Date.now() - cron.inicio) / 1000)
+    if (elapsed <= 0) return
+    const fin = new Date().toISOString()
+    const inicio = new Date(Date.now() - elapsed * 1000).toISOString()
+    await escribirFila('registros', [Date.now().toString(), cron.tareaId, usuario.id, inicio, fin, elapsed, new Date().toDateString(), cron.tipo, cron.nombre], accessToken)
+    // Actualizar acumulado en localStorage pero sin inicio (pausado)
+    const pausado = { ...cron, acumulado: cron.acumulado + elapsed, inicio: null }
+    setCronActivo(pausado)
+    saveCron(pausado)
   }
 
   async function pausarYGuardar() {
     if (!cronActivo?.inicio) return
-    const elapsed = Math.floor((Date.now() - cronActivo.inicio) / 1000)
-    const nuevo = { ...cronActivo, acumulado: cronActivo.acumulado + elapsed, inicio: null }
-    setCronActivo(nuevo)
-    localStorage.setItem('fertinyect_cron', JSON.stringify(nuevo))
-    // Guardar tramo parcial en registros
-    const fin = new Date().toISOString()
-    const inicio = new Date(Date.now() - elapsed * 1000).toISOString()
-    await escribirFila('registros', [Date.now().toString(), cronActivo.tareaId, usuario.id, inicio, fin, elapsed, new Date().toDateString(), cronActivo.tipo, cronActivo.nombre], accessToken)
+    await _guardarTramo(cronActivo)
   }
 
-function reanudarCronometro() {
+  function reanudarCronometro() {
+    if (!cronActivo) return
     const nuevo = { ...cronActivo, inicio: Date.now() }
     setCronActivo(nuevo)
-    localStorage.setItem('fertinyect_cron', JSON.stringify(nuevo))
+    saveCron(nuevo)
   }
 
   async function detenerCronometro(completar = false) {
     if (!cronActivo) return
-    const elapsed = cronActivo.inicio ? Math.floor((Date.now() - cronActivo.inicio) / 1000) : 0
-    // Solo guardar tramo final si había tiempo corriendo (no ya guardado en pausa)
-    if (elapsed > 0) {
-      const fin = new Date().toISOString()
-      const inicio = new Date(Date.now() - elapsed * 1000).toISOString()
-      await escribirFila('registros', [Date.now().toString(), cronActivo.tareaId, usuario.id, inicio, fin, elapsed, new Date().toDateString(), cronActivo.tipo, cronActivo.nombre], accessToken)
+    // Guardar tramo final si estaba corriendo
+    if (cronActivo.inicio) {
+      await _guardarTramo(cronActivo)
     }
     if (completar) {
       const allTareas = [...tareas, ...tareasSoporte, ...tareasPlanner]
@@ -250,7 +275,7 @@ function reanudarCronometro() {
       if (tarea) await actualizarEstado(tarea, cronActivo.tipo, 'completada')
     }
     setCronActivo(null)
-    localStorage.removeItem('fertinyect_cron')
+    saveCron(null)
     setTiempoActual(0)
     cargarDatos()
   }
@@ -452,6 +477,43 @@ function reanudarCronometro() {
   const hoy = getISODate(new Date())
   const misId = String(usuario.id)
 
+  function renderTarjeta(tarea) {
+    const activa = cronActivo?.tareaId === tarea.id
+    const pausada = activa && !cronActivo?.inicio
+    return (
+      <TarjetaTarea
+        key={tarea.id + tarea._tipo}
+        tarea={tarea}
+        contexto={getContexto(tarea)}
+        onEditar={() => {
+          const tipoLigar = tarea.tarea_padre_tipo
+            ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto'
+            : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : ''
+            : ''
+          const opcionProyecto = tipoLigar === 'proyecto'
+            ? opcionesProyecto().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
+            : null
+          const opcionSoporte = tipoLigar === 'soporte'
+            ? opcionesSoporte().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
+            : null
+          setModalEditarTarea({
+            ...tarea,
+            _tipoLigar: tipoLigar,
+            _opcionProyectoId: opcionProyecto?.id || '',
+            _opcionSoporteId: opcionSoporte?.id || '',
+          })
+        }}
+        onIniciar={() => iniciarCronometro(tarea)}
+        onPausar={pausarYGuardar}
+        onReanudar={reanudarCronometro}
+        onCompletar={() => detenerCronometro(true)}
+        activa={activa}
+        pausada={pausada}
+        tiempoActual={activa ? tiempoActual : 0}
+      />
+    )
+  }
+
   return (
     <div className="planner-container">
       <div className="planner-header" style={{ flexWrap: 'wrap', gap: '12px' }}>
@@ -463,7 +525,7 @@ function reanudarCronometro() {
               <button onClick={() => setVista('mes')} style={{ padding: '6px 14px', background: vista === 'mes' ? '#00953B' : 'white', color: vista === 'mes' ? 'white' : '#373A36', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Mes</button>
             </div>
           </div>
-         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: esMobile ? 'flex-start' : 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: esMobile ? 'flex-start' : 'flex-end' }}>
             <button onClick={() => setMostrarCompletadas(prev => !prev)} style={{ background: mostrarCompletadas ? '#f0fdf4' : '#f3f4f6', color: mostrarCompletadas ? '#00953B' : '#6b7280', border: '1px solid ' + (mostrarCompletadas ? '#00953B' : '#e5e7eb'), borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
               {mostrarCompletadas ? '✅ Ocultar' : '☑️ Completadas'}
             </button>
@@ -473,7 +535,7 @@ function reanudarCronometro() {
         </div>
 
         {cronActivo && (
-          <div style={{ background: '#f0fdf4', border: '2px solid #00953B', borderRadius: '8px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ background: '#f0fdf4', border: '2px solid #00953B', borderRadius: '8px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: '100%' }}>
             <span style={{ fontSize: '12px', color: '#373A36', fontWeight: '600' }}>⏱ {cronActivo.nombre}</span>
             <span style={{ fontSize: '18px', fontWeight: '700', color: '#00953B', fontFamily: 'monospace' }}>{formatTiempo(tiempoActual)}</span>
             {cronActivo.inicio
@@ -481,9 +543,10 @@ function reanudarCronometro() {
               : <button onClick={reanudarCronometro} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>▶️ Reanudar</button>
             }
             <button onClick={() => detenerCronometro(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>✅ Completar</button>
+            <button onClick={() => detenerCronometro(false)} style={{ background: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>⏹ Detener</button>
           </div>
         )}
-        </div>
+      </div>
 
       {/* PESTAÑAS FILTRO */}
       <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #e5e7eb', marginBottom: '4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
@@ -499,28 +562,14 @@ function reanudarCronometro() {
           const activa = filtroEtiqueta === key
           return (
             <button key={key} onClick={() => setFiltroEtiqueta(key)} style={{
-              padding: '8px 16px',
-              background: 'none',
-              border: 'none',
+              padding: '8px 16px', background: 'none', border: 'none',
               borderBottom: activa ? '2px solid #00953B' : '2px solid transparent',
               color: activa ? '#00953B' : '#6b7280',
-              fontWeight: activa ? '600' : '400',
-              fontSize: '13px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              marginBottom: '-1px',
+              fontWeight: activa ? '600' : '400', fontSize: '13px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '-1px',
             }}>
               {label}
-              <span style={{
-                background: activa ? '#00953B' : '#f3f4f6',
-                color: activa ? 'white' : '#6b7280',
-                borderRadius: '20px',
-                padding: '1px 7px',
-                fontSize: '11px',
-                fontWeight: '600',
-              }}>
+              <span style={{ background: activa ? '#00953B' : '#f3f4f6', color: activa ? 'white' : '#6b7280', borderRadius: '20px', padding: '1px 7px', fontSize: '11px', fontWeight: '600' }}>
                 {count}
               </span>
             </button>
@@ -562,31 +611,7 @@ function reanudarCronometro() {
                         <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
                       </div>
                     ))}
-                    {tareasDelDia.map(tarea => (
-                      <TarjetaTarea key={tarea.id + tarea._tipo} tarea={tarea} contexto={getContexto(tarea)}
-                        onEditar={() => {
-  const tipoLigar = tarea.tarea_padre_tipo
-    ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto'
-    : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : ''
-    : ''
-  const opcionProyecto = tipoLigar === 'proyecto'
-    ? opcionesProyecto().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
-    : null
-  const opcionSoporte = tipoLigar === 'soporte'
-    ? opcionesSoporte().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
-    : null
-  setModalEditarTarea({
-    ...tarea,
-    _tipoLigar: tipoLigar,
-    _opcionProyectoId: opcionProyecto?.id || '',
-    _opcionSoporteId: opcionSoporte?.id || '',
-  })
-}} onIniciar={() => iniciarCronometro(tarea)}
-                        onPausar={pausarYGuardar}
-                        onReanudar={reanudarCronometro}
-                        activa={cronActivo?.tareaId === tarea.id} pausada={cronActivo?.tareaId === tarea.id && !cronActivo?.inicio}
-                        tiempoActual={cronActivo?.tareaId === tarea.id ? tiempoActual : 0} />
-                    ))}
+                    {tareasDelDia.map(tarea => renderTarjeta(tarea))}
                   </div>
                 </div>
               )
@@ -597,31 +622,7 @@ function reanudarCronometro() {
                 <span className="task-count">{tareasBacklog().length}</span>
               </div>
               <div className="column-tasks">
-                {tareasBacklog().map(tarea => (
-                  <TarjetaTarea key={tarea.id + tarea._tipo} tarea={tarea} contexto={getContexto(tarea)}
-                    onEditar={() => {
-  const tipoLigar = tarea.tarea_padre_tipo
-    ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto'
-    : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : ''
-    : ''
-  const opcionProyecto = tipoLigar === 'proyecto'
-    ? opcionesProyecto().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
-    : null
-  const opcionSoporte = tipoLigar === 'soporte'
-    ? opcionesSoporte().find(o => o.realId === tarea.tarea_padre_id && o.tipo === tarea.tarea_padre_tipo)
-    : null
-  setModalEditarTarea({
-    ...tarea,
-    _tipoLigar: tipoLigar,
-    _opcionProyectoId: opcionProyecto?.id || '',
-    _opcionSoporteId: opcionSoporte?.id || '',
-  })
-}} onIniciar={() => iniciarCronometro(tarea)}
-                        onPausar={pausarYGuardar}
-                        onReanudar={reanudarCronometro}
-                    activa={cronActivo?.tareaId === tarea.id} pausada={cronActivo?.tareaId === tarea.id && !cronActivo?.inicio}
-                    tiempoActual={cronActivo?.tareaId === tarea.id ? tiempoActual : 0} />
-                ))}
+                {tareasBacklog().map(tarea => renderTarjeta(tarea))}
               </div>
             </div>
           </div>
@@ -892,7 +893,7 @@ function reanudarCronometro() {
   )
 }
 
-function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanudar, activa, pausada, tiempoActual }) {
+function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanudar, onCompletar, activa, pausada, tiempoActual }) {
   const esCompletada = tarea.estado === 'completada'
   const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
   const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
@@ -905,9 +906,18 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanud
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <p onClick={onEditar} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', flex: 1, margin: 0 }}>{tarea.nombre}</p>
         {!esCompletada && (
-          <button onClick={e => { e.stopPropagation(); activa && !pausada ? onPausar() : pausada ? onReanudar() : onIniciar() }} style={{ background: activa && !pausada ? '#f59e0b' : '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '14px', marginLeft: '8px' }}>
-            {activa && !pausada ? '⏸' : '▶️'}
-          </button>
+          <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+            <button onClick={e => { e.stopPropagation(); activa && !pausada ? onPausar() : pausada ? onReanudar() : onIniciar() }}
+              style={{ background: activa && !pausada ? '#f59e0b' : '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>
+              {activa && !pausada ? '⏸' : '▶️'}
+            </button>
+            {(activa || pausada) && (
+              <button onClick={e => { e.stopPropagation(); onCompletar() }}
+                style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>
+                ✅
+              </button>
+            )}
+          </div>
         )}
       </div>
       {activa && (
@@ -917,8 +927,8 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanud
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
         <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: tarea._tipo === 'soporte' ? '#eff6ff' : tarea._tipo === 'planner' ? '#f5f3ff' : '#f0fdf4', color: tarea._tipo === 'soporte' ? '#1d4ed8' : tarea._tipo === 'planner' ? '#7c3aed' : '#00953B', fontWeight: '600' }}>{contexto}</span>
-        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: activa ? '#dbeafe' : esCompletada ? '#dcfce7' : '#f3f4f6', color: activa ? '#1d4ed8' : esCompletada ? '#166534' : '#6b7280', fontWeight: '600' }}>
-          {activa ? 'En curso' : esCompletada ? 'Completada' : 'Pendiente'}
+        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: activa ? '#dbeafe' : pausada ? '#fef3c7' : esCompletada ? '#dcfce7' : '#f3f4f6', color: activa ? '#1d4ed8' : pausada ? '#92400e' : esCompletada ? '#166534' : '#6b7280', fontWeight: '600' }}>
+          {activa ? 'En curso' : pausada ? '⏸ Pausada' : esCompletada ? 'Completada' : 'Pendiente'}
         </span>
       </div>
       <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
