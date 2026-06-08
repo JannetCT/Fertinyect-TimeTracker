@@ -182,6 +182,7 @@ function Planner() {
   const [mesBase, setMesBase] = useState(() => new Date())
   const [tareas, setTareas] = useState([])
   const [tareasSoporte, setTareasSoporte] = useState([])
+  const [tareasDireccion, setTareasDireccion] = useState([])
   const [tareasPlanner, setTareasPlanner] = useState([])
   const [eventos, setEventos] = useState([])
   const [proyectos, setProyectos] = useState([])
@@ -224,9 +225,10 @@ function Planner() {
 
   async function cargarDatos() {
     try {
-      const [t, ts, tp, ev, p, ep, ac, en, cs, ps, ss] = await Promise.all([
+      const [t, ts, td, tp, ev, p, ep, ac, en, cs, ps, ss] = await Promise.all([
         leerHoja('tareas', accessToken),
         leerHoja('tareas_soporte', accessToken),
+        leerHoja('tareas_direccion', accessToken),
         leerHoja('tareas_planner', accessToken),
         leerHoja('eventos', accessToken),
         leerHoja('proyectos', accessToken),
@@ -240,6 +242,7 @@ function Planner() {
       const misId = String(usuario.id)
       setTareas(t.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
       setTareasSoporte(ts.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
+      setTareasDireccion(td.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
       setTareasPlanner(tp.filter(t => String(t.usuario_id) === misId))
       setEventos(ev.filter(e => e.usuario_id === misId))
       setProyectos(p)
@@ -323,6 +326,8 @@ function Planner() {
       await actualizarFila('tareas', tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
     } else if (tipo === 'soporte') {
       await actualizarFila('tareas_soporte', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_soporte_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
+    } } else if (tipo === 'direccion') {
+      await actualizarFila('tareas_direccion', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_direccion_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
     } else {
       await actualizarFila('tareas_planner', tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana, tarea.fecha_exacta || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
     }
@@ -332,6 +337,7 @@ function Planner() {
     if (!window.confirm(`¿Eliminar "${tarea.nombre}"?`)) return
     if (tarea._tipo === 'proyecto') await marcarEliminado('tareas', tarea.id, accessToken)
     else if (tarea._tipo === 'soporte') await marcarEliminado('tareas_soporte', tarea.id, accessToken)
+    else if (tarea._tipo === 'direccion') await marcarEliminado('tareas_direccion', tarea.id, accessToken)
     else await marcarEliminado('tareas_planner', tarea.id, accessToken)
     setModalEditarTarea(null)
     cargarDatos()
@@ -347,6 +353,8 @@ function Planner() {
       await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     } else if (t._tipo === 'soporte') {
       await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+    } } else if (t._tipo === 'direccion') {
+      await actualizarFila('tareas_direccion', t.id, [t.id, t.categoria_id, t.proyecto_direccion_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     } else {
       await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || ''], accessToken)
     }
@@ -397,6 +405,7 @@ function Planner() {
     return [
       ...tareas.map(t => ({ ...t, _tipo: 'proyecto' })),
       ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte' })),
+      ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion' })),
       ...tareasPlanner.map(t => ({ ...t, _tipo: 'planner' }))
     ]
   }
@@ -441,6 +450,8 @@ function Planner() {
     } else if (tarea._tipo === 'soporte') {
       const c = categoriasSoporte.find(c => c.id === tarea.categoria_id)
       return c ? c.nombre : 'Soporte'
+    } else if (tarea._tipo === 'direccion') {
+      return '🏢 Dirección'
     } else {
       if (tarea.tarea_padre_id) {
         const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id) || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id)
@@ -954,7 +965,7 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanud
 
   return (
     <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{
-      borderLeft: `4px solid ${activa ? '#00953B' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`,
+      borderLeft: `4px solid ${activa ? '#00953B' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`,
       background: activa ? '#f0fdf4' : esCompletada ? '#f9fafb' : 'white'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -980,7 +991,7 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanud
         </p>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
-        <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: tarea._tipo === 'soporte' ? '#eff6ff' : tarea._tipo === 'planner' ? '#f5f3ff' : '#f0fdf4', color: tarea._tipo === 'soporte' ? '#1d4ed8' : tarea._tipo === 'planner' ? '#7c3aed' : '#00953B', fontWeight: '600' }}>{contexto}</span>
+        <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: tarea._tipo === 'soporte' ? '#eff6ff' : tarea._tipo === 'direccion' ? '#f5f3ff' : tarea._tipo === 'planner' ? '#f5f3ff' : '#f0fdf4', color: tarea._tipo === 'soporte' ? '#1d4ed8' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#7c3aed' : '#00953B', fontWeight: '600' }}>{contexto}</span>
         <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: activa ? '#dbeafe' : pausada ? '#fef3c7' : esCompletada ? '#dcfce7' : '#f3f4f6', color: activa ? '#1d4ed8' : pausada ? '#92400e' : esCompletada ? '#166534' : '#6b7280', fontWeight: '600' }}>
           {activa ? 'En curso' : pausada ? '⏸ Pausada' : esCompletada ? 'Completada' : 'Pendiente'}
         </span>
