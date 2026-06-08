@@ -450,16 +450,85 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
 }
 
 function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit }) {
+  const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
+  const [inputFecha, setInputFecha] = useState('')
+  const fechas = editItem.fecha_exacta ? editItem.fecha_exacta.split(',').map(f => f.trim()).filter(Boolean) : []
+
+  function agregarFecha() {
+    if (!inputFecha) return
+    if (fechas.includes(inputFecha)) return
+    const nuevas = [...fechas, inputFecha].sort()
+    setEditItem({...editItem, fecha_exacta: nuevas.join(',')})
+    setInputFecha('')
+  }
+
+  function quitarFecha(f) {
+    const nuevas = fechas.filter(x => x !== f)
+    setEditItem({...editItem, fecha_exacta: nuevas.join(',')})
+  }
+
+  const asignadosList = editItem.asignados ? editItem.asignados.split(',').filter(Boolean) : []
+
+  function toggleAsignado(uid) {
+    const actual = editItem.asignados ? editItem.asignados.split(',').filter(Boolean) : []
+    const nuevo = actual.includes(uid) ? actual.filter(id => id !== uid) : [...actual, uid]
+    if (nuevo.length === 0) return
+    setEditItem({...editItem, asignados: nuevo.join(',')})
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
         <h2 style={{ marginBottom: '24px' }}>Editar tarea</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <input placeholder="Nombre *" value={editItem.nombre || ''} onChange={e => setEditItem({...editItem, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+          <div>
+            <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {usuarios.map(u => (
+                <button key={u.id} onClick={() => toggleAsignado(u.id)}
+                  style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: asignadosList.includes(u.id) ? '#1d4ed8' : '#f3f4f6', color: asignadosList.includes(u.id) ? 'white' : '#373A36', border: asignadosList.includes(u.id) ? '2px solid #1d4ed8' : '2px solid #e5e7eb' }}>
+                  {u.nombre ? u.nombre.split(' ')[0] : u.id}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Días asignados en planner:</label>
+            {fechas.length > 0 && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                {fechas.map(f => (
+                  <span key={f} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #1d4ed8', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', color: '#1d4ed8', fontWeight: '600' }}>
+                    📅 {f}
+                    <button onClick={() => quitarFecha(f)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '13px', fontWeight: '700', padding: '0', lineHeight: 1 }}>✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input type="date" value={inputFecha} onChange={e => setInputFecha(e.target.value)}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <button onClick={agregarFecha}
+                style={{ padding: '10px 14px', borderRadius: '8px', background: '#1d4ed8', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>+</button>
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
+            <input type="date" value={editItem.fecha_limite || ''} onChange={e => setEditItem({...editItem, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
+            <select value={editItem.estado || 'pendiente'} onChange={e => setEditItem({...editItem, estado: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+              <option value="pendiente">Pendiente</option>
+              <option value="en_curso">En curso</option>
+              <option value="completada">Completada</option>
+            </select>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
           <button onClick={() => setEditItem(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={() => guardarEdit('tareas_soporte', [editItem.id, editItem.categoria_id, editItem.proyecto_soporte_id || '', editItem.subcarpeta_id || '', editItem.nombre, editItem.asignados || '', editItem.dia_semana, editItem.dia_recomendado || '', editItem.fecha_limite || '', editItem.estado, editItem.fecha_creacion, '', editItem.fecha_limite_original || editItem.fecha_limite || ''])} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#1d4ed8', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
+          <button onClick={() => guardarEdit('tareas_soporte', [editItem.id, editItem.categoria_id, editItem.proyecto_soporte_id || '', editItem.subcarpeta_id || '', editItem.nombre, editItem.asignados || '', editItem.dia_semana || 'por_asignar', editItem.fecha_exacta || '', editItem.dia_recomendado || '', editItem.fecha_limite || '', editItem.estado || 'pendiente', editItem.fecha_creacion, '', editItem.fecha_limite_original || editItem.fecha_limite || ''])}
+            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#1d4ed8', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
         </div>
       </div>
     </div>
