@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/soporte', icon: '🛠️', label: 'Soporte' },
   { to: '/gantt', icon: '📊', label: 'Gantt' },
   { to: '/desviaciones', icon: '📉', label: 'Desviaciones' },
+  { to: '/direccion', icon: '🏢', label: 'Dirección' },
   { to: '/calendario-equipo', icon: '🗓', label: 'Calendario' },
   { to: '/graficas', icon: '📈', label: 'Gráficas' },
   { to: '/movil-campo', icon: '🌿', label: 'Campo' },

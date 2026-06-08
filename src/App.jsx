@@ -7,6 +7,7 @@ import Proyectos from './pages/Proyectos'
 import Soporte from './pages/Soporte'
 import Gantt from './pages/Gantt'
 import Desviaciones from './pages/Desviaciones'
+import Direccion from './pages/Direccion'
 import Graficas from './pages/Graficas'
 import Dashboard from './pages/Dashboard'
 import Configuracion from './pages/Configuracion'
@@ -54,6 +55,7 @@ function App() {
                 <Route path="/soporte" element={<Soporte />} />
                 <Route path="/gantt" element={<Gantt />} />
                 <Route path="/desviaciones" element={<Desviaciones />} />
+                <Route path="/direccion" element={<Direccion />} />
                 <Route path="/graficas" element={<Graficas />} />
                 <Route path="/calendario-equipo" element={<CalendarioEquipo />} />
                 <Route path="/movil-campo" element={<MovilCampo />} />
