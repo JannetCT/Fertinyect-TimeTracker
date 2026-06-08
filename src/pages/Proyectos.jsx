@@ -63,6 +63,46 @@ function BtnAccion({ onClick, tipo, children }) {
     </button>
   )
 }
+function InputFechasMultiples({ label, value, onChange }) {
+  const [inputFecha, setInputFecha] = useState('')
+  const fechas = value ? value.split(',').map(f => f.trim()).filter(Boolean) : []
+
+  function agregarFecha() {
+    if (!inputFecha) return
+    if (fechas.includes(inputFecha)) return
+    const nuevas = [...fechas, inputFecha].sort()
+    onChange(nuevas.join(','))
+    setInputFecha('')
+  }
+
+  function quitarFecha(f) {
+    const nuevas = fechas.filter(x => x !== f)
+    onChange(nuevas.join(','))
+  }
+
+  return (
+    <div>
+      <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>{label}</label>
+      {fechas.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+          {fechas.map(f => (
+            <span key={f} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0fdf4', border: '1px solid #00953B', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', color: '#00953B', fontWeight: '600' }}>
+              📅 {f}
+              <button onClick={e => { e.preventDefault(); e.stopPropagation(); quitarFecha(f) }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '13px', fontWeight: '700', padding: '0', lineHeight: 1 }}>✕</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <input type="date" value={inputFecha} onChange={e => setInputFecha(e.target.value)}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+        <button onClick={e => { e.preventDefault(); e.stopPropagation(); agregarFecha() }}
+          style={{ padding: '10px 14px', borderRadius: '8px', background: '#00953B', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>+</button>
+      </div>
+    </div>
+  )
+}
 
 export default function Proyectos() {
   const { accessToken } = useAuth()
@@ -94,7 +134,7 @@ export default function Proyectos() {
   const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: '' })
   const [nuevaAccion, setNuevaAccion] = useState({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
   const [nuevoEnsayo, setNuevoEnsayo] = useState({ nombre: '', tipo: 'ensayo', descripcion: '', fecha_inicio: '', fecha_fin: '' })
-  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
+  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
   const [nuevoEstado, setNuevoEstado] = useState({ nombre: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
@@ -235,14 +275,17 @@ export default function Proyectos() {
     const id = Date.now().toString()
     const asignadosStr = nuevaTarea.asignados.join(',')
     const diaRec = [nuevaTarea.dia_recomendado, nuevaTarea.fecha_recomendada].filter(Boolean).join(' ')
+    const fechasExactas = nuevaTarea.fechas_exactas || ''
+    const primeraFecha = fechasExactas.split(',')[0]?.trim() || ''
+    const diaCalculado = primeraFecha ? (new Date(primeraFecha + 'T12:00:00').toLocaleDateString('es-ES', {weekday:'long'}).toLowerCase()) : 'por_asignar'
     await escribirFila('tareas', [
       id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
-      nuevaTarea.nombre, asignadosStr, 'por_asignar', diaRec,
+      nuevaTarea.nombre, asignadosStr, diaCalculado, fechasExactas,
       nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '',
       nuevaTarea.fecha_limite
     ], accessToken)
     setModalTarea(null)
-    setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
+    setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
     cargarDatos()
   }
 
@@ -377,6 +420,8 @@ export default function Proyectos() {
                   {usuarios.map(u => <button key={u.id} onClick={() => setNuevaTarea(prev => ({ ...prev, asignados: prev.asignados.includes(u.id) ? prev.asignados.filter(id => id !== u.id) : [...prev.asignados, u.id] }))} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: nuevaTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6', color: nuevaTarea.asignados.includes(u.id) ? 'white' : '#373A36', border: nuevaTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb' }}>{u.nombre ? u.nombre.split(' ')[0] : u.id}</button>)}
                 </div>
               </div>
+              <InputFechasMultiples label="Días asignados en planner (opcional):" value={nuevaTarea.fechas_exactas || ''}
+                onChange={val => setNuevaTarea({...nuevaTarea, fechas_exactas: val})} />
               <div>
                 <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado (opcional):</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
