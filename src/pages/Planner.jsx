@@ -70,7 +70,6 @@ function BotonesPrioridad({ etiqueta, onChange }) {
   const predefinidas = Object.keys(PRIORIDADES)
   const personalizadas = lista.filter(e => !predefinidas.includes(e.toLowerCase().trim()))
   const [inputCustom, setInputCustom] = useState('')
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -95,13 +94,9 @@ function BotonesPrioridad({ etiqueta, onChange }) {
         </div>
       )}
       <div style={{ display: 'flex', gap: '6px' }}>
-        <input
-          placeholder="Etiqueta personalizada..."
-          value={inputCustom}
-          onChange={e => setInputCustom(e.target.value)}
+        <input placeholder="Etiqueta personalizada..." value={inputCustom} onChange={e => setInputCustom(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && inputCustom.trim()) { onChange(toggleEtiqueta(etiqueta, inputCustom.trim())); setInputCustom('') }}}
-          style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px' }}
-        />
+          style={{ flex: 1, padding: '6px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px' }} />
         <button onClick={() => { if (inputCustom.trim()) { onChange(toggleEtiqueta(etiqueta, inputCustom.trim())); setInputCustom('') }}}
           style={{ padding: '6px 12px', borderRadius: '8px', background: '#f3f4f6', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
           + Añadir
@@ -127,14 +122,52 @@ function InputFechaPlanner({ label, value, onChange }) {
   )
 }
 
-// Clave en localStorage para el cronómetro activo
-const CRON_KEY = 'fertinyect_cron'
+function InputFechasMultiples({ label, value, onChange }) {
+  const [inputFecha, setInputFecha] = useState('')
+  const fechas = value ? value.split(',').map(f => f.trim()).filter(Boolean) : []
 
+  function agregarFecha() {
+    if (!inputFecha) return
+    if (fechas.includes(inputFecha)) return
+    const nuevas = [...fechas, inputFecha].sort()
+    onChange(nuevas.join(','))
+    setInputFecha('')
+  }
+
+  function quitarFecha(f) {
+    const nuevas = fechas.filter(x => x !== f)
+    onChange(nuevas.join(','))
+  }
+
+  return (
+    <div>
+      <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>{label}</label>
+      {fechas.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+          {fechas.map(f => (
+            <span key={f} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f0fdf4', border: '1px solid #00953B', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', color: '#00953B', fontWeight: '600' }}>
+              📅 {f}
+              <button onClick={e => { e.preventDefault(); e.stopPropagation(); quitarFecha(f) }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '13px', fontWeight: '700', padding: '0', lineHeight: 1 }}>✕</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <input type="date" value={inputFecha} onChange={e => setInputFecha(e.target.value)}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+        <button onClick={e => { e.preventDefault(); e.stopPropagation(); agregarFecha() }}
+          style={{ padding: '10px 14px', borderRadius: '8px', background: '#00953B', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>+</button>
+      </div>
+    </div>
+  )
+}
+
+const CRON_KEY = 'fertinyect_cron'
 function saveCron(cron) {
   if (cron) localStorage.setItem(CRON_KEY, JSON.stringify(cron))
   else localStorage.removeItem(CRON_KEY)
 }
-
 function loadCron() {
   try {
     const s = localStorage.getItem(CRON_KEY)
@@ -167,7 +200,7 @@ function Planner() {
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
   const [modalNuevoEvento, setModalNuevoEvento] = useState(false)
   const [modalEditarEvento, setModalEditarEvento] = useState(null)
-  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
+  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
   const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion' })
   const [cronActivo, setCronActivo] = useState(() => loadCron())
   const [tiempoActual, setTiempoActual] = useState(0)
@@ -177,7 +210,6 @@ function Planner() {
 
   useEffect(() => {
     if (cronActivo?.inicio) {
-      // Recalcular tiempo actual desde el inicio guardado
       setTiempoActual(cronActivo.acumulado + Math.floor((Date.now() - cronActivo.inicio) / 1000))
       intervalRef.current = setInterval(() => {
         setTiempoActual(cronActivo.acumulado + Math.floor((Date.now() - cronActivo.inicio) / 1000))
@@ -224,11 +256,7 @@ function Planner() {
   }
 
   async function iniciarCronometro(tarea) {
-    // Si hay un cronómetro activo corriendo, pausarlo y guardar el tramo
-    if (cronActivo?.inicio) {
-      await _guardarTramo(cronActivo)
-    }
-    // Si la tarea que se quiere iniciar es la misma que está pausada, reanudarla
+    if (cronActivo?.inicio) await _guardarTramo(cronActivo)
     if (cronActivo && cronActivo.tareaId === tarea.id && !cronActivo.inicio) {
       reanudarCronometro()
       return
@@ -245,7 +273,6 @@ function Planner() {
     const fin = new Date().toISOString()
     const inicio = new Date(Date.now() - elapsed * 1000).toISOString()
     await escribirFila('registros', [Date.now().toString(), cron.tareaId, usuario.id, inicio, fin, elapsed, new Date().toDateString(), cron.tipo, cron.nombre], accessToken)
-    // Actualizar acumulado en localStorage pero sin inicio (pausado)
     const pausado = { ...cron, acumulado: cron.acumulado + elapsed, inicio: null }
     setCronActivo(pausado)
     saveCron(pausado)
@@ -265,10 +292,7 @@ function Planner() {
 
   async function detenerCronometro(completar = false) {
     if (!cronActivo) return
-    // Guardar tramo final si estaba corriendo
-    if (cronActivo.inicio) {
-      await _guardarTramo(cronActivo)
-    }
+    if (cronActivo.inicio) await _guardarTramo(cronActivo)
     if (completar) {
       const allTareas = [...tareas, ...tareasSoporte, ...tareasPlanner]
       const tarea = allTareas.find(t => t.id === cronActivo.tareaId)
@@ -277,6 +301,20 @@ function Planner() {
     setCronActivo(null)
     saveCron(null)
     setTiempoActual(0)
+    cargarDatos()
+  }
+
+  async function completarEvento(evento) {
+    if (!evento.hora_inicio || !evento.hora_fin) return
+    const [hI, mI] = evento.hora_inicio.split(':').map(Number)
+    const [hF, mF] = evento.hora_fin.split(':').map(Number)
+    const duracionSegundos = ((hF * 60 + mF) - (hI * 60 + mI)) * 60
+    if (duracionSegundos <= 0) return
+    const fechaBase = evento.fecha_exacta + 'T' + evento.hora_inicio + ':00'
+    const inicioISO = new Date(fechaBase).toISOString()
+    const finISO = new Date(new Date(fechaBase).getTime() + duracionSegundos * 1000).toISOString()
+    await escribirFila('registros', [Date.now().toString(), evento.id, usuario.id, inicioISO, finISO, duracionSegundos, new Date().toDateString(), 'evento', evento.titulo], accessToken)
+    await actualizarFila('eventos', evento.id, [evento.id, evento.usuario_id, evento.titulo, evento.descripcion || '', evento.fecha_exacta, evento.hora_inicio, evento.hora_fin, evento.tipo, evento.fecha_creacion, 'completado'], accessToken)
     cargarDatos()
   }
 
@@ -292,13 +330,9 @@ function Planner() {
 
   async function eliminarTarea(tarea) {
     if (!window.confirm(`¿Eliminar "${tarea.nombre}"?`)) return
-    if (tarea._tipo === 'proyecto') {
-      await marcarEliminado('tareas', tarea.id, accessToken)
-    } else if (tarea._tipo === 'soporte') {
-      await marcarEliminado('tareas_soporte', tarea.id, accessToken)
-    } else {
-      await marcarEliminado('tareas_planner', tarea.id, accessToken)
-    }
+    if (tarea._tipo === 'proyecto') await marcarEliminado('tareas', tarea.id, accessToken)
+    else if (tarea._tipo === 'soporte') await marcarEliminado('tareas_soporte', tarea.id, accessToken)
+    else await marcarEliminado('tareas_planner', tarea.id, accessToken)
     setModalEditarTarea(null)
     cargarDatos()
   }
@@ -306,14 +340,15 @@ function Planner() {
   async function guardarEditarTarea() {
     if (!modalEditarTarea) return
     const t = modalEditarTarea
-    const fechaExacta = t.fecha_exacta && t.fecha_exacta.trim() !== '' ? t.fecha_exacta : ''
-    const diaCalculado = getDiaSemana(fechaExacta) || t.dia_semana || 'por_asignar'
+    const fechasExactas = t.fechas_exactas || t.fecha_exacta || ''
+    const primeraFecha = fechasExactas.split(',')[0]?.trim() || ''
+    const diaCalculado = getDiaSemana(primeraFecha) || t.dia_semana || 'por_asignar'
     if (t._tipo === 'proyecto') {
-      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechaExacta, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     } else if (t._tipo === 'soporte') {
-      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechaExacta, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     } else {
-      await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechaExacta, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || ''], accessToken)
+      await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || ''], accessToken)
     }
     setModalEditarTarea(null)
     cargarDatos()
@@ -322,7 +357,7 @@ function Planner() {
   async function guardarEditarEvento() {
     if (!modalEditarEvento) return
     const ev = modalEditarEvento
-    await actualizarFila('eventos', ev.id, [ev.id, ev.usuario_id, ev.titulo, ev.descripcion || '', ev.fecha_exacta, ev.hora_inicio || '', ev.hora_fin || '', ev.tipo, ev.fecha_creacion], accessToken)
+    await actualizarFila('eventos', ev.id, [ev.id, ev.usuario_id, ev.titulo, ev.descripcion || '', ev.fecha_exacta, ev.hora_inicio || '', ev.hora_fin || '', ev.tipo, ev.fecha_creacion, ev.estado || ''], accessToken)
     setModalEditarEvento(null)
     cargarDatos()
   }
@@ -335,23 +370,24 @@ function Planner() {
 
   async function crearTareaPlanner() {
     if (!formTarea.nombre) return
-    const fechaExacta = formTarea.fecha_exacta && formTarea.fecha_exacta.trim() !== '' ? formTarea.fecha_exacta : ''
-    const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
+    const fechasExactas = formTarea.fechas_exactas || ''
+    const primeraFecha = fechasExactas.split(',')[0]?.trim() || ''
+    const diaCalculado = getDiaSemana(primeraFecha) || 'por_asignar'
     const misId = String(usuario.id)
     const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
     for (const uid of asignados) {
       const id = Date.now().toString() + uid
-      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechaExacta, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || ''], accessToken)
+      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || ''], accessToken)
     }
     setModalNuevaTarea(false)
-    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
+    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '' })
     cargarDatos()
   }
 
   async function crearEvento() {
     if (!formEvento.titulo || !formEvento.fecha_exacta) return
     const id = Date.now().toString()
-    await escribirFila('eventos', [id, usuario.id, formEvento.titulo, formEvento.descripcion, formEvento.fecha_exacta, formEvento.hora_inicio, formEvento.hora_fin, formEvento.tipo, new Date().toISOString()], accessToken)
+    await escribirFila('eventos', [id, usuario.id, formEvento.titulo, formEvento.descripcion, formEvento.fecha_exacta, formEvento.hora_inicio, formEvento.hora_fin, formEvento.tipo, new Date().toISOString(), ''], accessToken)
     setModalNuevoEvento(false)
     setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion' })
     cargarDatos()
@@ -373,11 +409,16 @@ function Planner() {
     })
   }
 
+  function tareaEnFecha(tarea, fechaStr) {
+    const fechas = tarea.fecha_exacta ? tarea.fecha_exacta.split(',').map(f => f.trim()) : []
+    return fechas.includes(fechaStr)
+  }
+
   function tareasDeDia(fechaStr) {
     return todasLasTareas().filter(t => {
       if (t.estado === 'completada' && !mostrarCompletadas) return false
       if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
-      return t.fecha_exacta === fechaStr
+      return tareaEnFecha(t, fechaStr)
     })
   }
 
@@ -498,6 +539,7 @@ function Planner() {
             : null
           setModalEditarTarea({
             ...tarea,
+            fechas_exactas: tarea.fecha_exacta || '',
             _tipoLigar: tipoLigar,
             _opcionProyectoId: opcionProyecto?.id || '',
             _opcionSoporteId: opcionSoporte?.id || '',
@@ -564,9 +606,8 @@ function Planner() {
             <button key={key} onClick={() => setFiltroEtiqueta(key)} style={{
               padding: '8px 16px', background: 'none', border: 'none',
               borderBottom: activa ? '2px solid #00953B' : '2px solid transparent',
-              color: activa ? '#00953B' : '#6b7280',
-              fontWeight: activa ? '600' : '400', fontSize: '13px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '-1px',
+              color: activa ? '#00953B' : '#6b7280', fontWeight: activa ? '600' : '400',
+              fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '-1px',
             }}>
               {label}
               <span style={{ background: activa ? '#00953B' : '#f3f4f6', color: activa ? 'white' : '#6b7280', borderRadius: '20px', padding: '1px 7px', fontSize: '11px', fontWeight: '600' }}>
@@ -601,16 +642,28 @@ function Planner() {
                     <span className="task-count" style={{ background: esHoy ? 'rgba(255,255,255,0.3)' : undefined, color: esHoy ? 'white' : undefined }}>{tareasDelDia.length + eventosDelDia.length}</span>
                   </div>
                   <div className="column-tasks">
-                    {eventosDelDia.map(ev => (
-                      <div key={ev.id} onClick={(e) => { e.stopPropagation(); setModalEditarEvento({ ...ev, titulo: ev.titulo || '', descripcion: ev.descripcion || '', fecha_exacta: ev.fecha_exacta || '', hora_inicio: ev.hora_inicio || '', hora_fin: ev.hora_fin || '', tipo: ev.tipo || 'reunion' }) }}
-                        style={{ background: '#f5f3ff', borderLeft: '4px solid #7c3aed', borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', cursor: 'pointer' }}
-                        onMouseOver={e => e.currentTarget.style.opacity = '0.8'}
-                        onMouseOut={e => e.currentTarget.style.opacity = '1'}>
-                        <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed' }}>🗓 {ev.titulo}</p>
-                        {ev.hora_inicio && <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{ev.hora_inicio}{ev.hora_fin ? ` — ${ev.hora_fin}` : ''}</p>}
-                        <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
-                      </div>
-                    ))}
+                    {eventosDelDia.map(ev => {
+                      const completado = ev.estado === 'completado'
+                      return (
+                        <div key={ev.id}
+                          style={{ background: completado ? '#f5f3ff' : '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', opacity: completado ? 0.7 : 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div onClick={(e) => { e.stopPropagation(); setModalEditarEvento({ ...ev, titulo: ev.titulo || '', descripcion: ev.descripcion || '', fecha_exacta: ev.fecha_exacta || '', hora_inicio: ev.hora_inicio || '', hora_fin: ev.hora_fin || '', tipo: ev.tipo || 'reunion', estado: ev.estado || '' }) }}
+                              style={{ cursor: 'pointer', flex: 1 }}>
+                              <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed', textDecoration: completado ? 'line-through' : 'none' }}>🗓 {ev.titulo}</p>
+                              {ev.hora_inicio && <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{ev.hora_inicio}{ev.hora_fin ? ` — ${ev.hora_fin}` : ''}</p>}
+                              <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
+                            </div>
+                            {!completado && ev.hora_inicio && ev.hora_fin && (
+                              <button onClick={e => { e.stopPropagation(); completarEvento(ev) }}
+                                style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', marginLeft: '6px' }}>
+                                ✅
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
                     {tareasDelDia.map(tarea => renderTarjeta(tarea))}
                   </div>
                 </div>
@@ -714,8 +767,8 @@ function Planner() {
                   )}
                 </div>
               )}
-              <InputFechaPlanner label="Fecha exacta (opcional):" value={modalEditarTarea.fecha_exacta}
-                onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_exacta: val})} />
+              <InputFechasMultiples label="Días asignados:" value={modalEditarTarea.fechas_exactas || modalEditarTarea.fecha_exacta || ''}
+                onChange={val => setModalEditarTarea({...modalEditarTarea, fechas_exactas: val})} />
               <InputFechaPlanner label="Fecha límite (opcional):" value={modalEditarTarea.fecha_limite}
                 onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_limite: val})} />
               <div>
@@ -834,7 +887,8 @@ function Planner() {
                   )}
                 </div>
               )}
-              <InputFechaPlanner label="Fecha exacta (opcional):" value={formTarea.fecha_exacta} onChange={val => setFormTarea({...formTarea, fecha_exacta: val})} />
+              <InputFechasMultiples label="Días asignados (opcional):" value={formTarea.fechas_exactas || ''}
+                onChange={val => setFormTarea({...formTarea, fechas_exactas: val})} />
               <InputFechaPlanner label="Fecha límite (opcional):" value={formTarea.fecha_limite} onChange={val => setFormTarea({...formTarea, fecha_limite: val})} />
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
@@ -842,7 +896,7 @@ function Planner() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _tipoLigar: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' }) }}
+              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _tipoLigar: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '' }) }}
                 style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
               <button onClick={crearTareaPlanner}
                 style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear</button>
@@ -922,7 +976,7 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanud
       </div>
       {activa && (
         <p style={{ margin: '4px 0 0', fontSize: '13px', fontWeight: '700', color: '#00953B', fontFamily: 'monospace' }}>
-          ⏱ {Math.floor(tiempoActual/3600).toString().padStart(2,'0')}:{Math.floor((tiempoActual%3600)/60).toString().padStart(2,'0')}:{(tiempoActual%60).toString().padStart(2,'0')}
+          ⏱ {Math.floor(tiempoActual/3600).toString().padStart(2,'00')}:{Math.floor((tiempoActual%3600)/60).toString().padStart(2,'0')}:{(tiempoActual%60).toString().padStart(2,'0')}
         </p>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
