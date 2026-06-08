@@ -62,6 +62,47 @@ function Breadcrumb({ items }) {
   )
 }
 
+function InputFechasMultiples({ label, value, onChange }) {
+  const [inputFecha, setInputFecha] = useState('')
+  const fechas = value ? value.split(',').map(f => f.trim()).filter(Boolean) : []
+
+  function agregarFecha() {
+    if (!inputFecha) return
+    if (fechas.includes(inputFecha)) return
+    const nuevas = [...fechas, inputFecha].sort()
+    onChange(nuevas.join(','))
+    setInputFecha('')
+  }
+
+  function quitarFecha(f) {
+    const nuevas = fechas.filter(x => x !== f)
+    onChange(nuevas.join(','))
+  }
+
+  return (
+    <div>
+      <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>{label}</label>
+      {fechas.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+          {fechas.map(f => (
+            <span key={f} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #1d4ed8', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', color: '#1d4ed8', fontWeight: '600' }}>
+              📅 {f}
+              <button onClick={e => { e.preventDefault(); e.stopPropagation(); quitarFecha(f) }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '13px', fontWeight: '700', padding: '0', lineHeight: 1 }}>✕</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <input type="date" value={inputFecha} onChange={e => setInputFecha(e.target.value)}
+          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+        <button onClick={e => { e.preventDefault(); e.stopPropagation(); agregarFecha() }}
+          style={{ padding: '10px 14px', borderRadius: '8px', background: '#1d4ed8', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>+</button>
+      </div>
+    </div>
+  )
+}
+
 export default function Soporte() {
   const { accessToken } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -86,7 +127,7 @@ export default function Soporte() {
   const [confirmEliminar, setConfirmEliminar] = useState(null)
 
   const [form, setForm] = useState({ nombre: '', descripcion: '' })
-  const [formTarea, setFormTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
+  const [formTarea, setFormTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
@@ -208,11 +249,11 @@ export default function Soporte() {
         </div>
         <TareasList tareas={tareasAqui} usuarios={usuarios} getNombre={getNombre} setEditItem={setEditItem} setForm={setForm} setConfirmEliminar={setConfirmEliminar} />
         {modalTarea && <ModalTarea titulo="Nueva tarea" contexto={vistaSubcarpeta.nombre} formTarea={formTarea} setFormTarea={setFormTarea} usuarios={usuarios}
-          onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' }) }}
+          onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' }) }}
           onSave={() => {
             const id = Date.now().toString()
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
-            crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
+            crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
           }} />}
         {editItem && editItem._tipo !== 'subcarpeta' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
         {editItem && editItem._tipo === 'subcarpeta' && <Modal titulo="Editar subcarpeta" onClose={() => setEditItem(null)} onSave={() => guardarEdit('subcarpetas_soporte', [editItem.id, editItem.proyecto_soporte_id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
@@ -268,11 +309,11 @@ export default function Soporte() {
         </div>
         {modalSubcarpeta && <Modal titulo="Nueva subcarpeta" onClose={() => setModalSubcarpeta(null)} onSave={() => { const id = Date.now().toString(); crear('subcarpetas_soporte', [id, modalSubcarpeta.proyecto_soporte_id, modalSubcarpeta.categoria_id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
         {modalTarea && <ModalTarea titulo="Nueva tarea directa" contexto={vistaProyecto.nombre} formTarea={formTarea} setFormTarea={setFormTarea} usuarios={usuarios}
-          onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' }) }}
+          onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' }) }}
           onSave={() => {
             const id = Date.now().toString()
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
-            crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
+            crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
           }} />}
         {editItem && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
@@ -320,11 +361,11 @@ export default function Soporte() {
         </div>
         {modalProyecto && <Modal titulo="Nuevo proyecto de soporte" onClose={() => setModalProyecto(null)} onSave={() => { const id = Date.now().toString(); crear('proyectos_soporte', [id, modalProyecto.categoria_id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
         {modalTarea && <ModalTarea titulo="Nueva tarea directa" contexto={vistaCategoria.nombre} formTarea={formTarea} setFormTarea={setFormTarea} usuarios={usuarios}
-          onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' }) }}
+          onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' }) }}
           onSave={() => {
             const id = Date.now().toString()
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
-            crear('tareas_soporte', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
+            crear('tareas_soporte', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
           }} />}
         {editItem && editItem._tipo === 'categoria' && <Modal titulo="Editar categoría" onClose={() => setEditItem(null)} onSave={() => guardarEdit('categorias_soporte', [editItem.id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
@@ -375,6 +416,8 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
         <h2 style={{ marginBottom: '24px' }}>{titulo}</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ background: '#eff6ff', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#1d4ed8' }}>📂 {contexto}</div>
+          <InputFechasMultiples label="Días asignados en planner (opcional):" value={formTarea.fechas_exactas || ''}
+            onChange={val => setFormTarea({...formTarea, fechas_exactas: val})} />
           <input placeholder="Nombre de la tarea *" value={formTarea.nombre} onChange={e => setFormTarea({...formTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
           <div>
             <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
