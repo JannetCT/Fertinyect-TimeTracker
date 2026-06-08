@@ -82,10 +82,8 @@ export default function Notificaciones() {
       // ── TAREAS PLANNER ────────────────────────────────────────────
       for (const tarea of tareasPlanner) {
         const esDeEstUsuario =
-          !tarea.asignado_a ||
-          tarea.asignado_a === usuario.id ||
-          tarea.asignado_a === usuario.email ||
-          tarea.asignado_a === usuario.nombre
+          !tarea.usuario_id ||
+          String(tarea.usuario_id) === String(usuario.id)
         if (!esDeEstUsuario) continue
         if (tarea.estado === 'completada' || tarea.estado === 'completado') continue
         const fecha = tarea.fecha_limite
@@ -118,11 +116,8 @@ export default function Notificaciones() {
 
       // ── TAREAS SOPORTE ────────────────────────────────────────────
       for (const tarea of tareasSoporte) {
-        const esDeEstUsuario =
-          !tarea.asignados ||
-          tarea.asignados.includes(usuario.id) ||
-          tarea.asignados.includes(usuario.email) ||
-          tarea.asignados.includes(usuario.nombre)
+        const asignadosList = tarea.asignados ? tarea.asignados.split(',').map(s => s.trim()) : []
+        const esDeEstUsuario = asignadosList.length === 0 || asignadosList.includes(String(usuario.id))
         if (!esDeEstUsuario) continue
         if (tarea.estado === 'completada' || tarea.estado === 'completado') continue
         const fecha = tarea.fecha_limite
@@ -162,11 +157,8 @@ export default function Notificaciones() {
 
       // ── TAREAS PROYECTOS ──────────────────────────────────────────
       for (const tarea of tareas) {
-        const esDeEstUsuario =
-          !tarea.asignados ||
-          tarea.asignados.includes(usuario.id) ||
-          tarea.asignados.includes(usuario.email) ||
-          tarea.asignados.includes(usuario.nombre)
+        const asignadosList = tarea.asignados ? tarea.asignados.split(',').map(s => s.trim()) : []
+        const esDeEstUsuario = asignadosList.length === 0 || asignadosList.includes(String(usuario.id))
         if (!esDeEstUsuario) continue
         if (tarea.estado === 'completada' || tarea.estado === 'completado') continue
         const fecha = tarea.fecha_limite
