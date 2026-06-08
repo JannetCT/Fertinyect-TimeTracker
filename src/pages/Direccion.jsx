@@ -359,7 +359,7 @@ export default function Direccion() {
           )}
           {subcarpetasAqui.length === 0 && tareasDirectas.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}><p>Sin contenido aún.</p></div>}
         </div>
-        {modalSubcarpeta && <Modal titulo="Nueva subcarpeta" onClose={() => setModalSubcarpeta(null)} onSave={() => { const id = Date.now().toString(); crear('subcarpetas_direccion', [id, modalSubcarpeta.proyecto_direccion_id, modalSubcarpeta.categoria_id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
+        {modalSubcarpeta && <Modal titulo="Nueva subcarpeta" onClose={() => { setModalSubcarpeta(null); setForm({ nombre: '', descripcion: '' }) }} onSave={() => { if (!form.nombre) return; const id = Date.now().toString(); crear('subcarpetas_direccion', [id, modalSubcarpeta.proyecto_direccion_id, modalSubcarpeta.categoria_id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
         {modalTarea && <ModalTarea titulo="Nueva tarea directa" contexto={vistaProyecto.nombre} formTarea={formTarea} setFormTarea={setFormTarea} usuarios={usuarios}
           onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' }) }}
           onSave={() => {
@@ -418,7 +418,7 @@ export default function Direccion() {
           )}
           {proyectosAqui.length === 0 && tareasDirectas.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}><p>Sin contenido aún.</p></div>}
         </div>
-        {modalProyecto && <Modal titulo="Nuevo proyecto" onClose={() => setModalProyecto(null)} onSave={() => { const id = Date.now().toString(); crear('proyectos_direccion', [id, modalProyecto.categoria_id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
+        {modalProyecto && <Modal titulo="Nuevo proyecto" onClose={() => { setModalProyecto(null); setForm({ nombre: '', descripcion: '' }) }} onSave={() => { if (!form.nombre) return; const id = Date.now().toString(); crear('proyectos_direccion', [id, modalProyecto.categoria_id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
         {modalTarea && <ModalTarea titulo="Nueva tarea directa" contexto={vistaCategoria.nombre} formTarea={formTarea} setFormTarea={setFormTarea} usuarios={usuarios}
           onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' }) }}
           onSave={() => {
@@ -455,7 +455,7 @@ export default function Direccion() {
           </div>
         ))}
       </div>
-      {modalCategoria && <Modal titulo="Nueva categoría" onClose={() => setModalCategoria(false)} onSave={() => { const id = Date.now().toString(); crear('categorias_direccion', [id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
+      {modalCategoria && <Modal titulo="Nueva categoría" onClose={() => { setModalCategoria(false); setForm({ nombre: '', descripcion: '' }) }} onSave={() => { if (!form.nombre) return; const id = Date.now().toString(); crear('categorias_direccion', [id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
     </div>
   )
 }
