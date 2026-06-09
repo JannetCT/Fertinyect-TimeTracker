@@ -47,7 +47,6 @@ function getRangoFechas(periodo) {
     inicio = new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1)
     fin = hoy
   } else {
-    // todo
     inicio = new Date(2020, 0, 1)
     fin = hoy
   }
@@ -146,7 +145,27 @@ function Dashboard() {
   }).filter(p => p.segundos > 0 || proyectosActivos > 0)
   const maxProyecto = Math.max(...porProyecto.map(p => p.segundos), 1)
 
-  // DISTRIBUCIÓN DIARIA (solo semanas)
+  // TIEMPO EN REUNIONES/EVENTOS
+  const registrosEventos = registrosPeriodo.filter(r => r.tipo_tarea === 'evento')
+  const totalSegundosEventos = registrosEventos.reduce((acc, r) => acc + Number(r.duracion_segundos || 0), 0)
+  const eventosPorPersona = usuarios.map(u => {
+    const seg = registrosEventos.filter(r => (r.usuario_id || r.usuarios_id) === u.id).reduce((acc, r) => acc + Number(r.duracion_segundos || 0), 0)
+    const email = u.email || ''
+    const cu = COLORES_USUARIO[email] || { color: '#6b7280', bg: '#f3f4f6' }
+    return { nombre: u.nombre, horas: formatHoras(seg), segundos: seg, color: cu.color, bg: cu.bg }
+  }).filter(p => p.segundos > 0)
+  const maxEvento = Math.max(...eventosPorPersona.map(p => p.segundos), 1)
+
+  const reunionesDetalle = registrosEventos.reduce((acc, r) => {
+    const nombre = r.tarea_nombre || 'Sin título'
+    if (!acc[nombre]) acc[nombre] = { nombre, segundos: 0, personas: new Set() }
+    acc[nombre].segundos += Number(r.duracion_segundos || 0)
+    acc[nombre].personas.add(getNombreUsuario(r.usuario_id || r.usuarios_id))
+    return acc
+  }, {})
+  const reunionesLista = Object.values(reunionesDetalle).sort((a, b) => b.segundos - a.segundos)
+
+  // DISTRIBUCIÓN DIARIA
   const esSemana = periodo === 'semana_actual' || periodo === 'semana_pasada'
   function distribucionDiaria() {
     const lunes = getLunesDeSemana(new Date(inicio + 'T12:00:00'))
@@ -173,13 +192,13 @@ function Dashboard() {
   function exportarExcel() {
     const wb = XLSX.utils.book_new()
 
-    // Hoja resumen
     const resumen = [
       ['Dashboard I+D — Fertinyect'],
       [`Periodo: ${inicio} a ${fin}`],
       [''],
       ['MÉTRICAS GENERALES'],
       ['Horas totales equipo', formatHoras(totalSegundos) + 'h'],
+      ['Horas en reuniones', formatHoras(totalSegundosEventos) + 'h'],
       ['Tareas completadas', tareasCompletadas],
       ['Proyectos activos', proyectosActivos],
       ['Miembro más activo', masActivo],
@@ -191,12 +210,15 @@ function Dashboard() {
       ['TIEMPO POR PROYECTO'],
       ['Proyecto', 'Horas periodo', 'Progreso'],
       ...porProyecto.map(p => [p.nombre, p.horas + 'h', p.progreso + '%']),
+      [''],
+      ['REUNIONES'],
+      ['Reunión', 'Horas', 'Personas'],
+      ...reunionesLista.map(r => [r.nombre, formatHoras(r.segundos) + 'h', [...r.personas].join(', ')]),
     ]
     const ws = XLSX.utils.aoa_to_sheet(resumen)
     ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 10 }]
     XLSX.utils.book_append_sheet(wb, ws, 'Resumen')
 
-    // Hoja registros
     const cabReg = ['Fecha', 'Usuario', 'Tarea', 'Horas', 'Tipo']
     const filasReg = registrosPeriodo.map(r => [
       r.fecha, getNombreUsuario(r.usuario_id || r.usuarios_id), r.tarea_nombre || '', formatHoras(Number(r.duracion_segundos || 0)), r.tipo_tarea || ''
@@ -229,8 +251,7 @@ function Dashboard() {
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#888' }}>Vista global del equipo · Fertinyect</p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* SELECTOR PERIODO */}
-          <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', flexWrap: 'wrap' }}>
             {PERIODOS.map(p => (
               <button key={p.value} onClick={() => setPeriodo(p.value)} style={{ padding: '7px 12px', background: periodo === p.value ? '#00953B' : 'white', color: periodo === p.value ? 'white' : '#373A36', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', borderRight: '1px solid #e5e7eb' }}>
                 {p.label}
@@ -247,6 +268,7 @@ function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '20px' }}>
         {[
           { label: 'Horas equipo', valor: `${formatHoras(totalSegundos)}h`, color: '#00953B', sub: `${inicio} — ${fin}` },
+          { label: 'En reuniones', valor: `${formatHoras(totalSegundosEventos)}h`, color: '#7c3aed', sub: 'este periodo' },
           { label: 'Tareas completadas', valor: tareasCompletadas, color: '#3b82f6', sub: 'total acumulado' },
           { label: 'Proyectos activos', valor: proyectosActivos, color: '#8b5cf6', sub: 'en curso' },
           { label: 'Más activo', valor: masActivo, color: '#f59e0b', sub: 'este periodo' },
@@ -302,7 +324,6 @@ function Dashboard() {
               <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${(p.segundos / maxProyecto) * 100}%`, background: p.color, borderRadius: '4px', transition: 'width 0.4s ease' }} />
               </div>
-              {/* Barra progreso tareas */}
               <div style={{ height: '3px', background: '#f3f4f6', borderRadius: '2px', marginTop: '3px', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${p.progreso}%`, background: '#00953B', opacity: 0.5, borderRadius: '2px' }} />
               </div>
@@ -311,7 +332,45 @@ function Dashboard() {
         }
       </div>
 
-      {/* DISTRIBUCIÓN DIARIA — solo en vistas de semana */}
+      {/* TIEMPO EN REUNIONES */}
+      {totalSegundosEventos > 0 && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', color: '#373A36' }}>🗓 Tiempo en reuniones</h3>
+            <span style={{ fontSize: '18px', fontWeight: '700', color: '#7c3aed' }}>{formatHoras(totalSegundosEventos)}h total</span>
+          </div>
+          {eventosPorPersona.map(p => (
+            <div key={p.nombre} style={{ marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: p.color }} />
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#373A36' }}>{p.nombre}</span>
+                </div>
+                <span style={{ fontSize: '14px', fontWeight: '700', color: p.color }}>{p.horas}h</span>
+              </div>
+              <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(p.segundos / maxEvento) * 100}%`, background: '#7c3aed', borderRadius: '4px' }} />
+              </div>
+            </div>
+          ))}
+          {reunionesLista.length > 0 && (
+            <div style={{ marginTop: '20px', borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>
+              <p style={{ margin: '0 0 12px', fontSize: '12px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase' }}>Detalle por reunión</p>
+              {reunionesLista.map(r => (
+                <div key={r.nombre} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f9fafb' }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '500', color: '#373A36' }}>{r.nombre}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#9ca3af' }}>{[...r.personas].join(', ')}</p>
+                  </div>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#7c3aed' }}>{formatHoras(r.segundos)}h</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* DISTRIBUCIÓN DIARIA */}
       {esSemana && (
         <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', marginBottom: '16px' }}>
           <h3 style={{ margin: '0 0 20px', fontSize: '15px', color: '#373A36' }}>Distribución diaria del equipo</h3>
@@ -340,7 +399,6 @@ function Dashboard() {
               )
             })}
           </div>
-          {/* Leyenda */}
           <div style={{ display: 'flex', gap: '16px', marginTop: '12px', flexWrap: 'wrap' }}>
             {usuarios.map(u => {
               const email = u.email || ''
