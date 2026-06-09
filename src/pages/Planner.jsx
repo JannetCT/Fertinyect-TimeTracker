@@ -703,8 +703,8 @@ function Planner() {
 
   // VISTA DETALLE TAREA
   if (vistaTarea) {
-    const refId = getRefId(vistaTarea)
-    const refTipo = getRefTipo(vistaTarea)
+    const refId = vistaTarea._tipo === 'planner' ? getRefId(vistaTarea) : vistaTarea.id
+    const refTipo = vistaTarea._tipo === 'planner' ? getRefTipo(vistaTarea) : vistaTarea._tipo
     const descripcion = getDescripcionTarea(vistaTarea)
     return (
       <div className="planner-container">
