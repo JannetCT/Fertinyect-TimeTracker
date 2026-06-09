@@ -369,7 +369,7 @@ export default function Proyectos() {
       id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
       nuevaTarea.nombre, asignadosStr, diaCalculado, fechasExactas,
       diaRec, nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(),
-      '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', ''
+      '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g'
     ], accessToken)
     setModalTarea(null)
     setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
