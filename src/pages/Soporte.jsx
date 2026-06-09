@@ -214,7 +214,7 @@ export default function Soporte() {
   const [confirmEliminar, setConfirmEliminar] = useState(null)
 
   const [form, setForm] = useState({ nombre: '', descripcion: '' })
-  const [formTarea, setFormTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
+  const [formTarea, setFormTarea] = useState({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
@@ -484,7 +484,7 @@ export default function Soporte() {
           onSave={() => {
             const id = Date.now().toString()
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
-            crear('tareas_soporte', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
+            crear('tareas_soporte', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', ''])
           }} />}
         {editItem && editItem._tipo === 'categoria' && <Modal titulo="Editar categoría" onClose={() => setEditItem(null)} onSave={() => guardarEdit('categorias_soporte', [editItem.id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} usuario={usuario} accessToken={accessToken} />}
@@ -539,6 +539,7 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
           <InputFechasMultiples label="Días asignados en planner (opcional):" value={formTarea.fechas_exactas || ''}
             onChange={val => setFormTarea({...formTarea, fechas_exactas: val})} />
           <input placeholder="Nombre de la tarea *" value={formTarea.nombre} onChange={e => setFormTarea({...formTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+          <textarea placeholder="Descripción (opcional)" value={formTarea.descripcion || ''} onChange={e => setFormTarea({...formTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
           <div>
             <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
