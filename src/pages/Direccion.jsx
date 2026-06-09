@@ -104,6 +104,8 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
   const [actualizaciones, setActualizaciones] = useState([])
   const [texto, setTexto] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [textoEdit, setTextoEdit] = useState('')
 
   useEffect(() => { cargarActualizaciones() }, [tareaId])
 
@@ -124,6 +126,20 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
     setCargando(false)
   }
 
+  async function guardarEdicion(id) {
+    if (!textoEdit.trim()) return
+    const act = actualizaciones.find(a => a.id === id)
+    if (!act) return
+    await actualizarFila('actualizaciones', id, [id, act.tarea_id, act.tipo_tarea, act.usuario_id, textoEdit.trim(), act.fecha_creacion], accessToken)
+    setEditandoId(null)
+    await cargarActualizaciones()
+  }
+
+  async function eliminarActualizacion(id) {
+    await marcarEliminado('actualizaciones', id, accessToken)
+    await cargarActualizaciones()
+  }
+
   return (
     <div style={{ marginTop: '16px' }}>
       <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Actualizaciones:</label>
@@ -140,10 +156,29 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
         ? <p style={{ fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin actualizaciones aún</p>
         : actualizaciones.map(a => (
           <div key={a.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', marginBottom: '6px', borderLeft: '3px solid #7c3aed' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#373A36' }}>{a.texto}</p>
-            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
-              {a.usuario_id} · {new Date(a.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </p>
+            {editandoId === a.id ? (
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input value={textoEdit} onChange={e => setTextoEdit(e.target.value)}
+                  style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px' }} />
+                <button onClick={() => guardarEdicion(a.id)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#7c3aed', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✓</button>
+                <button onClick={() => setEditandoId(null)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✕</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#373A36', flex: 1 }}>{a.texto}</p>
+                  <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+                    <button onClick={() => { setEditandoId(a.id); setTextoEdit(a.texto) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#6b7280' }}>✏️</button>
+                    <button onClick={() => eliminarActualizacion(a.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑</button>
+                  </div>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
+                  {a.usuario_id} · {new Date(a.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </>
+            )}
           </div>
         ))
       }
@@ -261,7 +296,7 @@ export default function Direccion() {
           <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="direccion" usuario={usuario} accessToken={accessToken} />
         </div>
         {editItem && editItem._tipo === 'tarea' && (
-          <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios}
+          <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken}
             guardarEdit={(hoja, fila) => { guardarEdit(hoja, fila); setVistaTarea({...editItem}) }} />
         )}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
@@ -302,7 +337,7 @@ export default function Direccion() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_direccion', [id, modalTarea.categoria_id || '', modalTarea.proyecto_direccion_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', grupoId])
           }} />}
-        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
+        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken} guardarEdit={guardarEdit} />}
         {editItem && editItem._tipo === 'subcarpeta' && <Modal titulo="Editar subcarpeta" onClose={() => setEditItem(null)} onSave={() => guardarEdit('subcarpetas_direccion', [editItem.id, editItem.proyecto_direccion_id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
@@ -368,7 +403,7 @@ export default function Direccion() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_direccion', [id, modalTarea.categoria_id || '', modalTarea.proyecto_direccion_id || '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', grupoId])
           }} />}
-        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
+        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken} guardarEdit={guardarEdit} />}
         {editItem && editItem._tipo === 'proyecto' && <Modal titulo="Editar proyecto" onClose={() => setEditItem(null)} onSave={() => guardarEdit('proyectos_direccion', [editItem.id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
@@ -427,7 +462,7 @@ export default function Direccion() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_direccion', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', grupoId])
           }} />}
-        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
+        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken} guardarEdit={guardarEdit} />}
         {editItem && editItem._tipo === 'categoria' && <Modal titulo="Editar categoría" onClose={() => setEditItem(null)} onSave={() => guardarEdit('categorias_direccion', [editItem.id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
@@ -504,7 +539,7 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
   )
 }
 
-function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit }) {
+function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario, accessToken }) {
   const [inputFecha, setInputFecha] = useState('')
   const fechas = editItem.fecha_exacta ? editItem.fecha_exacta.split(',').map(f => f.trim()).filter(Boolean) : []
   const asignadosList = editItem.asignados ? editItem.asignados.split(',').filter(Boolean) : []
@@ -535,8 +570,8 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit }) {
         <h2 style={{ marginBottom: '24px' }}>Editar tarea</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <input placeholder="Nombre *" value={editItem.nombre || ''} onChange={e => setEditItem({...editItem, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-          <textarea placeholder="Descripción" value={editItem.descripcion || ''} onChange={e => setEditItem({...editItem, descripcion: e.target.value})
-          } style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+          <textarea placeholder="Descripción" value={editItem.descripcion || ''} onChange={e => setEditItem({...editItem, descripcion: e.target.value})}
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
           <div>
             <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -579,6 +614,7 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit }) {
               <option value="completada">Completada</option>
             </select>
           </div>
+          <SeccionActualizaciones tareaId={editItem.id} tipoTarea="direccion" usuario={usuario} accessToken={accessToken} />
         </div>
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
           <button onClick={() => setEditItem(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
