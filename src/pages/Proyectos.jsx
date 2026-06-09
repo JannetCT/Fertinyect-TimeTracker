@@ -104,6 +104,57 @@ function InputFechasMultiples({ label, value, onChange }) {
   )
 }
 
+function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
+  const [actualizaciones, setActualizaciones] = useState([])
+  const [texto, setTexto] = useState('')
+  const [cargando, setCargando] = useState(false)
+
+  useEffect(() => { cargarActualizaciones() }, [tareaId])
+
+  async function cargarActualizaciones() {
+    try {
+      const todas = await leerHoja('actualizaciones', accessToken)
+      setActualizaciones(todas.filter(a => a.tarea_id === tareaId).sort((a, b) => a.fecha_creacion > b.fecha_creacion ? -1 : 1))
+    } catch (err) { console.error(err) }
+  }
+
+  async function añadirActualizacion() {
+    if (!texto.trim()) return
+    setCargando(true)
+    const id = Date.now().toString()
+    await escribirFila('actualizaciones', [id, tareaId, tipoTarea, usuario.id, texto.trim(), new Date().toISOString()], accessToken)
+    setTexto('')
+    await cargarActualizaciones()
+    setCargando(false)
+  }
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Actualizaciones:</label>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+        <input placeholder="Escribe una actualización..." value={texto} onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && texto.trim()) añadirActualizacion() }}
+          style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px' }} />
+        <button onClick={añadirActualizacion} disabled={cargando}
+          style={{ padding: '8px 14px', borderRadius: '8px', background: '#00953B', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+          {cargando ? '...' : '+ Añadir'}
+        </button>
+      </div>
+      {actualizaciones.length === 0
+        ? <p style={{ fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin actualizaciones aún</p>
+        : actualizaciones.map(a => (
+          <div key={a.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', marginBottom: '6px', borderLeft: '3px solid #00953B' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#373A36' }}>{a.texto}</p>
+            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
+              {a.usuario_id} · {new Date(a.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
+        ))
+      }
+    </div>
+  )
+}
+
 export default function Proyectos() {
   const { accessToken } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -467,6 +518,7 @@ export default function Proyectos() {
                 <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
                 <input type="date" value={editTarea.fecha_limite || ''} onChange={e => setEditTarea({...editTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
+              <SeccionActualizaciones tareaId={editTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
             </div>
           </Modal>
         )}
