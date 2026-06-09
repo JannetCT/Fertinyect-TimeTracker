@@ -214,6 +214,7 @@ export default function Proyectos() {
   const [editAccion, setEditAccion] = useState(null)
   const [editEnsayo, setEditEnsayo] = useState(null)
   const [editTarea, setEditTarea] = useState(null)
+  const [vistaTarea, setVistaTarea] = useState(null)
 
   const [confirmEliminar, setConfirmEliminar] = useState(null)
 
@@ -443,6 +444,64 @@ async function guardarEditTarea() {
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
+  // VISTA TAREA DETALLE
+  if (vistaTarea) {
+    return (
+      <div className="proyectos-container">
+        <div className="proyectos-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button onClick={() => setVistaTarea(null)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Volver</button>
+            <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaTarea.nombre}</h1>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <BtnAccion tipo="editar" onClick={() => setEditTarea({ ...vistaTarea, asignados: vistaTarea.asignados ? vistaTarea.asignados.split(',').filter(Boolean) : [] })}>✏️ Editar</BtnAccion>
+            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: vistaTarea })}>🗑 Eliminar</BtnAccion>
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+          {vistaTarea.descripcion && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Descripción:</label>
+              <p style={{ margin: 0, fontSize: '14px', color: '#373A36', background: '#f9fafb', padding: '12px', borderRadius: '8px' }}>{vistaTarea.descripcion}</p>
+            </div>
+          )}
+          <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
+        </div>
+        {editTarea && (
+          <Modal titulo="Editar tarea" onClose={() => setEditTarea(null)} onSave={guardarEditTarea}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input placeholder="Nombre *" value={editTarea.nombre} onChange={e => setEditTarea({...editTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={editTarea.descripcion || ''} onChange={e => setEditTarea({...editTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {usuarios.map(u => <button key={u.id} onClick={() => setEditTarea(prev => ({ ...prev, asignados: prev.asignados.includes(u.id) ? prev.asignados.filter(id => id !== u.id) : [...prev.asignados, u.id] }))} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: editTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6', color: editTarea.asignados.includes(u.id) ? 'white' : '#373A36', border: editTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb' }}>{u.nombre ? u.nombre.split(' ')[0] : u.id}</button>)}
+                </div>
+              </div>
+              <InputFechasMultiples label="Días asignados en planner:" value={editTarea.fecha_exacta || ''} onChange={val => setEditTarea({...editTarea, fecha_exacta: val})} />
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select value={editTarea.dia_recomendado || ''} onChange={e => setEditTarea({...editTarea, dia_recomendado: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                    <option value="">Sin día específico</option>
+                    {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
+                  </select>
+                  <input type="date" value={editTarea.fecha_recomendada || ''} onChange={e => setEditTarea({...editTarea, fecha_recomendada: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
+                <input type="date" value={editTarea.fecha_limite || ''} onChange={e => setEditTarea({...editTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              </div>
+              <SeccionActualizaciones tareaId={editTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
+            </div>
+          </Modal>
+        )}
+        {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
+      </div>
+    )
+  }
+
   // VISTA ENSAYO
   if (vistaEnsayo) {
     const tareasEnsayo = tareasDeEnsayo(vistaEnsayo.id)
@@ -476,7 +535,7 @@ async function guardarEditTarea() {
               <div key={tarea.id} style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : '#00953B'}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none' }}>{tarea.nombre}</p>
+                    <p onClick={() => setVistaTarea(tarea)} style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none', cursor: 'pointer' }}>{tarea.nombre}</p>
                     <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#888' }}>📁 {vistaEnsayo.nombre}</p>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {asignados.map(id => <span key={id} style={{ background: '#f0fdf4', color: '#00953B', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
