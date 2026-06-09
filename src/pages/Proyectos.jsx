@@ -374,8 +374,7 @@ export default function Proyectos() {
     setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
     cargarDatos()
   }
-
-  async function guardarEditTarea() {
+async function guardarEditTarea() {
     if (!editTarea) return
     const asignadosStr = Array.isArray(editTarea.asignados) ? editTarea.asignados.join(',') : editTarea.asignados
     const diaRec = [editTarea.dia_recomendado, editTarea.fecha_recomendada].filter(Boolean).join(' ')
@@ -383,10 +382,9 @@ export default function Proyectos() {
     await actualizarFila('tareas', editTarea.id, [
       editTarea.id, editTarea.ensayo_id, editTarea.accion_id, editTarea.proyecto_id,
       editTarea.nombre, asignadosStr, editTarea.dia_semana, fechasExactas,
-      editTarea.fecha_limite, editTarea.estado, editTarea.fecha_creacion,
-      editTarea.etiqueta || '',
-      editTarea.fecha_limite_original || editTarea.fecha_limite,
-      editTarea.descripcion || ''
+      diaRec, editTarea.fecha_limite, editTarea.estado, editTarea.fecha_creacion,
+      editTarea.etiqueta || '', editTarea.fecha_limite_original || editTarea.fecha_limite,
+      editTarea.descripcion || '', editTarea.tarea_grupo_id || ''
     ], accessToken)
     setEditTarea(null)
     cargarDatos()
