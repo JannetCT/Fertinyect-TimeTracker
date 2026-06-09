@@ -126,6 +126,7 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
     setCargando(false)
   }
 
+  
   async function guardarEdicion(id) {
     if (!textoEdit.trim()) return
     const act = actualizaciones.find(a => a.id === id)
