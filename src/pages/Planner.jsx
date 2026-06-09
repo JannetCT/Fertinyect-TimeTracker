@@ -163,6 +163,92 @@ function InputFechasMultiples({ label, value, onChange }) {
   )
 }
 
+function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
+  const [actualizaciones, setActualizaciones] = useState([])
+  const [texto, setTexto] = useState('')
+  const [cargando, setCargando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [textoEdit, setTextoEdit] = useState('')
+
+  useEffect(() => { cargarActualizaciones() }, [tareaId])
+
+  async function cargarActualizaciones() {
+    try {
+      const todas = await leerHoja('actualizaciones', accessToken)
+      setActualizaciones(todas.filter(a => a.tarea_id === tareaId).sort((a, b) => a.fecha_creacion > b.fecha_creacion ? -1 : 1))
+    } catch (err) { console.error(err) }
+  }
+
+  async function añadirActualizacion() {
+    if (!texto.trim()) return
+    setCargando(true)
+    const id = Date.now().toString()
+    await escribirFila('actualizaciones', [id, tareaId, tipoTarea, usuario.id, texto.trim(), new Date().toISOString()], accessToken)
+    setTexto('')
+    await cargarActualizaciones()
+    setCargando(false)
+  }
+
+  async function guardarEdicion(id) {
+    if (!textoEdit.trim()) return
+    const act = actualizaciones.find(a => a.id === id)
+    if (!act) return
+    await actualizarFila('actualizaciones', id, [id, act.tarea_id, act.tipo_tarea, act.usuario_id, textoEdit.trim(), act.fecha_creacion], accessToken)
+    setEditandoId(null)
+    await cargarActualizaciones()
+  }
+
+  async function eliminarActualizacion(id) {
+    await marcarEliminado('actualizaciones', id, accessToken)
+    await cargarActualizaciones()
+  }
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Actualizaciones:</label>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+        <input placeholder="Escribe una actualización..." value={texto} onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && texto.trim()) añadirActualizacion() }}
+          style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px' }} />
+        <button onClick={añadirActualizacion} disabled={cargando}
+          style={{ padding: '8px 14px', borderRadius: '8px', background: '#00953B', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+          {cargando ? '...' : '+ Añadir'}
+        </button>
+      </div>
+      {actualizaciones.length === 0
+        ? <p style={{ fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin actualizaciones aún</p>
+        : actualizaciones.map(a => (
+          <div key={a.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', marginBottom: '6px', borderLeft: '3px solid #00953B' }}>
+            {editandoId === a.id ? (
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input value={textoEdit} onChange={e => setTextoEdit(e.target.value)}
+                  style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px' }} />
+                <button onClick={() => guardarEdicion(a.id)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#00953B', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✓</button>
+                <button onClick={() => setEditandoId(null)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✕</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#373A36', flex: 1 }}>{a.texto}</p>
+                  <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+                    <button onClick={() => { setEditandoId(a.id); setTextoEdit(a.texto) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#6b7280' }}>✏️</button>
+                    <button onClick={() => eliminarActualizacion(a.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑</button>
+                  </div>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
+                  {a.usuario_id} · {new Date(a.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </>
+            )}
+          </div>
+        ))
+      }
+    </div>
+  )
+}
+
 const CRON_KEY = 'fertinyect_cron'
 function saveCron(cron) {
   if (cron) localStorage.setItem(CRON_KEY, JSON.stringify(cron))
@@ -173,6 +259,28 @@ function loadCron() {
     const s = localStorage.getItem(CRON_KEY)
     return s ? JSON.parse(s) : null
   } catch { return null }
+}
+
+function getRefId(tarea) {
+  // Para sincronización: si la tarea tiene padre, usar ese id como referencia
+  if (tarea.tarea_padre_id) return tarea.tarea_padre_id
+  return tarea.id
+}
+
+function getRefTipo(tarea) {
+  if (!tarea.tarea_padre_tipo) return 'planner'
+  if (tarea.tarea_padre_tipo.startsWith('proyecto')) return 'proyecto'
+  if (tarea.tarea_padre_tipo.startsWith('soporte')) return 'soporte'
+  if (tarea.tarea_padre_tipo.startsWith('direccion')) return 'direccion'
+  return 'planner'
+}
+
+function getRefHoja(tarea) {
+  const tipo = getRefTipo(tarea)
+  if (tipo === 'proyecto') return 'tareas'
+  if (tipo === 'soporte') return 'tareas_soporte'
+  if (tipo === 'direccion') return 'tareas_direccion'
+  return 'tareas_planner'
 }
 
 function Planner() {
@@ -198,6 +306,7 @@ function Planner() {
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
   const [filtroEtiqueta, setFiltroEtiqueta] = useState('')
   const [modalEditarTarea, setModalEditarTarea] = useState(null)
+  const [vistaTarea, setVistaTarea] = useState(null)
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
   const [modalNuevoEvento, setModalNuevoEvento] = useState(false)
   const [modalEditarEvento, setModalEditarEvento] = useState(null)
@@ -321,7 +430,7 @@ function Planner() {
     cargarDatos()
   }
 
-async function actualizarEstado(tarea, tipo, estado) {
+  async function actualizarEstado(tarea, tipo, estado) {
     if (tipo === 'proyecto') {
       await actualizarFila('tareas', tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
     } else if (tipo === 'soporte') {
@@ -340,6 +449,7 @@ async function actualizarEstado(tarea, tipo, estado) {
     else if (tarea._tipo === 'direccion') await marcarEliminado('tareas_direccion', tarea.id, accessToken)
     else await marcarEliminado('tareas_planner', tarea.id, accessToken)
     setModalEditarTarea(null)
+    setVistaTarea(null)
     cargarDatos()
   }
 
@@ -349,12 +459,25 @@ async function actualizarEstado(tarea, tipo, estado) {
     const fechasExactas = t.fechas_exactas || t.fecha_exacta || ''
     const primeraFecha = fechasExactas.split(',')[0]?.trim() || ''
     const diaCalculado = getDiaSemana(primeraFecha) || t.dia_semana || 'por_asignar'
+
+    // Guardar descripción en hoja origen si tiene padre
+    if (t.tarea_padre_id) {
+      const hoja = getRefHoja(t)
+      const tareaOrigen = todasTareasProyecto.find(x => x.id === t.tarea_padre_id)
+        || todasTareasSoporte.find(x => x.id === t.tarea_padre_id)
+      if (tareaOrigen && hoja === 'tareas') {
+        await actualizarFila('tareas', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.ensayo_id, tareaOrigen.accion_id, tareaOrigen.proyecto_id, tareaOrigen.nombre, tareaOrigen.asignados, tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || ''], accessToken)
+      } else if (tareaOrigen && hoja === 'tareas_soporte') {
+        await actualizarFila('tareas_soporte', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.categoria_id, tareaOrigen.proyecto_soporte_id || '', tareaOrigen.subcarpeta_id || '', tareaOrigen.nombre, tareaOrigen.asignados, tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || ''], accessToken)
+      }
+    }
+
     if (t._tipo === 'proyecto') {
-      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || ''], accessToken)
     } else if (t._tipo === 'soporte') {
-      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || ''], accessToken)
     } else if (t._tipo === 'direccion') {
-      await actualizarFila('tareas_direccion', t.id, [t.id, t.categoria_id, t.proyecto_direccion_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas_direccion', t.id, [t.id, t.categoria_id, t.proyecto_direccion_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || ''], accessToken)
     } else {
       await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || ''], accessToken)
     }
@@ -461,6 +584,15 @@ async function actualizarEstado(tarea, tipo, estado) {
     }
   }
 
+  function getDescripcionTarea(tarea) {
+    if (tarea._tipo === 'planner' && tarea.tarea_padre_id) {
+      const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id)
+        || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id)
+      return padre?.descripcion || ''
+    }
+    return tarea.descripcion || ''
+  }
+
   function getDiasDelMes() {
     const año = mesBase.getFullYear()
     const mes = mesBase.getMonth()
@@ -537,6 +669,7 @@ async function actualizarEstado(tarea, tipo, estado) {
         key={tarea.id + tarea._tipo}
         tarea={tarea}
         contexto={getContexto(tarea)}
+        onVerDetalle={() => setVistaTarea(tarea)}
         onEditar={() => {
           const tipoLigar = tarea.tarea_padre_tipo
             ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto'
@@ -550,6 +683,7 @@ async function actualizarEstado(tarea, tipo, estado) {
             : null
           setModalEditarTarea({
             ...tarea,
+            descripcion: getDescripcionTarea(tarea),
             fechas_exactas: tarea.fecha_exacta || '',
             _tipoLigar: tipoLigar,
             _opcionProyectoId: opcionProyecto?.id || '',
@@ -564,6 +698,77 @@ async function actualizarEstado(tarea, tipo, estado) {
         pausada={pausada}
         tiempoActual={activa ? tiempoActual : 0}
       />
+    )
+  }
+
+  // VISTA DETALLE TAREA
+  if (vistaTarea) {
+    const refId = getRefId(vistaTarea)
+    const refTipo = getRefTipo(vistaTarea)
+    const descripcion = getDescripcionTarea(vistaTarea)
+    return (
+      <div className="planner-container">
+        <div className="planner-header" style={{ flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button onClick={() => setVistaTarea(null)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Volver</button>
+              <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaTarea.nombre}</h1>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => {
+                const tipoLigar = vistaTarea.tarea_padre_tipo
+                  ? vistaTarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto'
+                  : vistaTarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : ''
+                  : ''
+                setModalEditarTarea({
+                  ...vistaTarea,
+                  descripcion: getDescripcionTarea(vistaTarea),
+                  fechas_exactas: vistaTarea.fecha_exacta || '',
+                  _tipoLigar: tipoLigar,
+                  _opcionProyectoId: '',
+                  _opcionSoporteId: '',
+                })
+              }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>✏️ Editar</button>
+              <button onClick={() => eliminarTarea(vistaTarea)} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>🗑 Eliminar</button>
+            </div>
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+          {descripcion && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Descripción:</label>
+              <p style={{ margin: 0, fontSize: '14px', color: '#373A36', background: '#f9fafb', padding: '12px', borderRadius: '8px' }}>{descripcion}</p>
+            </div>
+          )}
+          <SeccionActualizaciones tareaId={refId} tipoTarea={refTipo} usuario={usuario} accessToken={accessToken} />
+        </div>
+        {modalEditarTarea && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
+              <h2 style={{ marginBottom: '24px' }}>Editar tarea</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <input value={modalEditarTarea.nombre || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, nombre: e.target.value})}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+                <textarea placeholder="Descripción (opcional)" value={modalEditarTarea.descripcion || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, descripcion: e.target.value})}
+                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+                <InputFechasMultiples label="Días asignados:" value={modalEditarTarea.fechas_exactas || modalEditarTarea.fecha_exacta || ''}
+                  onChange={val => setModalEditarTarea({...modalEditarTarea, fechas_exactas: val})} />
+                <InputFechaPlanner label="Fecha límite (opcional):" value={modalEditarTarea.fecha_limite}
+                  onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_limite: val})} />
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
+                  <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button onClick={() => setModalEditarTarea(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={async () => { await guardarEditarTarea(); setVistaTarea({...vistaTarea, descripcion: modalEditarTarea.descripcion}) }}
+                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -601,7 +806,6 @@ async function actualizarEstado(tarea, tipo, estado) {
         )}
       </div>
 
-      {/* PESTAÑAS FILTRO */}
       <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #e5e7eb', marginBottom: '4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
         {[
           { key: '', label: 'Todas' },
@@ -656,8 +860,7 @@ async function actualizarEstado(tarea, tipo, estado) {
                     {eventosDelDia.map(ev => {
                       const completado = ev.estado === 'completado'
                       return (
-                        <div key={ev.id}
-                          style={{ background: completado ? '#f5f3ff' : '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', opacity: completado ? 0.7 : 1 }}>
+                        <div key={ev.id} style={{ background: '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', opacity: completado ? 0.7 : 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div onClick={(e) => { e.stopPropagation(); setModalEditarEvento({ ...ev, titulo: ev.titulo || '', descripcion: ev.descripcion || '', fecha_exacta: ev.fecha_exacta || '', hora_inicio: ev.hora_inicio || '', hora_fin: ev.hora_fin || '', tipo: ev.tipo || 'reunion', estado: ev.estado || '' }) }}
                               style={{ cursor: 'pointer', flex: 1 }}>
@@ -667,9 +870,7 @@ async function actualizarEstado(tarea, tipo, estado) {
                             </div>
                             {!completado && ev.hora_inicio && ev.hora_fin && (
                               <button onClick={e => { e.stopPropagation(); completarEvento(ev) }}
-                                style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', marginLeft: '6px' }}>
-                                ✅
-                              </button>
+                                style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', marginLeft: '6px' }}>✅</button>
                             )}
                           </div>
                         </div>
@@ -737,13 +938,15 @@ async function actualizarEstado(tarea, tipo, estado) {
       )}
 
       {/* MODAL EDITAR TAREA */}
-      {modalEditarTarea && (
+      {modalEditarTarea && !vistaTarea && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
             <h2 style={{ marginBottom: '24px' }}>Editar tarea</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input value={modalEditarTarea.nombre || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, nombre: e.target.value})}
                 style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={modalEditarTarea.descripcion || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, descripcion: e.target.value})}
+                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
               {modalEditarTarea._tipo === 'planner' && (
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Enlazar a (opcional):</label>
@@ -786,6 +989,7 @@ async function actualizarEstado(tarea, tipo, estado) {
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
                 <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
               </div>
+              <SeccionActualizaciones tareaId={getRefId(modalEditarTarea)} tipoTarea={getRefTipo(modalEditarTarea)} usuario={usuario} accessToken={accessToken} />
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
               <button onClick={() => eliminarTarea(modalEditarTarea)}
@@ -958,7 +1162,7 @@ async function actualizarEstado(tarea, tipo, estado) {
   )
 }
 
-function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanudar, onCompletar, activa, pausada, tiempoActual }) {
+function TarjetaTarea({ tarea, contexto, onVerDetalle, onEditar, onIniciar, onPausar, onReanudar, onCompletar, activa, pausada, tiempoActual }) {
   const esCompletada = tarea.estado === 'completada'
   const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
   const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
@@ -969,21 +1173,23 @@ function TarjetaTarea({ tarea, contexto, onEditar, onIniciar, onPausar, onReanud
       background: activa ? '#f0fdf4' : esCompletada ? '#f9fafb' : 'white'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <p onClick={onEditar} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', flex: 1, margin: 0 }}>{tarea.nombre}</p>
-        {!esCompletada && (
-          <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+        <div style={{ flex: 1 }}>
+          <p onClick={onVerDetalle} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', margin: 0 }}>{tarea.nombre}</p>
+        </div>
+        <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+          <button onClick={e => { e.stopPropagation(); onEditar() }}
+            style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}>✏️</button>
+          {!esCompletada && (
             <button onClick={e => { e.stopPropagation(); activa && !pausada ? onPausar() : pausada ? onReanudar() : onIniciar() }}
               style={{ background: activa && !pausada ? '#f59e0b' : '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>
               {activa && !pausada ? '⏸' : '▶️'}
             </button>
-            {(activa || pausada) && (
-              <button onClick={e => { e.stopPropagation(); onCompletar() }}
-                style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>
-                ✅
-              </button>
-            )}
-          </div>
-        )}
+          )}
+          {!esCompletada && (activa || pausada) && (
+            <button onClick={e => { e.stopPropagation(); onCompletar() }}
+              style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>✅</button>
+          )}
+        </div>
       </div>
       {activa && (
         <p style={{ margin: '4px 0 0', fontSize: '13px', fontWeight: '700', color: '#00953B', fontFamily: 'monospace' }}>
