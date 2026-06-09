@@ -134,7 +134,7 @@ export default function Proyectos() {
   const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: '' })
   const [nuevaAccion, setNuevaAccion] = useState({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
   const [nuevoEnsayo, setNuevoEnsayo] = useState({ nombre: '', tipo: 'ensayo', descripcion: '', fecha_inicio: '', fecha_fin: '' })
-  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
+  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' })
   const [nuevoEstado, setNuevoEstado] = useState({ nombre: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
@@ -282,7 +282,7 @@ export default function Proyectos() {
       id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
       nuevaTarea.nombre, asignadosStr, diaCalculado, fechasExactas,
       nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '',
-      nuevaTarea.fecha_limite
+      nuevaTarea.fecha_limite, nuevaTarea.descripcion || ''
     ], accessToken)
     setModalTarea(null)
     setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
@@ -414,6 +414,7 @@ export default function Proyectos() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534' }}>📁 Ensayo: <strong>{vistaEnsayo.nombre}</strong></div>
               <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({...nuevaTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={nuevaTarea.descripcion || ''} onChange={e => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
               <div>
                 <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -440,16 +441,18 @@ export default function Proyectos() {
           </Modal>
         )}
 
-        {editTarea && (
+       {editTarea && (
           <Modal titulo="Editar tarea" onClose={() => setEditTarea(null)} onSave={guardarEditTarea}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre *" value={editTarea.nombre} onChange={e => setEditTarea({...editTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={editTarea.descripcion || ''} onChange={e => setEditTarea({...editTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
               <div>
                 <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {usuarios.map(u => <button key={u.id} onClick={() => setEditTarea(prev => ({ ...prev, asignados: prev.asignados.includes(u.id) ? prev.asignados.filter(id => id !== u.id) : [...prev.asignados, u.id] }))} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: editTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6', color: editTarea.asignados.includes(u.id) ? 'white' : '#373A36', border: editTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb' }}>{u.nombre ? u.nombre.split(' ')[0] : u.id}</button>)}
                 </div>
               </div>
+              <InputFechasMultiples label="Días asignados en planner:" value={editTarea.fecha_exacta || ''} onChange={val => setEditTarea({...editTarea, fecha_exacta: val})} />
               <div>
                 <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
