@@ -368,8 +368,8 @@ export default function Proyectos() {
     await escribirFila('tareas', [
       id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
       nuevaTarea.nombre, asignadosStr, diaCalculado, fechasExactas,
-      nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '',
-      nuevaTarea.fecha_limite, nuevaTarea.descripcion || ''
+      diaRec, nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(),
+      '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', ''
     ], accessToken)
     setModalTarea(null)
     setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
