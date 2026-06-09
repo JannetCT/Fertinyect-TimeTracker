@@ -108,6 +108,8 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
   const [actualizaciones, setActualizaciones] = useState([])
   const [texto, setTexto] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [textoEdit, setTextoEdit] = useState('')
 
   useEffect(() => { cargarActualizaciones() }, [tareaId])
 
@@ -128,6 +130,20 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
     setCargando(false)
   }
 
+  async function guardarEdicion(id) {
+    if (!textoEdit.trim()) return
+    const act = actualizaciones.find(a => a.id === id)
+    if (!act) return
+    await actualizarFila('actualizaciones', id, [id, act.tarea_id, act.tipo_tarea, act.usuario_id, textoEdit.trim(), act.fecha_creacion], accessToken)
+    setEditandoId(null)
+    await cargarActualizaciones()
+  }
+
+  async function eliminarActualizacion(id) {
+    await marcarEliminado('actualizaciones', id, accessToken)
+    await cargarActualizaciones()
+  }
+
   return (
     <div style={{ marginTop: '16px' }}>
       <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Actualizaciones:</label>
@@ -144,10 +160,29 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
         ? <p style={{ fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin actualizaciones aún</p>
         : actualizaciones.map(a => (
           <div key={a.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', marginBottom: '6px', borderLeft: '3px solid #00953B' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#373A36' }}>{a.texto}</p>
-            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
-              {a.usuario_id} · {new Date(a.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </p>
+            {editandoId === a.id ? (
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input value={textoEdit} onChange={e => setTextoEdit(e.target.value)}
+                  style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px' }} />
+                <button onClick={() => guardarEdicion(a.id)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#00953B', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✓</button>
+                <button onClick={() => setEditandoId(null)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✕</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#373A36', flex: 1 }}>{a.texto}</p>
+                  <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+                    <button onClick={() => { setEditandoId(a.id); setTextoEdit(a.texto) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#6b7280' }}>✏️</button>
+                    <button onClick={() => eliminarActualizacion(a.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑</button>
+                  </div>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
+                  {a.usuario_id} · {new Date(a.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </>
+            )}
           </div>
         ))
       }
@@ -344,12 +379,14 @@ export default function Proyectos() {
     if (!editTarea) return
     const asignadosStr = Array.isArray(editTarea.asignados) ? editTarea.asignados.join(',') : editTarea.asignados
     const diaRec = [editTarea.dia_recomendado, editTarea.fecha_recomendada].filter(Boolean).join(' ')
+    const fechasExactas = editTarea.fecha_exacta || ''
     await actualizarFila('tareas', editTarea.id, [
       editTarea.id, editTarea.ensayo_id, editTarea.accion_id, editTarea.proyecto_id,
-      editTarea.nombre, asignadosStr, editTarea.dia_semana, diaRec,
+      editTarea.nombre, asignadosStr, editTarea.dia_semana, fechasExactas,
       editTarea.fecha_limite, editTarea.estado, editTarea.fecha_creacion,
       editTarea.etiqueta || '',
-      editTarea.fecha_limite_original || editTarea.fecha_limite
+      editTarea.fecha_limite_original || editTarea.fecha_limite,
+      editTarea.descripcion || ''
     ], accessToken)
     setEditTarea(null)
     cargarDatos()
