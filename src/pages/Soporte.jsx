@@ -103,6 +103,92 @@ function InputFechasMultiples({ label, value, onChange }) {
   )
 }
 
+function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
+  const [actualizaciones, setActualizaciones] = useState([])
+  const [texto, setTexto] = useState('')
+  const [cargando, setCargando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [textoEdit, setTextoEdit] = useState('')
+
+  useEffect(() => { cargarActualizaciones() }, [tareaId])
+
+  async function cargarActualizaciones() {
+    try {
+      const todas = await leerHoja('actualizaciones', accessToken)
+      setActualizaciones(todas.filter(a => a.tarea_id === tareaId).sort((a, b) => a.fecha_creacion > b.fecha_creacion ? -1 : 1))
+    } catch (err) { console.error(err) }
+  }
+
+  async function añadirActualizacion() {
+    if (!texto.trim()) return
+    setCargando(true)
+    const id = Date.now().toString()
+    await escribirFila('actualizaciones', [id, tareaId, tipoTarea, usuario.id, texto.trim(), new Date().toISOString()], accessToken)
+    setTexto('')
+    await cargarActualizaciones()
+    setCargando(false)
+  }
+
+  async function guardarEdicion(id) {
+    if (!textoEdit.trim()) return
+    const act = actualizaciones.find(a => a.id === id)
+    if (!act) return
+    await actualizarFila('actualizaciones', id, [id, act.tarea_id, act.tipo_tarea, act.usuario_id, textoEdit.trim(), act.fecha_creacion], accessToken)
+    setEditandoId(null)
+    await cargarActualizaciones()
+  }
+
+  async function eliminarActualizacion(id) {
+    await marcarEliminado('actualizaciones', id, accessToken)
+    await cargarActualizaciones()
+  }
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Actualizaciones:</label>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+        <input placeholder="Escribe una actualización..." value={texto} onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && texto.trim()) añadirActualizacion() }}
+          style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px' }} />
+        <button onClick={añadirActualizacion} disabled={cargando}
+          style={{ padding: '8px 14px', borderRadius: '8px', background: '#1d4ed8', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+          {cargando ? '...' : '+ Añadir'}
+        </button>
+      </div>
+      {actualizaciones.length === 0
+        ? <p style={{ fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin actualizaciones aún</p>
+        : actualizaciones.map(a => (
+          <div key={a.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', marginBottom: '6px', borderLeft: '3px solid #1d4ed8' }}>
+            {editandoId === a.id ? (
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input value={textoEdit} onChange={e => setTextoEdit(e.target.value)}
+                  style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px' }} />
+                <button onClick={() => guardarEdicion(a.id)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#1d4ed8', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✓</button>
+                <button onClick={() => setEditandoId(null)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✕</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#373A36', flex: 1 }}>{a.texto}</p>
+                  <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+                    <button onClick={() => { setEditandoId(a.id); setTextoEdit(a.texto) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#6b7280' }}>✏️</button>
+                    <button onClick={() => eliminarActualizacion(a.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑</button>
+                  </div>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
+                  {a.usuario_id} · {new Date(a.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </>
+            )}
+          </div>
+        ))
+      }
+    </div>
+  )
+}
+
 export default function Soporte() {
   const { accessToken, usuario } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -117,6 +203,7 @@ export default function Soporte() {
   const [vistaCategoria, setVistaCategoria] = useState(null)
   const [vistaProyecto, setVistaProyecto] = useState(null)
   const [vistaSubcarpeta, setVistaSubcarpeta] = useState(null)
+  const [vistaTarea, setVistaTarea] = useState(null)
 
   const [modalCategoria, setModalCategoria] = useState(false)
   const [modalProyecto, setModalProyecto] = useState(null)
@@ -131,7 +218,6 @@ export default function Soporte() {
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
-  // Navegación desde campanita
   useEffect(() => {
     if (cargando) return
     const subcarpetaId = searchParams.get('subcarpeta')
@@ -210,6 +296,7 @@ export default function Soporte() {
     if (confirmEliminar.hoja === 'categorias_soporte') setVistaCategoria(null)
     if (confirmEliminar.hoja === 'proyectos_soporte') setVistaProyecto(null)
     if (confirmEliminar.hoja === 'subcarpetas_soporte') setVistaSubcarpeta(null)
+    if (confirmEliminar.hoja === 'tareas_soporte') setVistaTarea(null)
     setConfirmEliminar(null)
     cargarDatos()
   }
@@ -226,6 +313,38 @@ export default function Soporte() {
   const tareasDirectasSubcarpeta = (sId) => tareas.filter(t => t.subcarpeta_id === sId)
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
+
+  // VISTA TAREA DETALLE
+  if (vistaTarea) {
+    return (
+      <div className="proyectos-container">
+        <div className="proyectos-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button onClick={() => setVistaTarea(null)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Volver</button>
+            <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaTarea.nombre}</h1>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Btn tipo="editar" onClick={() => setEditItem({...vistaTarea, _tipo: 'tarea'})}>✏️ Editar</Btn>
+            <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'tareas_soporte', item: vistaTarea })}>🗑 Eliminar</Btn>
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+          {vistaTarea.descripcion && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Descripción:</label>
+              <p style={{ margin: 0, fontSize: '14px', color: '#373A36', background: '#f9fafb', padding: '12px', borderRadius: '8px' }}>{vistaTarea.descripcion}</p>
+            </div>
+          )}
+          <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="soporte" usuario={usuario} accessToken={accessToken} />
+        </div>
+        {editItem && editItem._tipo === 'tarea' && (
+          <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken}
+            guardarEdit={(hoja, fila) => { guardarEdit(hoja, fila); setVistaTarea({...editItem}) }} />
+        )}
+        {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
+      </div>
+    )
+  }
 
   // VISTA SUBCARPETA
   if (vistaSubcarpeta) {
@@ -247,7 +366,7 @@ export default function Soporte() {
             <button onClick={() => setModalTarea({ subcarpeta_id: vistaSubcarpeta.id, proyecto_soporte_id: vistaProyecto?.id, categoria_id: vistaProyecto?.categoria_id })} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
           </div>
         </div>
-        <TareasList tareas={tareasAqui} usuarios={usuarios} getNombre={getNombre} setEditItem={setEditItem} setForm={setForm} setConfirmEliminar={setConfirmEliminar} />
+        <TareasList tareas={tareasAqui} usuarios={usuarios} getNombre={getNombre} setEditItem={setEditItem} setForm={setForm} setConfirmEliminar={setConfirmEliminar} onVerDetalle={t => setVistaTarea(t)} />
         {modalTarea && <ModalTarea titulo="Nueva tarea" contexto={vistaSubcarpeta.nombre} formTarea={formTarea} setFormTarea={setFormTarea} usuarios={usuarios}
           onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' }) }}
           onSave={() => {
@@ -302,7 +421,7 @@ export default function Soporte() {
           {tareasDirectas.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <p style={{ fontSize: '13px', color: '#888', fontWeight: '600', marginBottom: '8px' }}>Tareas directas:</p>
-              <TareasList tareas={tareasDirectas} usuarios={usuarios} getNombre={getNombre} setEditItem={setEditItem} setForm={setForm} setConfirmEliminar={setConfirmEliminar} />
+              <TareasList tareas={tareasDirectas} usuarios={usuarios} getNombre={getNombre} setEditItem={setEditItem} setForm={setForm} setConfirmEliminar={setConfirmEliminar} onVerDetalle={t => setVistaTarea(t)} />
             </div>
           )}
           {subcarpetasAqui.length === 0 && tareasDirectas.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}><p>Sin contenido aún.</p></div>}
@@ -354,7 +473,7 @@ export default function Soporte() {
           {tareasDirectas.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <p style={{ fontSize: '13px', color: '#888', fontWeight: '600', marginBottom: '8px' }}>Tareas directas:</p>
-              <TareasList tareas={tareasDirectas} usuarios={usuarios} getNombre={getNombre} setEditItem={setEditItem} setForm={setForm} setConfirmEliminar={setConfirmEliminar} />
+              <TareasList tareas={tareasDirectas} usuarios={usuarios} getNombre={getNombre} setEditItem={setEditItem} setForm={setForm} setConfirmEliminar={setConfirmEliminar} onVerDetalle={t => setVistaTarea(t)} />
             </div>
           )}
           {proyectosAqui.length === 0 && tareasDirectas.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}><p>Sin contenido aún.</p></div>}
@@ -530,8 +649,8 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
             <textarea value={editItem.descripcion || ''} onChange={e => setEditItem({...editItem, descripcion: e.target.value})}
               style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', height: '80px', resize: 'none' }} />
           </div>
+          <SeccionActualizaciones tareaId={editItem.id} tipoTarea="soporte" usuario={usuario} accessToken={accessToken} />
         </div>
-        <SeccionActualizaciones tareaId={editItem.id} tipoTarea="soporte" usuario={usuario} accessToken={accessToken} />
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
           <button onClick={() => setEditItem(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
           <button onClick={() => guardarEdit('tareas_soporte', [editItem.id, editItem.categoria_id, editItem.proyecto_soporte_id || '', editItem.subcarpeta_id || '', editItem.nombre, editItem.asignados || '', editItem.dia_semana || 'por_asignar', editItem.fecha_exacta || '', editItem.dia_recomendado || '', editItem.fecha_limite || '', editItem.estado || 'pendiente', editItem.fecha_creacion, editItem.etiqueta || '', editItem.fecha_limite_original || editItem.fecha_limite || '', editItem.descripcion || '', editItem.tarea_grupo_id || ''])}
@@ -542,93 +661,7 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
   )
 }
 
-function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
-  const [actualizaciones, setActualizaciones] = useState([])
-  const [texto, setTexto] = useState('')
-  const [cargando, setCargando] = useState(false)
-  const [editandoId, setEditandoId] = useState(null)
-  const [textoEdit, setTextoEdit] = useState('')
-
-  useEffect(() => { cargarActualizaciones() }, [tareaId])
-
-  async function cargarActualizaciones() {
-    try {
-      const todas = await leerHoja('actualizaciones', accessToken)
-      setActualizaciones(todas.filter(a => a.tarea_id === tareaId).sort((a, b) => a.fecha_creacion > b.fecha_creacion ? -1 : 1))
-    } catch (err) { console.error(err) }
-  }
-
-  async function añadirActualizacion() {
-    if (!texto.trim()) return
-    setCargando(true)
-    const id = Date.now().toString()
-    await escribirFila('actualizaciones', [id, tareaId, tipoTarea, usuario.id, texto.trim(), new Date().toISOString()], accessToken)
-    setTexto('')
-    await cargarActualizaciones()
-    setCargando(false)
-  }
-
-  async function guardarEdicion(id) {
-    if (!textoEdit.trim()) return
-    const act = actualizaciones.find(a => a.id === id)
-    if (!act) return
-    await actualizarFila('actualizaciones', id, [id, act.tarea_id, act.tipo_tarea, act.usuario_id, textoEdit.trim(), act.fecha_creacion], accessToken)
-    setEditandoId(null)
-    await cargarActualizaciones()
-  }
-
-  async function eliminarActualizacion(id) {
-    await marcarEliminado('actualizaciones', id, accessToken)
-    await cargarActualizaciones()
-  }
-
-  return (
-    <div style={{ marginTop: '16px' }}>
-      <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Actualizaciones:</label>
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-        <input placeholder="Escribe una actualización..." value={texto} onChange={e => setTexto(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && texto.trim()) añadirActualizacion() }}
-          style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px' }} />
-        <button onClick={añadirActualizacion} disabled={cargando}
-          style={{ padding: '8px 14px', borderRadius: '8px', background: '#1d4ed8', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
-          {cargando ? '...' : '+ Añadir'}
-        </button>
-      </div>
-      {actualizaciones.length === 0
-        ? <p style={{ fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin actualizaciones aún</p>
-        : actualizaciones.map(a => (
-          <div key={a.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', marginBottom: '6px', borderLeft: '3px solid #1d4ed8' }}>
-            {editandoId === a.id ? (
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <input value={textoEdit} onChange={e => setTextoEdit(e.target.value)}
-                  style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px' }} />
-                <button onClick={() => guardarEdicion(a.id)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#1d4ed8', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✓</button>
-                <button onClick={() => setEditandoId(null)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✕</button>
-              </div>
-            ) : (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#373A36', flex: 1 }}>{a.texto}</p>
-                  <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
-                    <button onClick={() => { setEditandoId(a.id); setTextoEdit(a.texto) }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#6b7280' }}>✏️</button>
-                    <button onClick={() => eliminarActualizacion(a.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑</button>
-                  </div>
-                </div>
-                <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
-                  {a.usuario_id} · {new Date(a.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </>
-            )}
-          </div>
-        ))
-      }
-    </div>
-  )
-}
-
-function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConfirmEliminar }) {
+function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConfirmEliminar, onVerDetalle }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {tareas.map(tarea => {
@@ -638,8 +671,9 @@ function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConf
         return (
           <div key={tarea.id} style={{ background: 'white', borderRadius: '10px', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : '#3b82f6'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px' }}>{tarea.nombre}</p>
+              <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => onVerDetalle(tarea)}>
+                <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none' }}>{tarea.nombre}</p>
+                {tarea.descripcion && <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#888' }}>{tarea.descripcion.slice(0, 80)}{tarea.descripcion.length > 80 ? '...' : ''}</p>}
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {asignados.map(id => <span key={id} style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
                   {tarea.dia_recomendado && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>📌 {tarea.dia_recomendado}</span>}
@@ -647,8 +681,8 @@ function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConf
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button onClick={() => { setEditItem({...tarea, _tipo: 'tarea'}); setForm({ nombre: tarea.nombre, descripcion: '' }) }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>✏️</button>
-                <button onClick={() => setConfirmEliminar({ hoja: 'tareas_soporte', item: tarea })} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>🗑</button>
+                <button onClick={e => { e.stopPropagation(); setEditItem({...tarea, _tipo: 'tarea'}); setForm({ nombre: tarea.nombre, descripcion: tarea.descripcion || '' }) }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>✏️</button>
+                <button onClick={e => { e.stopPropagation(); setConfirmEliminar({ hoja: 'tareas_soporte', item: tarea }) }} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>🗑</button>
                 <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{tarea.estado || 'pendiente'}</span>
               </div>
             </div>
