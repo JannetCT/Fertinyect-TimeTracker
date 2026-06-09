@@ -759,6 +759,7 @@ function Planner() {
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
                   <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
                 </div>
+                <SeccionActualizaciones tareaId={modalEditarTarea._tipo === 'planner' ? getRefId(modalEditarTarea) : modalEditarTarea.id} tipoTarea={modalEditarTarea._tipo === 'planner' ? getRefTipo(modalEditarTarea) : modalEditarTarea._tipo} usuario={usuario} accessToken={accessToken} />
               </div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
                 <button onClick={() => setModalEditarTarea(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
