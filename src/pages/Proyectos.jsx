@@ -156,7 +156,7 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
 }
 
 export default function Proyectos() {
-  const { accessToken } = useAuth()
+  const { accessToken, usuario } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [proyectos, setProyectos] = useState([])
