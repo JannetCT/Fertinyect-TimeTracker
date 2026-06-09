@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { leerHoja } from '../services/googleSheets'
 
-const DIAS_LABEL = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-
 function getLunesDeSemana(fecha) {
   const d = new Date(fecha)
   d.setHours(12, 0, 0, 0)
@@ -32,8 +30,6 @@ function formatFecha(isoDate) {
 
 function perteneceASemana(registroFecha, fechasSemana) {
   if (!registroFecha) return false
-  // El campo fecha viene como toDateString(): "Thu Jun 05 2025"
-  // También puede venir como ISO: "2025-06-05"
   try {
     const d = new Date(registroFecha)
     if (isNaN(d)) return false
@@ -122,7 +118,20 @@ function Graficas() {
   const fechasSemana = getFechasDeSemana(semanaBase)
   const registrosSemana = registros.filter(r => perteneceASemana(r.fecha, fechasSemana))
 
-  // Últimas 4 semanas para comparativa
+  // Reuniones de la semana
+  const registrosReuniones = registrosSemana.filter(r => r.tipo_tarea === 'evento')
+  const totalSegReu = registrosReuniones.reduce((acc, r) => acc + Number(r.duracion_segundos || 0), 0)
+  const totalSegTrabajo = registrosSemana.filter(r => r.tipo_tarea !== 'evento').reduce((acc, r) => acc + Number(r.duracion_segundos || 0), 0)
+  const reunionesDetalle = registrosReuniones.reduce((acc, r) => {
+    const nombre = r.tarea_nombre || 'Sin título'
+    if (!acc[nombre]) acc[nombre] = { nombre, segundos: 0 }
+    acc[nombre].segundos += Number(r.duracion_segundos || 0)
+    return acc
+  }, {})
+  const reunionesLista = Object.values(reunionesDetalle).sort((a, b) => b.segundos - a.segundos)
+  const pctReu = totalSegTrabajo + totalSegReu > 0 ? Math.round(totalSegReu / (totalSegTrabajo + totalSegReu) * 100) : 0
+
+  // Últimas 4 semanas
   const ultimas4Semanas = Array.from({ length: 4 }, (_, i) => {
     const lunes = new Date(semanaBase)
     lunes.setDate(lunes.getDate() - (3 - i) * 7)
@@ -139,17 +148,18 @@ function Graficas() {
         const proy = proyectos.find(p => p.id === tarea.proyecto_id)
         return { nombre: proy?.nombre || 'Proyecto', color: proy?.color || '#00953B', tipo: 'proyecto' }
       }
-    } else if (tipo === 'soporte') {
+    } else if (tipo === 'soporte' || tipo === 'soporte_proyecto' || tipo === 'soporte_subcarpeta') {
       const tarea = tareasSoporte.find(t => t.id === registro.tarea_id)
       if (tarea) {
         const cat = categoriasSoporte.find(c => c.id === tarea.categoria_id)
         return { nombre: cat?.nombre || 'Soporte', color: '#3b82f6', tipo: 'soporte' }
       }
+    } else if (tipo === 'evento') {
+      return { nombre: '🗓 Reuniones', color: '#f59e0b', tipo: 'reunion' }
     }
     return { nombre: registro.tarea_nombre || 'Personal', color: '#8b5cf6', tipo: 'planner' }
   }
 
-  // Gráfica 1: Tiempo por proyecto/categoría
   function tiempoPorContexto() {
     const mapa = {}
     registrosSemana.forEach(r => {
@@ -160,7 +170,6 @@ function Graficas() {
     return Object.values(mapa).sort((a, b) => b.segundos - a.segundos)
   }
 
-  // Gráfica 3: Tiempo por día con desglose por tipo
   function tiempoPorDia() {
     const diasLabel = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
     return fechasSemana.map((fecha, i) => {
@@ -201,7 +210,6 @@ function Graficas() {
           <h1 style={{ margin: 0, fontSize: '22px', color: '#373A36' }}>📊 Mis gráficas</h1>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#888' }}>{usuario.nombre}</p>
         </div>
-        {/* SELECTOR DE SEMANA */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button onClick={() => setSemanaBase(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d })} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '16px' }}>←</button>
           <div style={{ textAlign: 'center', minWidth: '140px' }}>
@@ -219,9 +227,9 @@ function Graficas() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
         {[
           { label: 'Horas esta semana', valor: `${Math.round(totalSemana / 3600 * 10) / 10}h`, color: '#00953B' },
-          { label: 'Proyectos/áreas', valor: porContexto.length, color: '#3b82f6' },
-          { label: 'Mejor día', valor: porDia.reduce((a, b) => b.totalDia > a.totalDia ? b : a, porDia[0])?.dia || '—', color: '#8b5cf6' },
-          { label: 'Media diaria', valor: `${Math.round(totalSemana / 3600 / 5 * 10) / 10}h`, color: '#f59e0b' },
+          { label: 'En reuniones', valor: `${Math.round(totalSegReu / 3600 * 10) / 10}h`, color: '#f59e0b' },
+          { label: 'Trabajo productivo', valor: `${Math.round(totalSegTrabajo / 3600 * 10) / 10}h`, color: '#3b82f6' },
+          { label: 'Media diaria', valor: `${Math.round(totalSemana / 3600 / 5 * 10) / 10}h`, color: '#8b5cf6' },
         ].map(m => (
           <div key={m.label} style={{ background: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', borderTop: `3px solid ${m.color}` }}>
             <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{m.label}</p>
@@ -230,7 +238,33 @@ function Graficas() {
         ))}
       </div>
 
-      {/* GRÁFICA 1: BARRAS HORIZONTALES — tiempo por proyecto */}
+      {/* TIEMPO PRODUCTIVO VS REUNIONES */}
+      {totalSemana > 0 && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', marginBottom: '16px' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#373A36' }}>Tiempo productivo vs reuniones</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+            <span style={{ color: '#00953B', fontWeight: '600' }}>💼 Trabajo {Math.round(totalSegTrabajo / 3600 * 10) / 10}h ({100 - pctReu}%)</span>
+            <span style={{ color: '#f59e0b', fontWeight: '600' }}>🗓 Reuniones {Math.round(totalSegReu / 3600 * 10) / 10}h ({pctReu}%)</span>
+          </div>
+          <div style={{ height: '14px', background: '#f3f4f6', borderRadius: '7px', overflow: 'hidden', display: 'flex' }}>
+            <div style={{ height: '100%', width: `${100 - pctReu}%`, background: '#00953B', transition: 'width 0.4s ease' }} />
+            <div style={{ height: '100%', width: `${pctReu}%`, background: '#f59e0b', transition: 'width 0.4s ease' }} />
+          </div>
+          {reunionesLista.length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <p style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: '600', color: '#9ca3af', textTransform: 'uppercase' }}>Reuniones esta semana</p>
+              {reunionesLista.map(r => (
+                <div key={r.nombre} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f9fafb' }}>
+                  <span style={{ fontSize: '13px', color: '#373A36' }}>{r.nombre}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#f59e0b' }}>{Math.round(r.segundos / 3600 * 10) / 10}h</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* GRÁFICA 1: BARRAS HORIZONTALES */}
       <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', marginBottom: '16px' }}>
         <h3 style={{ margin: '0 0 20px', fontSize: '15px', color: '#373A36' }}>Tiempo por proyecto / área</h3>
         {porContexto.length === 0
