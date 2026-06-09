@@ -104,7 +104,7 @@ function InputFechasMultiples({ label, value, onChange }) {
 }
 
 export default function Soporte() {
-  const { accessToken } = useAuth()
+  const { accessToken, usuario } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [categorias, setCategorias] = useState([])
@@ -255,7 +255,7 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
           }} />}
-        {editItem && editItem._tipo !== 'subcarpeta' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
+        {editItem && editItem._tipo !== 'subcarpeta' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} usuario={usuario} accessToken={accessToken} />}
         {editItem && editItem._tipo === 'subcarpeta' && <Modal titulo="Editar subcarpeta" onClose={() => setEditItem(null)} onSave={() => guardarEdit('subcarpetas_soporte', [editItem.id, editItem.proyecto_soporte_id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
@@ -315,7 +315,7 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
           }} />}
-        {editItem && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
+        {editItem && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} usuario={usuario} accessToken={accessToken} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
@@ -368,7 +368,7 @@ export default function Soporte() {
             crear('tareas_soporte', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || ''])
           }} />}
         {editItem && editItem._tipo === 'categoria' && <Modal titulo="Editar categoría" onClose={() => setEditItem(null)} onSave={() => guardarEdit('categorias_soporte', [editItem.id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
-        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} />}
+        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} usuario={usuario} accessToken={accessToken} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
@@ -450,7 +450,7 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
   )
 }
 
-function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit }) {
+function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario, accessToken }) {
   const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
   const [inputFecha, setInputFecha] = useState('')
   const fechas = editItem.fecha_exacta ? editItem.fecha_exacta.split(',').map(f => f.trim()).filter(Boolean) : []
@@ -525,13 +525,105 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit }) {
               <option value="completada">Completada</option>
             </select>
           </div>
+          <div>
+            <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Descripción:</label>
+            <textarea value={editItem.descripcion || ''} onChange={e => setEditItem({...editItem, descripcion: e.target.value})}
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', height: '80px', resize: 'none' }} />
+          </div>
         </div>
+        <SeccionActualizaciones tareaId={editItem.id} tipoTarea="soporte" usuario={usuario} accessToken={accessToken} />
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
           <button onClick={() => setEditItem(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={() => guardarEdit('tareas_soporte', [editItem.id, editItem.categoria_id, editItem.proyecto_soporte_id || '', editItem.subcarpeta_id || '', editItem.nombre, editItem.asignados || '', editItem.dia_semana || 'por_asignar', editItem.fecha_exacta || '', editItem.dia_recomendado || '', editItem.fecha_limite || '', editItem.estado || 'pendiente', editItem.fecha_creacion, '', editItem.fecha_limite_original || editItem.fecha_limite || ''])}
+          <button onClick={() => guardarEdit('tareas_soporte', [editItem.id, editItem.categoria_id, editItem.proyecto_soporte_id || '', editItem.subcarpeta_id || '', editItem.nombre, editItem.asignados || '', editItem.dia_semana || 'por_asignar', editItem.fecha_exacta || '', editItem.dia_recomendado || '', editItem.fecha_limite || '', editItem.estado || 'pendiente', editItem.fecha_creacion, editItem.etiqueta || '', editItem.fecha_limite_original || editItem.fecha_limite || '', editItem.descripcion || '', editItem.tarea_grupo_id || ''])}
             style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#1d4ed8', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
+  const [actualizaciones, setActualizaciones] = useState([])
+  const [texto, setTexto] = useState('')
+  const [cargando, setCargando] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
+  const [textoEdit, setTextoEdit] = useState('')
+
+  useEffect(() => { cargarActualizaciones() }, [tareaId])
+
+  async function cargarActualizaciones() {
+    try {
+      const todas = await leerHoja('actualizaciones', accessToken)
+      setActualizaciones(todas.filter(a => a.tarea_id === tareaId).sort((a, b) => a.fecha_creacion > b.fecha_creacion ? -1 : 1))
+    } catch (err) { console.error(err) }
+  }
+
+  async function añadirActualizacion() {
+    if (!texto.trim()) return
+    setCargando(true)
+    const id = Date.now().toString()
+    await escribirFila('actualizaciones', [id, tareaId, tipoTarea, usuario.id, texto.trim(), new Date().toISOString()], accessToken)
+    setTexto('')
+    await cargarActualizaciones()
+    setCargando(false)
+  }
+
+  async function guardarEdicion(id) {
+    if (!textoEdit.trim()) return
+    const act = actualizaciones.find(a => a.id === id)
+    if (!act) return
+    await actualizarFila('actualizaciones', id, [id, act.tarea_id, act.tipo_tarea, act.usuario_id, textoEdit.trim(), act.fecha_creacion], accessToken)
+    setEditandoId(null)
+    await cargarActualizaciones()
+  }
+
+  async function eliminarActualizacion(id) {
+    await marcarEliminado('actualizaciones', id, accessToken)
+    await cargarActualizaciones()
+  }
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Actualizaciones:</label>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+        <input placeholder="Escribe una actualización..." value={texto} onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && texto.trim()) añadirActualizacion() }}
+          style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px' }} />
+        <button onClick={añadirActualizacion} disabled={cargando}
+          style={{ padding: '8px 14px', borderRadius: '8px', background: '#1d4ed8', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+          {cargando ? '...' : '+ Añadir'}
+        </button>
+      </div>
+      {actualizaciones.length === 0
+        ? <p style={{ fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin actualizaciones aún</p>
+        : actualizaciones.map(a => (
+          <div key={a.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', marginBottom: '6px', borderLeft: '3px solid #1d4ed8' }}>
+            {editandoId === a.id ? (
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input value={textoEdit} onChange={e => setTextoEdit(e.target.value)}
+                  style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '13px' }} />
+                <button onClick={() => guardarEdicion(a.id)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#1d4ed8', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✓</button>
+                <button onClick={() => setEditandoId(null)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer', fontSize: '12px' }}>✕</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#373A36', flex: 1 }}>{a.texto}</p>
+                  <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
+                    <button onClick={() => { setEditandoId(a.id); setTextoEdit(a.texto) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#6b7280' }}>✏️</button>
+                    <button onClick={() => eliminarActualizacion(a.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#dc2626' }}>🗑</button>
+                  </div>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
+                  {a.usuario_id} · {new Date(a.fecha_creacion).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </>
+            )}
+          </div>
+        ))
+      }
     </div>
   )
 }
