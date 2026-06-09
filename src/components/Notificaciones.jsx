@@ -155,6 +155,41 @@ export default function Notificaciones() {
         }
       }
 
+      // ── TAREAS DIRECCIÓN ──────────────────────────────────────────
+      const tareasDireccion = await leerHoja('tareas_direccion', accessToken)
+      for (const tarea of tareasDireccion) {
+        const asignadosList = tarea.asignados ? tarea.asignados.split(',').map(s => s.trim()) : []
+        const esDeEstUsuario = asignadosList.length === 0 || asignadosList.includes(String(usuario.id))
+        if (!esDeEstUsuario) continue
+        if (tarea.estado === 'completada' || tarea.estado === 'completado') continue
+        const fecha = tarea.fecha_limite
+        if (esFechaPasada(fecha)) {
+          nuevasAlertas.push({
+            id: `tareas_direccion-${tarea.id}`,
+            tipo: 'vencida',
+            texto: `Tarea dirección vencida: ${tarea.nombre}`,
+            subtexto: `Límite: ${fecha}`,
+            url: '/direccion',
+          })
+        } else if (esFechaHoy(fecha) && esHoyVencido) {
+          nuevasAlertas.push({
+            id: `tareas_direccion-${tarea.id}-hoy`,
+            tipo: 'vencida',
+            texto: `Tarea dirección de hoy sin completar: ${tarea.nombre}`,
+            subtexto: 'Venció a las 15:00',
+            url: '/direccion',
+          })
+        } else if (esPróxima(fecha)) {
+          nuevasAlertas.push({
+            id: `tareas_direccion-${tarea.id}-proxima`,
+            tipo: 'proxima',
+            texto: `Próxima a vencer (dirección): ${tarea.nombre}`,
+            subtexto: `Límite: ${fecha}`,
+            url: '/direccion',
+          })
+        }
+      }
+
       // ── TAREAS PROYECTOS ──────────────────────────────────────────
       for (const tarea of tareas) {
         const asignadosList = tarea.asignados ? tarea.asignados.split(',').map(s => s.trim()) : []
