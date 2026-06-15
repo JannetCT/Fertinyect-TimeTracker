@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
+import Checklist from '../components/Checklist'
 
 function Modal({ titulo, onClose, onSave, children }) {
   return (
@@ -126,7 +127,7 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
     setCargando(false)
   }
 
-  
+
   async function guardarEdicion(id) {
     if (!textoEdit.trim()) return
     const act = actualizaciones.find(a => a.id === id)
@@ -294,6 +295,7 @@ export default function Direccion() {
               <p style={{ margin: 0, fontSize: '14px', color: '#373A36', background: '#f9fafb', padding: '12px', borderRadius: '8px' }}>{vistaTarea.descripcion}</p>
             </div>
           )}
+          <Checklist tareaId={vistaTarea.id} tipoTarea="direccion" accessToken={accessToken} />
           <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="direccion" usuario={usuario} accessToken={accessToken} />
         </div>
         {editItem && editItem._tipo === 'tarea' && (

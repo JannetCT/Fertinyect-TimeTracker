@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
+import Checklist from '../components/Checklist'
 
 const FASES_DEFAULT = [
   { nombre: 'Estudio viabilidad', orden: 1 },
@@ -621,6 +622,7 @@ export default function Proyectos() {
               <p style={{ margin: 0, fontSize: '14px', color: '#373A36', background: '#f9fafb', padding: '12px', borderRadius: '8px' }}>{vistaTarea.descripcion}</p>
             </div>
           )}
+          <Checklist tareaId={vistaTarea.id} tipoTarea="proyecto" accessToken={accessToken} />
           <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
         </div>
         {modalesCompartidos}

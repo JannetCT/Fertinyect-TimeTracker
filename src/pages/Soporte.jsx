@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
+import Checklist from '../components/Checklist'
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
 
@@ -335,6 +336,7 @@ export default function Soporte() {
               <p style={{ margin: 0, fontSize: '14px', color: '#373A36', background: '#f9fafb', padding: '12px', borderRadius: '8px' }}>{vistaTarea.descripcion}</p>
             </div>
           )}
+          <Checklist tareaId={vistaTarea.id} tipoTarea="soporte" accessToken={accessToken} />
           <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="soporte" usuario={usuario} accessToken={accessToken} />
         </div>
         {editItem && editItem._tipo === 'tarea' && (
