@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchParams } from 'react-router-dom'
-import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
+import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
 import Checklist from '../components/Checklist'
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
@@ -297,7 +297,10 @@ export default function Soporte() {
     if (confirmEliminar.hoja === 'categorias_soporte') setVistaCategoria(null)
     if (confirmEliminar.hoja === 'proyectos_soporte') setVistaProyecto(null)
     if (confirmEliminar.hoja === 'subcarpetas_soporte') setVistaSubcarpeta(null)
-    if (confirmEliminar.hoja === 'tareas_soporte') setVistaTarea(null)
+    if (confirmEliminar.hoja === 'tareas_soporte') {
+      await eliminarTareasPlanner(confirmEliminar.item.id, accessToken)
+      setVistaTarea(null)
+    }
     setConfirmEliminar(null)
     cargarDatos()
   }

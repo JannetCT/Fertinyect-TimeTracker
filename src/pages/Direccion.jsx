@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
+import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
 import Checklist from '../components/Checklist'
 
 function Modal({ titulo, onClose, onSave, children }) {
@@ -257,6 +257,10 @@ export default function Direccion() {
     if (confirmEliminar.hoja === 'categorias_direccion') setVistaCategoria(null)
     if (confirmEliminar.hoja === 'proyectos_direccion') setVistaProyecto(null)
     if (confirmEliminar.hoja === 'subcarpetas_direccion') setVistaSubcarpeta(null)
+    if (confirmEliminar.hoja === 'tareas_direccion') {
+      await eliminarTareasPlanner(confirmEliminar.item.id, accessToken)
+      setVistaTarea(null)
+    }
     setConfirmEliminar(null)
     cargarDatos()
   }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
+import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
 
 const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
 const DIAS_LABEL = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes' }
@@ -593,10 +593,18 @@ function Planner() {
 
   async function eliminarTarea(tarea) {
     if (!window.confirm(`¿Eliminar "${tarea.nombre}"?`)) return
-    if (tarea._tipo === 'proyecto') await marcarEliminado('tareas', tarea.id, accessToken)
-    else if (tarea._tipo === 'soporte') await marcarEliminado('tareas_soporte', tarea.id, accessToken)
-    else if (tarea._tipo === 'direccion') await marcarEliminado('tareas_direccion', tarea.id, accessToken)
-    else await marcarEliminado('tareas_planner', tarea.id, accessToken)
+    if (tarea._tipo === 'proyecto') {
+      await marcarEliminado('tareas', tarea.id, accessToken)
+      await eliminarTareasPlanner(tarea.id, accessToken)
+    } else if (tarea._tipo === 'soporte') {
+      await marcarEliminado('tareas_soporte', tarea.id, accessToken)
+      await eliminarTareasPlanner(tarea.id, accessToken)
+    } else if (tarea._tipo === 'direccion') {
+      await marcarEliminado('tareas_direccion', tarea.id, accessToken)
+      await eliminarTareasPlanner(tarea.id, accessToken)
+    } else {
+      await marcarEliminado('tareas_planner', tarea.id, accessToken)
+    }
     setModalEditarTarea(null); setVistaTarea(null); cargarDatos()
   }
 

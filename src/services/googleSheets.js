@@ -58,3 +58,20 @@ export async function buscarFilaPorId(nombreHoja, id, accessToken) {
   const filas = await leerHoja(nombreHoja, accessToken)
   return filas.find(f => f.id === String(id))
 }
+
+export async function eliminarTareasPlanner(tareaOrigenId, accessToken) {
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/tareas_planner?key=${API_KEY}`)
+  const data = await res.json()
+  const filas = data.values || []
+  for (let i = 1; i < filas.length; i++) {
+    if (filas[i][2] === tareaOrigenId) {
+      const filaActual = [...filas[i]]
+      filaActual[0] = 'eliminado'
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/tareas_planner!A${i + 1}?valueInputOption=RAW`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: [filaActual] })
+      })
+    }
+  }
+}

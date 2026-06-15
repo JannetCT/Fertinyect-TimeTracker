@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useSearchParams } from 'react-router-dom'
-import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
+import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
 import Checklist from '../components/Checklist'
 
 const FASES_DEFAULT = [
@@ -443,6 +443,7 @@ export default function Proyectos() {
       if (vistaEnsayo?.id === item.id) setVistaEnsayo(null)
     } else if (tipo === 'tarea') {
       await marcarEliminado('tareas', item.id, accessToken)
+      await eliminarTareasPlanner(item.id, accessToken)
       if (vistaTarea?.id === item.id) setVistaTarea(null)
     }
     setConfirmEliminar(null)
@@ -624,7 +625,6 @@ export default function Proyectos() {
             </div>
           )}
           <Checklist tareaId={vistaTarea.id} tipoTarea="proyecto" accessToken={accessToken} />
-          {editTarea && <Checklist tareaId={editTarea.id} tipoTarea="proyecto" accessToken={accessToken} />}
           <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
         </div>
         {modalesCompartidos}
