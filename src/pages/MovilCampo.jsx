@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja, escribirFila, actualizarFila } from '../services/googleSheets'
+import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
 
 const PRIORIDADES = {
   urgente:    { bg: '#fee2e2', color: '#dc2626', emoji: '🔴' },
@@ -258,6 +258,18 @@ export default function MovilCampo() {
     cargarDatos()
   }
 
+  async function eliminarTarea(tarea) {
+  if (!window.confirm(`¿Eliminar "${tarea.nombre}"?`)) return
+  setGuardando(true)
+  const { marcarEliminado } = await import('../services/googleSheets')
+  if (tarea._tipo === 'proyecto') await marcarEliminado('tareas', tarea.id, accessToken)
+  else if (tarea._tipo === 'soporte') await marcarEliminado('tareas_soporte', tarea.id, accessToken)
+  else await marcarEliminado('tareas_planner', tarea.id, accessToken)
+  setModalEditar(null)
+  setGuardando(false)
+  cargarDatos()
+}
+
   async function crearEvento() {
     if (!formEvento.titulo || !formEvento.fecha_exacta) return
     setGuardando(true)
@@ -438,6 +450,7 @@ export default function MovilCampo() {
               )}
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+              <button onClick={() => eliminarTarea(modalEditar)} disabled={guardando} style={{ padding: '16px', borderRadius: '12px', border: 'none', background: '#7f1d1d', color: '#fca5a5', fontSize: '16px', cursor: 'pointer', fontWeight: '700' }}>🗑</button>
               <button onClick={() => setModalEditar(null)} style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>Cancelar</button>
               <button onClick={guardarEdicion} disabled={guardando} style={{ flex: 2, padding: '16px', borderRadius: '12px', border: 'none', background: '#00953B', color: 'white', fontSize: '16px', cursor: 'pointer', fontWeight: '700' }}>
                 {guardando ? 'Guardando...' : 'Guardar'}
