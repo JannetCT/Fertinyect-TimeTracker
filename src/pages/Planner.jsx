@@ -409,6 +409,7 @@ function getRefId(tarea) {
 }
 
 function getRefTipo(tarea) {
+  if (tarea._tipo && tarea._tipo !== 'planner') return tarea._tipo
   if (!tarea.tarea_padre_tipo) return 'planner'
   if (tarea.tarea_padre_tipo.startsWith('proyecto')) return 'proyecto'
   if (tarea.tarea_padre_tipo.startsWith('soporte')) return 'soporte'

@@ -624,7 +624,7 @@ export default function Proyectos() {
             </div>
           )}
           <Checklist tareaId={vistaTarea.id} tipoTarea="proyecto" accessToken={accessToken} />
-          <Checklist tareaId={editTarea.id} tipoTarea="proyecto" accessToken={accessToken} />
+          {editTarea && <Checklist tareaId={editTarea.id} tipoTarea="proyecto" accessToken={accessToken} />}
           <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
         </div>
         {modalesCompartidos}
