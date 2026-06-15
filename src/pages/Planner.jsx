@@ -13,7 +13,7 @@ const USUARIOS_EQUIPO = [
 ]
 
 function formatTiempo(s) {
-  return `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`
+  return `${Math.floor(s/3600).toString().padStart(2,'00')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`
 }
 
 function getLunesDeSemana(fecha) {
@@ -163,7 +163,6 @@ function InputFechasMultiples({ label, value, onChange }) {
   )
 }
 
-// Selector de personas para eventos (multi-select)
 function SelectorPersonasEvento({ seleccionados, onChange, misId }) {
   return (
     <div>
@@ -188,7 +187,6 @@ function SelectorPersonasEvento({ seleccionados, onChange, misId }) {
   )
 }
 
-// Selector de tiempo estimado
 function SelectorTiempoEstimado({ horas, minutos, onChangeHoras, onChangeMinutos }) {
   return (
     <div>
@@ -209,7 +207,6 @@ function SelectorTiempoEstimado({ horas, minutos, onChangeHoras, onChangeMinutos
   )
 }
 
-// Convierte minutos totales a string "Xh Ymin"
 function formatMinutos(minutos) {
   if (!minutos || minutos === 0) return ''
   const h = Math.floor(minutos / 60)
@@ -217,6 +214,95 @@ function formatMinutos(minutos) {
   if (h === 0) return `${m}min`
   if (m === 0) return `${h}h`
   return `${h}h ${m}min`
+}
+
+function SeccionChecklist({ tareaId, tipoTarea, accessToken }) {
+  const [items, setItems] = useState([])
+  const [nuevoTexto, setNuevoTexto] = useState('')
+  const [cargando, setCargando] = useState(false)
+
+  useEffect(() => { cargarItems() }, [tareaId])
+
+  async function cargarItems() {
+    try {
+      const todos = await leerHoja('checklist_items', accessToken)
+      const filtrados = todos
+        .filter(i => i.tarea_id === tareaId && i.tipo_tarea === tipoTarea)
+        .sort((a, b) => Number(a.orden) - Number(b.orden))
+      setItems(filtrados)
+    } catch (err) { console.error(err) }
+  }
+
+  async function añadirItem() {
+    if (!nuevoTexto.trim()) return
+    setCargando(true)
+    const id = Date.now().toString()
+    const orden = items.length + 1
+    await escribirFila('checklist_items', [id, tareaId, tipoTarea, nuevoTexto.trim(), 'false', orden], accessToken)
+    setNuevoTexto('')
+    await cargarItems()
+    setCargando(false)
+  }
+
+  async function toggleItem(item) {
+    const nuevoEstado = item.completado === 'true' ? 'false' : 'true'
+    await actualizarFila('checklist_items', item.id, [item.id, item.tarea_id, item.tipo_tarea, item.texto, nuevoEstado, item.orden], accessToken)
+    await cargarItems()
+  }
+
+  async function eliminarItem(itemId) {
+    await marcarEliminado('checklist_items', itemId, accessToken)
+    await cargarItems()
+  }
+
+  const completados = items.filter(i => i.completado === 'true').length
+  const total = items.length
+
+  return (
+    <div style={{ marginTop: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <label style={{ fontSize: '13px', fontWeight: '600', color: '#555' }}>Lista de comprobación</label>
+        {total > 0 && (
+          <span style={{ fontSize: '12px', color: completados === total ? '#166534' : '#6b7280', background: completados === total ? '#dcfce7' : '#f3f4f6', borderRadius: '20px', padding: '2px 8px', fontWeight: '600' }}>
+            {completados} / {total}
+          </span>
+        )}
+      </div>
+      {total > 0 && (
+        <div style={{ marginBottom: '8px', height: '4px', background: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${(completados / total) * 100}%`, background: '#00953B', borderRadius: '2px', transition: 'width 0.3s' }} />
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+        {items.map(item => (
+          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '8px', background: '#f9fafb', border: '1px solid #f3f4f6' }}>
+            <button onClick={() => toggleItem(item)}
+              style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.completado === 'true' ? '#00953B' : '#d1d5db'}`, background: item.completado === 'true' ? '#00953B' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>
+              {item.completado === 'true' && <span style={{ color: 'white', fontSize: '11px', fontWeight: '700' }}>✓</span>}
+            </button>
+            <span style={{ flex: 1, fontSize: '13px', color: item.completado === 'true' ? '#9ca3af' : '#373A36', textDecoration: item.completado === 'true' ? 'line-through' : 'none' }}>
+              {item.texto}
+            </span>
+            <button onClick={() => eliminarItem(item.id)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', fontSize: '14px', padding: '0 2px', lineHeight: 1 }}
+              onMouseOver={e => e.target.style.color = '#dc2626'}
+              onMouseOut={e => e.target.style.color = '#d1d5db'}>
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+        <input placeholder="+ Añadir ítem..." value={nuevoTexto} onChange={e => setNuevoTexto(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && nuevoTexto.trim()) añadirItem() }}
+          style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px' }} />
+        <button onClick={añadirItem} disabled={cargando || !nuevoTexto.trim()}
+          style={{ padding: '8px 14px', borderRadius: '8px', background: nuevoTexto.trim() ? '#00953B' : '#f3f4f6', color: nuevoTexto.trim() ? 'white' : '#9ca3af', border: 'none', cursor: nuevoTexto.trim() ? 'pointer' : 'default', fontSize: '13px', fontWeight: '600' }}>
+          {cargando ? '...' : '+ Añadir'}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
@@ -357,6 +443,7 @@ function Planner() {
   const [subcarpetasSoporte, setSubcarpetasSoporte] = useState([])
   const [todasTareasProyecto, setTodasTareasProyecto] = useState([])
   const [todasTareasSoporte, setTodasTareasSoporte] = useState([])
+  const [checklistCounts, setChecklistCounts] = useState({})
   const [cargando, setCargando] = useState(true)
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
   const [filtroEtiqueta, setFiltroEtiqueta] = useState('')
@@ -369,8 +456,7 @@ function Planner() {
   const [formTarea, setFormTarea] = useState({
     nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '',
     _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '',
-    fecha_limite: '', etiqueta: '', asignadoA: '',
-    _horas: 0, _minutos: 0
+    fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0
   })
   const [formEvento, setFormEvento] = useState({
     titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '',
@@ -399,7 +485,7 @@ function Planner() {
 
   async function cargarDatos() {
     try {
-      const [t, ts, td, tp, ev, p, ep, ac, en, cs, ps, ss] = await Promise.all([
+      const [t, ts, td, tp, ev, p, ep, ac, en, cs, ps, ss, cl] = await Promise.all([
         leerHoja('tareas', accessToken),
         leerHoja('tareas_soporte', accessToken),
         leerHoja('tareas_direccion', accessToken),
@@ -412,13 +498,13 @@ function Planner() {
         leerHoja('categorias_soporte', accessToken),
         leerHoja('proyectos_soporte', accessToken),
         leerHoja('subcarpetas_soporte', accessToken),
+        leerHoja('checklist_items', accessToken),
       ])
       const misId = String(usuario.id)
       setTareas(t.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
       setTareasSoporte(ts.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
       setTareasDireccion(td.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
       setTareasPlanner(tp.filter(t => String(t.usuario_id) === misId))
-      // Eventos: mostrar si el usuario está en usuario_id (puede ser múltiple separado por coma)
       setEventos(ev.filter(e => e.usuario_id && e.usuario_id.split(',').map(s => s.trim()).includes(misId)))
       setProyectos(p)
       setEstadosProyecto(ep)
@@ -429,19 +515,28 @@ function Planner() {
       setSubcarpetasSoporte(ss)
       setTodasTareasProyecto(t)
       setTodasTareasSoporte(ts)
+      // Mapa de conteos checklist
+      const counts = {}
+      cl.forEach(item => {
+        const key = `${item.tarea_id}_${item.tipo_tarea}`
+        if (!counts[key]) counts[key] = { total: 0, completados: 0 }
+        counts[key].total++
+        if (item.completado === 'true') counts[key].completados++
+      })
+      setChecklistCounts(counts)
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
 
+  function getChecklistCount(tareaId, tipoTarea) {
+    return checklistCounts[`${tareaId}_${tipoTarea}`] || { total: 0, completados: 0 }
+  }
+
   async function iniciarCronometro(tarea) {
     if (cronActivo?.inicio) await _guardarTramo(cronActivo)
-    if (cronActivo && cronActivo.tareaId === tarea.id && !cronActivo.inicio) {
-      reanudarCronometro()
-      return
-    }
+    if (cronActivo && cronActivo.tareaId === tarea.id && !cronActivo.inicio) { reanudarCronometro(); return }
     const nuevo = { tareaId: tarea.id, tipo: tarea._tipo, nombre: tarea.nombre, inicio: Date.now(), acumulado: 0 }
-    setCronActivo(nuevo)
-    saveCron(nuevo)
+    setCronActivo(nuevo); saveCron(nuevo)
   }
 
   async function _guardarTramo(cron) {
@@ -452,20 +547,15 @@ function Planner() {
     const inicio = new Date(Date.now() - elapsed * 1000).toISOString()
     await escribirFila('registros', [Date.now().toString(), cron.tareaId, usuario.id, inicio, fin, elapsed, new Date().toDateString(), cron.tipo, cron.nombre], accessToken)
     const pausado = { ...cron, acumulado: cron.acumulado + elapsed, inicio: null }
-    setCronActivo(pausado)
-    saveCron(pausado)
+    setCronActivo(pausado); saveCron(pausado)
   }
 
-  async function pausarYGuardar() {
-    if (!cronActivo?.inicio) return
-    await _guardarTramo(cronActivo)
-  }
+  async function pausarYGuardar() { if (!cronActivo?.inicio) return; await _guardarTramo(cronActivo) }
 
   function reanudarCronometro() {
     if (!cronActivo) return
     const nuevo = { ...cronActivo, inicio: Date.now() }
-    setCronActivo(nuevo)
-    saveCron(nuevo)
+    setCronActivo(nuevo); saveCron(nuevo)
   }
 
   async function detenerCronometro(completar = false) {
@@ -476,10 +566,7 @@ function Planner() {
       const tarea = allTareas.find(t => t.id === cronActivo.tareaId)
       if (tarea) await actualizarEstado(tarea, cronActivo.tipo, 'completada')
     }
-    setCronActivo(null)
-    saveCron(null)
-    setTiempoActual(0)
-    cargarDatos()
+    setCronActivo(null); saveCron(null); setTiempoActual(0); cargarDatos()
   }
 
   async function completarEvento(evento) {
@@ -497,15 +584,10 @@ function Planner() {
   }
 
   async function actualizarEstado(tarea, tipo, estado) {
-    if (tipo === 'proyecto') {
-      await actualizarFila('tareas', tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
-    } else if (tipo === 'soporte') {
-      await actualizarFila('tareas_soporte', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_soporte_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
-    } else if (tipo === 'direccion') {
-      await actualizarFila('tareas_direccion', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_direccion_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
-    } else {
-      await actualizarFila('tareas_planner', tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana, tarea.fecha_exacta || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
-    }
+    if (tipo === 'proyecto') await actualizarFila('tareas', tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
+    else if (tipo === 'soporte') await actualizarFila('tareas_soporte', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_soporte_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
+    else if (tipo === 'direccion') await actualizarFila('tareas_direccion', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_direccion_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
+    else await actualizarFila('tareas_planner', tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana, tarea.fecha_exacta || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
   }
 
   async function eliminarTarea(tarea) {
@@ -514,9 +596,7 @@ function Planner() {
     else if (tarea._tipo === 'soporte') await marcarEliminado('tareas_soporte', tarea.id, accessToken)
     else if (tarea._tipo === 'direccion') await marcarEliminado('tareas_direccion', tarea.id, accessToken)
     else await marcarEliminado('tareas_planner', tarea.id, accessToken)
-    setModalEditarTarea(null)
-    setVistaTarea(null)
-    cargarDatos()
+    setModalEditarTarea(null); setVistaTarea(null); cargarDatos()
   }
 
   async function guardarEditarTarea() {
@@ -529,26 +609,16 @@ function Planner() {
 
     if (t.tarea_padre_id) {
       const hoja = getRefHoja(t)
-      const tareaOrigen = todasTareasProyecto.find(x => x.id === t.tarea_padre_id)
-        || todasTareasSoporte.find(x => x.id === t.tarea_padre_id)
-      if (tareaOrigen && hoja === 'tareas') {
-        await actualizarFila('tareas', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.ensayo_id, tareaOrigen.accion_id, tareaOrigen.proyecto_id, tareaOrigen.nombre, tareaOrigen.asignados, tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || '', tiempoEstimado], accessToken)
-      } else if (tareaOrigen && hoja === 'tareas_soporte') {
-        await actualizarFila('tareas_soporte', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.categoria_id, tareaOrigen.proyecto_soporte_id || '', tareaOrigen.subcarpeta_id || '', tareaOrigen.nombre, tareaOrigen.asignados, tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || '', tiempoEstimado], accessToken)
-      }
+      const tareaOrigen = todasTareasProyecto.find(x => x.id === t.tarea_padre_id) || todasTareasSoporte.find(x => x.id === t.tarea_padre_id)
+      if (tareaOrigen && hoja === 'tareas') await actualizarFila('tareas', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.ensayo_id, tareaOrigen.accion_id, tareaOrigen.proyecto_id, tareaOrigen.nombre, tareaOrigen.asignados, tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || '', tiempoEstimado], accessToken)
+      else if (tareaOrigen && hoja === 'tareas_soporte') await actualizarFila('tareas_soporte', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.categoria_id, tareaOrigen.proyecto_soporte_id || '', tareaOrigen.subcarpeta_id || '', tareaOrigen.nombre, tareaOrigen.asignados, tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || '', tiempoEstimado], accessToken)
     }
 
-    if (t._tipo === 'proyecto') {
-      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
-    } else if (t._tipo === 'soporte') {
-      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
-    } else if (t._tipo === 'direccion') {
-      await actualizarFila('tareas_direccion', t.id, [t.id, t.categoria_id, t.proyecto_direccion_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
-    } else {
-      await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
-    }
-    setModalEditarTarea(null)
-    cargarDatos()
+    if (t._tipo === 'proyecto') await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
+    else if (t._tipo === 'soporte') await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
+    else if (t._tipo === 'direccion') await actualizarFila('tareas_direccion', t.id, [t.id, t.categoria_id, t.proyecto_direccion_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
+    else await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
+    setModalEditarTarea(null); cargarDatos()
   }
 
   async function guardarEditarEvento() {
@@ -556,14 +626,12 @@ function Planner() {
     const ev = modalEditarEvento
     const asignadosStr = ev._asignados && ev._asignados.length > 0 ? ev._asignados.join(',') : String(usuario.id)
     await actualizarFila('eventos', ev.id, [ev.id, asignadosStr, ev.titulo, ev.descripcion || '', ev.fecha_exacta, ev.hora_inicio || '', ev.hora_fin || '', ev.tipo, ev.fecha_creacion, ev.estado || ''], accessToken)
-    setModalEditarEvento(null)
-    cargarDatos()
+    setModalEditarEvento(null); cargarDatos()
   }
 
   async function eliminarEvento(eventoId) {
     await marcarEliminado('eventos', eventoId, accessToken)
-    setModalEditarEvento(null)
-    cargarDatos()
+    setModalEditarEvento(null); cargarDatos()
   }
 
   async function crearTareaPlanner() {
@@ -586,9 +654,7 @@ function Planner() {
   async function crearEvento() {
     if (!formEvento.titulo || !formEvento.fecha_exacta) return
     const id = Date.now().toString()
-    const asignadosStr = formEvento._asignados && formEvento._asignados.length > 0
-      ? formEvento._asignados.join(',')
-      : String(usuario.id)
+    const asignadosStr = formEvento._asignados && formEvento._asignados.length > 0 ? formEvento._asignados.join(',') : String(usuario.id)
     await escribirFila('eventos', [id, asignadosStr, formEvento.titulo, formEvento.descripcion, formEvento.fecha_exacta, formEvento.hora_inicio, formEvento.hora_fin, formEvento.tipo, new Date().toISOString(), ''], accessToken)
     setModalNuevoEvento(false)
     setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [] })
@@ -606,8 +672,7 @@ function Planner() {
 
   function getDiasDeSemana(lunes) {
     return DIAS_SEMANA.map((dia, i) => {
-      const d = new Date(lunes)
-      d.setDate(d.getDate() + i)
+      const d = new Date(lunes); d.setDate(d.getDate() + i)
       return { dia, fecha: getISODate(d), label: DIAS_LABEL[dia] }
     })
   }
@@ -633,57 +698,37 @@ function Planner() {
     })
   }
 
-  function eventosDeDia(fechaStr) {
-    return eventos.filter(e => e.fecha_exacta === fechaStr)
-  }
+  function eventosDeDia(fechaStr) { return eventos.filter(e => e.fecha_exacta === fechaStr) }
 
-  // Calcula minutos estimados totales de un día
   function minutosEstimadosDia(fechaStr) {
-    return tareasDeDia(fechaStr)
-      .filter(t => t.estado !== 'completada')
-      .reduce((sum, t) => sum + (parseInt(t.tiempo_estimado) || 0), 0)
+    return tareasDeDia(fechaStr).filter(t => t.estado !== 'completada').reduce((sum, t) => sum + (parseInt(t.tiempo_estimado) || 0), 0)
   }
 
   function getContexto(tarea) {
-    if (tarea._tipo === 'proyecto') {
-      const p = proyectos.find(p => p.id === tarea.proyecto_id)
-      return p ? p.nombre : 'Proyecto'
-    } else if (tarea._tipo === 'soporte') {
-      const c = categoriasSoporte.find(c => c.id === tarea.categoria_id)
-      return c ? c.nombre : 'Soporte'
-    } else if (tarea._tipo === 'direccion') {
-      return '🏢 Dirección'
-    } else {
-      if (tarea.tarea_padre_id) {
-        const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id) || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id)
-        return padre ? `↳ ${padre.nombre}` : '↳ Subtarea'
-      }
-      return '📝 Tarea libre'
-    }
+    if (tarea._tipo === 'proyecto') { const p = proyectos.find(p => p.id === tarea.proyecto_id); return p ? p.nombre : 'Proyecto' }
+    if (tarea._tipo === 'soporte') { const c = categoriasSoporte.find(c => c.id === tarea.categoria_id); return c ? c.nombre : 'Soporte' }
+    if (tarea._tipo === 'direccion') return '🏢 Dirección'
+    if (tarea.tarea_padre_id) { const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id) || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id); return padre ? `↳ ${padre.nombre}` : '↳ Subtarea' }
+    return '📝 Tarea libre'
   }
 
   function getDescripcionTarea(tarea) {
     if (tarea._tipo === 'planner' && tarea.tarea_padre_id) {
-      const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id)
-        || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id)
+      const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id) || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id)
       return padre?.descripcion || ''
     }
     return tarea.descripcion || ''
   }
 
-  // Parsea tiempo_estimado de una tarea a { horas, minutos }
   function parseTiempoEstimado(tarea) {
     const min = parseInt(tarea.tiempo_estimado) || 0
     return { horas: Math.floor(min / 60), minutos: min % 60 }
   }
 
   function getDiasDelMes() {
-    const año = mesBase.getFullYear()
-    const mes = mesBase.getMonth()
-    const primerDia = new Date(año, mes, 1)
-    const ultimoDia = new Date(año, mes + 1, 0)
-    const dias = []
-    const inicioSemana = new Date(primerDia)
+    const año = mesBase.getFullYear(), mes = mesBase.getMonth()
+    const primerDia = new Date(año, mes, 1), ultimoDia = new Date(año, mes + 1, 0)
+    const dias = [], inicioSemana = new Date(primerDia)
     const diaSemana = primerDia.getDay()
     inicioSemana.setDate(primerDia.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1))
     for (let d = new Date(inicioSemana); d <= ultimoDia || dias.length % 7 !== 0; d.setDate(d.getDate() + 1)) {
@@ -702,13 +747,9 @@ function Planner() {
           opciones.push({ id: `accion_${accion.id}`, label: `    ⚡ ${accion.nombre}`, tipo: 'proyecto_accion', realId: accion.id })
           ensayos.filter(en => en.accion_id === accion.id).forEach(ensayo => {
             opciones.push({ id: `ensayo_${ensayo.id}`, label: `      🧪 ${ensayo.nombre}`, tipo: 'proyecto_ensayo', realId: ensayo.id })
-            todasTareasProyecto.filter(t => t.ensayo_id === ensayo.id).forEach(tarea => {
-              opciones.push({ id: `tarea_${tarea.id}`, label: `        ✅ ${tarea.nombre}`, tipo: 'proyecto', realId: tarea.id })
-            })
+            todasTareasProyecto.filter(t => t.ensayo_id === ensayo.id).forEach(tarea => { opciones.push({ id: `tarea_${tarea.id}`, label: `        ✅ ${tarea.nombre}`, tipo: 'proyecto', realId: tarea.id }) })
           })
-          todasTareasProyecto.filter(t => t.accion_id === accion.id && !t.ensayo_id).forEach(tarea => {
-            opciones.push({ id: `tarea_${tarea.id}`, label: `      ✅ ${tarea.nombre}`, tipo: 'proyecto', realId: tarea.id })
-          })
+          todasTareasProyecto.filter(t => t.accion_id === accion.id && !t.ensayo_id).forEach(tarea => { opciones.push({ id: `tarea_${tarea.id}`, label: `      ✅ ${tarea.nombre}`, tipo: 'proyecto', realId: tarea.id }) })
         })
       })
     })
@@ -723,17 +764,11 @@ function Planner() {
         opciones.push({ id: `proy_${proy.id}`, label: `  📁 ${proy.nombre}`, tipo: 'soporte_proyecto', realId: proy.id })
         subcarpetasSoporte.filter(s => s.proyecto_soporte_id === proy.id).forEach(sub => {
           opciones.push({ id: `sub_${sub.id}`, label: `    📂 ${sub.nombre}`, tipo: 'soporte_subcarpeta', realId: sub.id })
-          todasTareasSoporte.filter(t => t.subcarpeta_id === sub.id).forEach(tarea => {
-            opciones.push({ id: `tarea_${tarea.id}`, label: `      ✅ ${tarea.nombre}`, tipo: 'soporte', realId: tarea.id })
-          })
+          todasTareasSoporte.filter(t => t.subcarpeta_id === sub.id).forEach(tarea => { opciones.push({ id: `tarea_${tarea.id}`, label: `      ✅ ${tarea.nombre}`, tipo: 'soporte', realId: tarea.id }) })
         })
-        todasTareasSoporte.filter(t => t.proyecto_soporte_id === proy.id && !t.subcarpeta_id).forEach(tarea => {
-          opciones.push({ id: `tarea_${tarea.id}`, label: `    ✅ ${tarea.nombre}`, tipo: 'soporte', realId: tarea.id })
-        })
+        todasTareasSoporte.filter(t => t.proyecto_soporte_id === proy.id && !t.subcarpeta_id).forEach(tarea => { opciones.push({ id: `tarea_${tarea.id}`, label: `    ✅ ${tarea.nombre}`, tipo: 'soporte', realId: tarea.id }) })
       })
-      todasTareasSoporte.filter(t => t.categoria_id === cat.id && !t.proyecto_soporte_id).forEach(tarea => {
-        opciones.push({ id: `tarea_${tarea.id}`, label: `  ✅ ${tarea.nombre}`, tipo: 'soporte', realId: tarea.id })
-      })
+      todasTareasSoporte.filter(t => t.categoria_id === cat.id && !t.proyecto_soporte_id).forEach(tarea => { opciones.push({ id: `tarea_${tarea.id}`, label: `  ✅ ${tarea.nombre}`, tipo: 'soporte', realId: tarea.id }) })
     })
     return opciones
   }
@@ -748,41 +783,31 @@ function Planner() {
   function renderTarjeta(tarea) {
     const activa = cronActivo?.tareaId === tarea.id
     const pausada = activa && !cronActivo?.inicio
+    const refId = tarea._tipo === 'planner' ? getRefId(tarea) : tarea.id
+    const refTipo = tarea._tipo === 'planner' ? getRefTipo(tarea) : tarea._tipo
+    const clCount = getChecklistCount(refId, refTipo)
     return (
       <TarjetaTarea
         key={tarea.id + tarea._tipo}
         tarea={tarea}
         contexto={getContexto(tarea)}
+        checklistCount={clCount}
         onVerDetalle={() => setVistaTarea(tarea)}
         onEditar={() => {
-          const tipoLigar = tarea.tarea_padre_tipo
-            ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto'
-            : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : ''
-            : ''
+          const tipoLigar = tarea.tarea_padre_tipo ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''
           const te = parseTiempoEstimado(tarea)
-          setModalEditarTarea({
-            ...tarea,
-            descripcion: getDescripcionTarea(tarea),
-            fechas_exactas: tarea.fecha_exacta || '',
-            _tipoLigar: tipoLigar,
-            _opcionProyectoId: '',
-            _opcionSoporteId: '',
-            _horas: te.horas,
-            _minutos: te.minutos,
-          })
+          setModalEditarTarea({ ...tarea, descripcion: getDescripcionTarea(tarea), fechas_exactas: tarea.fecha_exacta || '', _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos })
         }}
         onIniciar={() => iniciarCronometro(tarea)}
         onPausar={pausarYGuardar}
         onReanudar={reanudarCronometro}
         onCompletar={() => detenerCronometro(true)}
-        activa={activa}
-        pausada={pausada}
+        activa={activa} pausada={pausada}
         tiempoActual={activa ? tiempoActual : 0}
       />
     )
   }
 
-  // VISTA DETALLE TAREA
   if (vistaTarea) {
     const refId = vistaTarea._tipo === 'planner' ? getRefId(vistaTarea) : vistaTarea.id
     const refTipo = vistaTarea._tipo === 'planner' ? getRefTipo(vistaTarea) : vistaTarea._tipo
@@ -797,21 +822,9 @@ function Planner() {
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => {
-                const tipoLigar = vistaTarea.tarea_padre_tipo
-                  ? vistaTarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto'
-                  : vistaTarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : ''
-                  : ''
+                const tipoLigar = vistaTarea.tarea_padre_tipo ? vistaTarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : vistaTarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''
                 const te = parseTiempoEstimado(vistaTarea)
-                setModalEditarTarea({
-                  ...vistaTarea,
-                  descripcion: getDescripcionTarea(vistaTarea),
-                  fechas_exactas: vistaTarea.fecha_exacta || '',
-                  _tipoLigar: tipoLigar,
-                  _opcionProyectoId: '',
-                  _opcionSoporteId: '',
-                  _horas: te.horas,
-                  _minutos: te.minutos,
-                })
+                setModalEditarTarea({ ...vistaTarea, descripcion: getDescripcionTarea(vistaTarea), fechas_exactas: vistaTarea.fecha_exacta || '', _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos })
               }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>✏️ Editar</button>
               <button onClick={() => eliminarTarea(vistaTarea)} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>🗑 Eliminar</button>
             </div>
@@ -829,20 +842,15 @@ function Planner() {
               ⏳ Tiempo estimado: <strong>{formatMinutos(parseInt(vistaTarea.tiempo_estimado))}</strong>
             </div>
           )}
+          <SeccionChecklist tareaId={refId} tipoTarea={refTipo} accessToken={accessToken} />
           <SeccionActualizaciones tareaId={refId} tipoTarea={refTipo} usuario={usuario} accessToken={accessToken} />
         </div>
         {modalEditarTarea && (
           <ModalEditarTareaComponent
-            modalEditarTarea={modalEditarTarea}
-            setModalEditarTarea={setModalEditarTarea}
+            modalEditarTarea={modalEditarTarea} setModalEditarTarea={setModalEditarTarea}
             guardarEditarTarea={async () => { await guardarEditarTarea(); setVistaTarea({...vistaTarea, descripcion: modalEditarTarea.descripcion}) }}
-            eliminarTarea={eliminarTarea}
-            opcionesProyecto={opcionesProyecto}
-            opcionesSoporte={opcionesSoporte}
-            usuario={usuario}
-            accessToken={accessToken}
-            getRefId={getRefId}
-            getRefTipo={getRefTipo}
+            eliminarTarea={eliminarTarea} opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte}
+            usuario={usuario} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
           />
         )}
       </div>
@@ -868,7 +876,6 @@ function Planner() {
             <button onClick={() => setModalNuevaTarea(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Tarea</button>
           </div>
         </div>
-
         {cronActivo && (
           <div style={{ background: '#f0fdf4', border: '2px solid #00953B', borderRadius: '8px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: '100%' }}>
             <span style={{ fontSize: '12px', color: '#373A36', fontWeight: '600' }}>⏱ {cronActivo.nombre}</span>
@@ -884,27 +891,13 @@ function Planner() {
       </div>
 
       <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #e5e7eb', marginBottom: '4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-        {[
-          { key: '', label: 'Todas' },
-          { key: 'urgente', label: '🔴 Urgente' },
-          { key: 'importante', label: '🟡 Importante' },
-          { key: 'delegar', label: '🔵 Delegar' },
-        ].map(({ key, label }) => {
-          const count = key === ''
-            ? todasLasTareas().filter(t => t.estado !== 'completada').length
-            : todasLasTareas().filter(t => t.estado !== 'completada' && t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(key)).length
+        {[{ key: '', label: 'Todas' }, { key: 'urgente', label: '🔴 Urgente' }, { key: 'importante', label: '🟡 Importante' }, { key: 'delegar', label: '🔵 Delegar' }].map(({ key, label }) => {
+          const count = key === '' ? todasLasTareas().filter(t => t.estado !== 'completada').length : todasLasTareas().filter(t => t.estado !== 'completada' && t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(key)).length
           const activa = filtroEtiqueta === key
           return (
-            <button key={key} onClick={() => setFiltroEtiqueta(key)} style={{
-              padding: '8px 16px', background: 'none', border: 'none',
-              borderBottom: activa ? '2px solid #00953B' : '2px solid transparent',
-              color: activa ? '#00953B' : '#6b7280', fontWeight: activa ? '600' : '400',
-              fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '-1px',
-            }}>
+            <button key={key} onClick={() => setFiltroEtiqueta(key)} style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: activa ? '2px solid #00953B' : '2px solid transparent', color: activa ? '#00953B' : '#6b7280', fontWeight: activa ? '600' : '400', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '-1px' }}>
               {label}
-              <span style={{ background: activa ? '#00953B' : '#f3f4f6', color: activa ? 'white' : '#6b7280', borderRadius: '20px', padding: '1px 7px', fontSize: '11px', fontWeight: '600' }}>
-                {count}
-              </span>
+              <span style={{ background: activa ? '#00953B' : '#f3f4f6', color: activa ? 'white' : '#6b7280', borderRadius: '20px', padding: '1px 7px', fontSize: '11px', fontWeight: '600' }}>{count}</span>
             </button>
           )
         })}
@@ -918,7 +911,6 @@ function Planner() {
             <button onClick={() => setSemanaBase(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d })} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '18px' }}>→</button>
             <button onClick={() => setSemanaBase(getLunesDeSemana(new Date()))} style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Hoy</button>
           </div>
-
           <div className="planner-grid">
             {diasSemana.map(({ dia, fecha, label }) => {
               const tareasDelDia = tareasDeDia(fecha)
@@ -941,15 +933,13 @@ function Planner() {
                       return (
                         <div key={ev.id} style={{ background: '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', opacity: completado ? 0.7 : 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div onClick={(e) => { e.stopPropagation(); setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId] }) }}
-                              style={{ cursor: 'pointer', flex: 1 }}>
+                            <div onClick={() => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId] })} style={{ cursor: 'pointer', flex: 1 }}>
                               <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed', textDecoration: completado ? 'line-through' : 'none' }}>🗓 {ev.titulo}</p>
                               {ev.hora_inicio && <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{ev.hora_inicio}{ev.hora_fin ? ` — ${ev.hora_fin}` : ''}</p>}
                               <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
                             </div>
                             {!completado && ev.hora_inicio && ev.hora_fin && (
-                              <button onClick={e => { e.stopPropagation(); completarEvento(ev) }}
-                                style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', marginLeft: '6px' }}>✅</button>
+                              <button onClick={e => { e.stopPropagation(); completarEvento(ev) }} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', marginLeft: '6px' }}>✅</button>
                             )}
                           </div>
                         </div>
@@ -957,9 +947,8 @@ function Planner() {
                     })}
                     {tareasDelDia.map(tarea => renderTarjeta(tarea))}
                   </div>
-                  {/* CONTADOR TIEMPO ESTIMADO */}
                   {minEstimados > 0 && (
-                    <div style={{ padding: '6px 8px', borderTop: '1px solid #f3f4f6', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ padding: '6px 8px', borderTop: '1px solid #f3f4f6', marginTop: '4px' }}>
                       <span style={{ fontSize: '11px', color: sobrecargado ? '#dc2626' : '#6b7280', fontWeight: sobrecargado ? '700' : '400' }}>
                         {sobrecargado ? '⚠️' : '⏳'} {formatMinutos(minEstimados)} estimado
                         {sobrecargado && <span style={{ display: 'block', fontSize: '10px', color: '#dc2626' }}>Supera 8h</span>}
@@ -974,9 +963,7 @@ function Planner() {
                 <h3>📥 Por asignar</h3>
                 <span className="task-count">{tareasBacklog().length}</span>
               </div>
-              <div className="column-tasks">
-                {tareasBacklog().map(tarea => renderTarjeta(tarea))}
-              </div>
+              <div className="column-tasks">{tareasBacklog().map(tarea => renderTarjeta(tarea))}</div>
             </div>
           </div>
         </>
@@ -992,24 +979,17 @@ function Planner() {
           </div>
           <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-              {['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => (
-                <div key={d} style={{ padding: '8px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: '#6b7280' }}>{d}</div>
-              ))}
+              {['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => <div key={d} style={{ padding: '8px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: '#6b7280' }}>{d}</div>)}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
               {getDiasDelMes().map(({ fecha, mes }) => {
-                const tareasDelDia = tareasDeDia(fecha)
-                const eventosDelDia = eventosDeDia(fecha)
-                const esHoy = fecha === hoy
-                const total = tareasDelDia.length + eventosDelDia.length
+                const tareasDelDia = tareasDeDia(fecha), eventosDelDia = eventosDeDia(fecha), esHoy = fecha === hoy, total = tareasDelDia.length + eventosDelDia.length
                 return (
                   <div key={fecha} onClick={() => { setSemanaBase(getLunesDeSemana(new Date(fecha + 'T12:00:00'))); setVista('semana') }}
                     style={{ minHeight: '80px', padding: '6px', borderRight: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', background: esHoy ? '#f0fdf4' : mes ? 'white' : '#f9fafb', cursor: 'pointer', opacity: mes ? 1 : 0.4 }}
                     onMouseOver={e => e.currentTarget.style.background = '#f0fdf4'}
                     onMouseOut={e => e.currentTarget.style.background = esHoy ? '#f0fdf4' : mes ? 'white' : '#f9fafb'}>
-                    <span style={{ fontSize: '13px', fontWeight: esHoy ? '700' : '400', color: esHoy ? '#00953B' : '#373A36', display: 'block', marginBottom: '4px' }}>
-                      {new Date(fecha + 'T12:00:00').getDate()}
-                    </span>
+                    <span style={{ fontSize: '13px', fontWeight: esHoy ? '700' : '400', color: esHoy ? '#00953B' : '#373A36', display: 'block', marginBottom: '4px' }}>{new Date(fecha + 'T12:00:00').getDate()}</span>
                     {total > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
                         {eventosDelDia.slice(0,1).map(ev => <span key={ev.id} style={{ fontSize: '10px', background: '#f5f3ff', color: '#7c3aed', borderRadius: '3px', padding: '1px 4px', fontWeight: '600' }}>🗓 {ev.titulo.slice(0,8)}</span>)}
@@ -1025,23 +1005,15 @@ function Planner() {
         </>
       )}
 
-      {/* MODAL EDITAR TAREA */}
       {modalEditarTarea && !vistaTarea && (
         <ModalEditarTareaComponent
-          modalEditarTarea={modalEditarTarea}
-          setModalEditarTarea={setModalEditarTarea}
-          guardarEditarTarea={guardarEditarTarea}
-          eliminarTarea={eliminarTarea}
-          opcionesProyecto={opcionesProyecto}
-          opcionesSoporte={opcionesSoporte}
-          usuario={usuario}
-          accessToken={accessToken}
-          getRefId={getRefId}
-          getRefTipo={getRefTipo}
+          modalEditarTarea={modalEditarTarea} setModalEditarTarea={setModalEditarTarea}
+          guardarEditarTarea={guardarEditarTarea} eliminarTarea={eliminarTarea}
+          opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte}
+          usuario={usuario} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
         />
       )}
 
-      {/* MODAL EDITAR EVENTO */}
       {modalEditarEvento && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1049,29 +1021,16 @@ function Planner() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Título *" value={modalEditarEvento.titulo || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, titulo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
               <select value={modalEditarEvento.tipo || 'reunion'} onChange={e => setModalEditarEvento({...modalEditarEvento, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                <option value="reunion">Reunión</option>
-                <option value="formacion">Formación</option>
-                <option value="evento">Evento</option>
-                <option value="otro">Otro</option>
+                <option value="reunion">Reunión</option><option value="formacion">Formación</option><option value="evento">Evento</option><option value="otro">Otro</option>
               </select>
-              <SelectorPersonasEvento
-                seleccionados={modalEditarEvento._asignados || [misId]}
-                onChange={ids => setModalEditarEvento({...modalEditarEvento, _asignados: ids})}
-                misId={misId}
-              />
+              <SelectorPersonasEvento seleccionados={modalEditarEvento._asignados || [misId]} onChange={ids => setModalEditarEvento({...modalEditarEvento, _asignados: ids})} misId={misId} />
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha</label>
                 <input type="date" value={modalEditarEvento.fecha_exacta || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, fecha_exacta: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio</label>
-                  <input type="time" value={modalEditarEvento.hora_inicio || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, hora_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin</label>
-                  <input type="time" value={modalEditarEvento.hora_fin || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, hora_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
+                <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio</label><input type="time" value={modalEditarEvento.hora_inicio || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, hora_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+                <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin</label><input type="time" value={modalEditarEvento.hora_fin || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, hora_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
               </div>
               <textarea placeholder="Descripción" value={modalEditarEvento.descripcion || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '70px', resize: 'none' }} />
             </div>
@@ -1084,7 +1043,6 @@ function Planner() {
         </div>
       )}
 
-      {/* MODAL NUEVA TAREA */}
       {modalNuevaTarea && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1098,14 +1056,7 @@ function Planner() {
                     const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
                     const seleccionado = asignados.includes(u.id)
                     return (
-                      <button key={u.id}
-                        onClick={e => {
-                          e.stopPropagation(); e.preventDefault()
-                          const actual = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
-                          const nuevo = actual.includes(u.id) ? actual.filter(id => id !== u.id) : [...actual, u.id]
-                          if (nuevo.length === 0) return
-                          setFormTarea({...formTarea, asignadoA: nuevo.join(',')})
-                        }}
+                      <button key={u.id} onClick={e => { e.stopPropagation(); e.preventDefault(); const actual = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]; const nuevo = actual.includes(u.id) ? actual.filter(id => id !== u.id) : [...actual, u.id]; if (nuevo.length === 0) return; setFormTarea({...formTarea, asignadoA: nuevo.join(',')}) }}
                         style={{ padding: '6px 14px', borderRadius: '20px', border: '2px solid', borderColor: seleccionado ? '#00953B' : '#e5e7eb', background: seleccionado ? '#f0fdf4' : 'white', color: seleccionado ? '#00953B' : '#6b7280', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
                         {u.nombre}{u.id === misId ? ' (yo)' : ''}
                       </button>
@@ -1123,53 +1074,29 @@ function Planner() {
               {formTarea.tipo === 'subtarea' && (
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Ligar a:</label>
-                  <select value={formTarea._tipoLigar || ''} onChange={e => setFormTarea({...formTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: ''})}
-                    style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
-                    <option value="">Selecciona tipo...</option>
-                    <option value="proyecto">De Proyectos I+D</option>
-                    <option value="soporte">De Soporte</option>
+                  <select value={formTarea._tipoLigar || ''} onChange={e => setFormTarea({...formTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
+                    <option value="">Selecciona tipo...</option><option value="proyecto">De Proyectos I+D</option><option value="soporte">De Soporte</option>
                   </select>
-                  {formTarea._tipoLigar === 'proyecto' && (
-                    <select value={formTarea._opcionProyectoId || ''} onChange={e => { const opcion = opcionesProyecto().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id}) }}
-                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                      <option value="">Selecciona elemento de proyecto...</option>
-                      {opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
-                    </select>
-                  )}
-                  {formTarea._tipoLigar === 'soporte' && (
-                    <select value={formTarea._opcionSoporteId || ''} onChange={e => { const opcion = opcionesSoporte().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id}) }}
-                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                      <option value="">Selecciona elemento de soporte...</option>
-                      {opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
-                    </select>
-                  )}
+                  {formTarea._tipoLigar === 'proyecto' && <select value={formTarea._opcionProyectoId || ''} onChange={e => { const opcion = opcionesProyecto().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento de proyecto...</option>{opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
+                  {formTarea._tipoLigar === 'soporte' && <select value={formTarea._opcionSoporteId || ''} onChange={e => { const opcion = opcionesSoporte().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento de soporte...</option>{opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
                 </div>
               )}
-              <InputFechasMultiples label="Días asignados (opcional):" value={formTarea.fechas_exactas || ''}
-                onChange={val => setFormTarea({...formTarea, fechas_exactas: val})} />
+              <InputFechasMultiples label="Días asignados (opcional):" value={formTarea.fechas_exactas || ''} onChange={val => setFormTarea({...formTarea, fechas_exactas: val})} />
               <InputFechaPlanner label="Fecha límite (opcional):" value={formTarea.fecha_limite} onChange={val => setFormTarea({...formTarea, fecha_limite: val})} />
-              <SelectorTiempoEstimado
-                horas={formTarea._horas || 0}
-                minutos={formTarea._minutos || 0}
-                onChangeHoras={h => setFormTarea({...formTarea, _horas: h})}
-                onChangeMinutos={m => setFormTarea({...formTarea, _minutos: m})}
-              />
+              <SelectorTiempoEstimado horas={formTarea._horas || 0} minutos={formTarea._minutos || 0} onChangeHoras={h => setFormTarea({...formTarea, _horas: h})} onChangeMinutos={m => setFormTarea({...formTarea, _minutos: m})} />
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
                 <BotonesPrioridad etiqueta={formTarea.etiqueta} onChange={val => setFormTarea({...formTarea, etiqueta: val})} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _tipoLigar: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 }) }}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={crearTareaPlanner}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear</button>
+              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _tipoLigar: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={crearTareaPlanner} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL NUEVO EVENTO */}
       {modalNuevoEvento && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1177,37 +1104,19 @@ function Planner() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Título *" value={formEvento.titulo} onChange={e => setFormEvento({...formEvento, titulo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
               <select value={formEvento.tipo} onChange={e => setFormEvento({...formEvento, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                <option value="reunion">Reunión</option>
-                <option value="formacion">Formación</option>
-                <option value="evento">Evento</option>
-                <option value="otro">Otro</option>
+                <option value="reunion">Reunión</option><option value="formacion">Formación</option><option value="evento">Evento</option><option value="otro">Otro</option>
               </select>
-              <SelectorPersonasEvento
-                seleccionados={formEvento._asignados.length > 0 ? formEvento._asignados : [misId]}
-                onChange={ids => setFormEvento({...formEvento, _asignados: ids})}
-                misId={misId}
-              />
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha *</label>
-                <input type="date" value={formEvento.fecha_exacta} onChange={e => setFormEvento({...formEvento, fecha_exacta: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-              </div>
+              <SelectorPersonasEvento seleccionados={formEvento._asignados.length > 0 ? formEvento._asignados : [misId]} onChange={ids => setFormEvento({...formEvento, _asignados: ids})} misId={misId} />
+              <div><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha *</label><input type="date" value={formEvento.fecha_exacta} onChange={e => setFormEvento({...formEvento, fecha_exacta: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio</label>
-                  <input type="time" value={formEvento.hora_inicio} onChange={e => setFormEvento({...formEvento, hora_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin</label>
-                  <input type="time" value={formEvento.hora_fin} onChange={e => setFormEvento({...formEvento, hora_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
+                <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio</label><input type="time" value={formEvento.hora_inicio} onChange={e => setFormEvento({...formEvento, hora_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+                <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin</label><input type="time" value={formEvento.hora_fin} onChange={e => setFormEvento({...formEvento, hora_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
               </div>
               <textarea placeholder="Descripción (opcional)" value={formEvento.descripcion} onChange={e => setFormEvento({...formEvento, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNuevoEvento(false); setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [] }) }}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={crearEvento}
-                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear evento</button>
+              <button onClick={() => { setModalNuevoEvento(false); setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [] }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={crearEvento} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear evento</button>
             </div>
           </div>
         </div>
@@ -1216,81 +1125,45 @@ function Planner() {
   )
 }
 
-// Modal editar tarea extraído como componente para reutilizar en vista detalle y vista planner
 function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guardarEditarTarea, eliminarTarea, opcionesProyecto, opcionesSoporte, usuario, accessToken, getRefId, getRefTipo }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
         <h2 style={{ marginBottom: '24px' }}>Editar tarea</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <input value={modalEditarTarea.nombre || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, nombre: e.target.value})}
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-          <textarea placeholder="Descripción (opcional)" value={modalEditarTarea.descripcion || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, descripcion: e.target.value})}
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+          <input value={modalEditarTarea.nombre || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+          <textarea placeholder="Descripción (opcional)" value={modalEditarTarea.descripcion || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
           {modalEditarTarea._tipo === 'planner' && (
             <div>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Enlazar a (opcional):</label>
-              <select value={modalEditarTarea._tipoLigar || ''}
-                onChange={e => setModalEditarTarea({...modalEditarTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionProyectoId: '', _opcionSoporteId: ''})}
-                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
-                <option value="">Sin enlazar</option>
-                <option value="proyecto">De Proyectos I+D</option>
-                <option value="soporte">De Soporte</option>
+              <select value={modalEditarTarea._tipoLigar || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionProyectoId: '', _opcionSoporteId: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
+                <option value="">Sin enlazar</option><option value="proyecto">De Proyectos I+D</option><option value="soporte">De Soporte</option>
               </select>
-              {modalEditarTarea._tipoLigar === 'proyecto' && (
-                <select value={modalEditarTarea._opcionProyectoId || ''}
-                  onChange={e => {
-                    const opcion = opcionesProyecto().find(o => o.id === e.target.value)
-                    if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})
-                  }}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                  <option value="">Selecciona elemento...</option>
-                  {opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
-                </select>
-              )}
-              {modalEditarTarea._tipoLigar === 'soporte' && (
-                <select value={modalEditarTarea._opcionSoporteId || ''}
-                  onChange={e => {
-                    const opcion = opcionesSoporte().find(o => o.id === e.target.value)
-                    if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})
-                  }}
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                  <option value="">Selecciona elemento...</option>
-                  {opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
-                </select>
-              )}
+              {modalEditarTarea._tipoLigar === 'proyecto' && <select value={modalEditarTarea._opcionProyectoId || ''} onChange={e => { const opcion = opcionesProyecto().find(o => o.id === e.target.value); if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento...</option>{opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
+              {modalEditarTarea._tipoLigar === 'soporte' && <select value={modalEditarTarea._opcionSoporteId || ''} onChange={e => { const opcion = opcionesSoporte().find(o => o.id === e.target.value); if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento...</option>{opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
             </div>
           )}
-          <InputFechasMultiples label="Días asignados:" value={modalEditarTarea.fechas_exactas || modalEditarTarea.fecha_exacta || ''}
-            onChange={val => setModalEditarTarea({...modalEditarTarea, fechas_exactas: val})} />
-          <InputFechaPlanner label="Fecha límite (opcional):" value={modalEditarTarea.fecha_limite}
-            onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_limite: val})} />
-          <SelectorTiempoEstimado
-            horas={modalEditarTarea._horas || 0}
-            minutos={modalEditarTarea._minutos || 0}
-            onChangeHoras={h => setModalEditarTarea({...modalEditarTarea, _horas: h})}
-            onChangeMinutos={m => setModalEditarTarea({...modalEditarTarea, _minutos: m})}
-          />
+          <InputFechasMultiples label="Días asignados:" value={modalEditarTarea.fechas_exactas || modalEditarTarea.fecha_exacta || ''} onChange={val => setModalEditarTarea({...modalEditarTarea, fechas_exactas: val})} />
+          <InputFechaPlanner label="Fecha límite (opcional):" value={modalEditarTarea.fecha_limite} onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_limite: val})} />
+          <SelectorTiempoEstimado horas={modalEditarTarea._horas || 0} minutos={modalEditarTarea._minutos || 0} onChangeHoras={h => setModalEditarTarea({...modalEditarTarea, _horas: h})} onChangeMinutos={m => setModalEditarTarea({...modalEditarTarea, _minutos: m})} />
           <div>
             <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
             <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
           </div>
+          <SeccionChecklist tareaId={getRefId(modalEditarTarea)} tipoTarea={getRefTipo(modalEditarTarea)} accessToken={accessToken} />
           <SeccionActualizaciones tareaId={getRefId(modalEditarTarea)} tipoTarea={getRefTipo(modalEditarTarea)} usuario={usuario} accessToken={accessToken} />
         </div>
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-          <button onClick={() => eliminarTarea(modalEditarTarea)}
-            style={{ padding: '10px 14px', borderRadius: '8px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>🗑 Eliminar</button>
-          <button onClick={() => setModalEditarTarea(null)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={guardarEditarTarea}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
+          <button onClick={() => eliminarTarea(modalEditarTarea)} style={{ padding: '10px 14px', borderRadius: '8px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>🗑 Eliminar</button>
+          <button onClick={() => setModalEditarTarea(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={guardarEditarTarea} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
         </div>
       </div>
     </div>
   )
 }
 
-function TarjetaTarea({ tarea, contexto, onVerDetalle, onEditar, onIniciar, onPausar, onReanudar, onCompletar, activa, pausada, tiempoActual }) {
+function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar, onIniciar, onPausar, onReanudar, onCompletar, activa, pausada, tiempoActual }) {
   const esCompletada = tarea.estado === 'completada'
   const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
   const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
@@ -1306,8 +1179,7 @@ function TarjetaTarea({ tarea, contexto, onVerDetalle, onEditar, onIniciar, onPa
           <p onClick={onVerDetalle} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', margin: 0 }}>{tarea.nombre}</p>
         </div>
         <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
-          <button onClick={e => { e.stopPropagation(); onEditar() }}
-            style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}>✏️</button>
+          <button onClick={e => { e.stopPropagation(); onEditar() }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}>✏️</button>
           {!esCompletada && (
             <button onClick={e => { e.stopPropagation(); activa && !pausada ? onPausar() : pausada ? onReanudar() : onIniciar() }}
               style={{ background: activa && !pausada ? '#f59e0b' : '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>
@@ -1315,8 +1187,7 @@ function TarjetaTarea({ tarea, contexto, onVerDetalle, onEditar, onIniciar, onPa
             </button>
           )}
           {!esCompletada && (activa || pausada) && (
-            <button onClick={e => { e.stopPropagation(); onCompletar() }}
-              style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>✅</button>
+            <button onClick={e => { e.stopPropagation(); onCompletar() }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>✅</button>
           )}
         </div>
       </div>
@@ -1335,6 +1206,11 @@ function TarjetaTarea({ tarea, contexto, onVerDetalle, onEditar, onIniciar, onPa
         <EtiquetasBadge etiqueta={tarea.etiqueta} />
         {tarea.fecha_limite && <span style={{ fontSize: '10px', color: vencida ? '#dc2626' : '#6b7280', background: vencida ? '#fee2e2' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>{vencida ? '⚠️' : '📅'} {tarea.fecha_limite}</span>}
         {minEstimados > 0 && !esCompletada && <span style={{ fontSize: '10px', color: '#6b7280', background: '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>⏳ {formatMinutos(minEstimados)}</span>}
+        {checklistCount && checklistCount.total > 0 && (
+          <span style={{ fontSize: '10px', color: checklistCount.completados === checklistCount.total ? '#166534' : '#6b7280', background: checklistCount.completados === checklistCount.total ? '#dcfce7' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px', fontWeight: '600' }}>
+            ☑️ {checklistCount.completados}/{checklistCount.total}
+          </span>
+        )}
       </div>
     </div>
   )
