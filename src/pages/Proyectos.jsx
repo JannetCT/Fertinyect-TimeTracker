@@ -496,6 +496,7 @@ export default function Proyectos() {
               <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
               <input type="date" value={editTarea.fecha_limite || ''} onChange={e => setEditTarea({ ...editTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
             </div>
+            <Checklist tareaId={editTarea.id} tipoTarea="proyecto" accessToken={accessToken} />
             <SeccionActualizaciones tareaId={editTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
           </div>
         </Modal>
@@ -623,6 +624,7 @@ export default function Proyectos() {
             </div>
           )}
           <Checklist tareaId={vistaTarea.id} tipoTarea="proyecto" accessToken={accessToken} />
+          <Checklist tareaId={editTarea.id} tipoTarea="proyecto" accessToken={accessToken} />
           <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
         </div>
         {modalesCompartidos}

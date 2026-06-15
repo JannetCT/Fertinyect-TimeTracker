@@ -617,6 +617,7 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
               <option value="completada">Completada</option>
             </select>
           </div>
+          <Checklist tareaId={editItem.id} tipoTarea="direccion" accessToken={accessToken} />
           <SeccionActualizaciones tareaId={editItem.id} tipoTarea="direccion" usuario={usuario} accessToken={accessToken} />
         </div>
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>

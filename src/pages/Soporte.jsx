@@ -652,6 +652,7 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
             <textarea value={editItem.descripcion || ''} onChange={e => setEditItem({...editItem, descripcion: e.target.value})}
               style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', height: '80px', resize: 'none' }} />
           </div>
+          <Checklist tareaId={editItem.id} tipoTarea="soporte" accessToken={accessToken} />
           <SeccionActualizaciones tareaId={editItem.id} tipoTarea="soporte" usuario={usuario} accessToken={accessToken} />
         </div>
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
