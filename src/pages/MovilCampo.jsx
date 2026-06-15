@@ -70,7 +70,32 @@ function InputFecha({ label, value, onChange }) {
   )
 }
 
-const FORM_NUEVA_VACIO = { nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignadoA: '' }
+// Selector de personas múltiple para vista campo (dark theme)
+function SelectorPersonasCampo({ usuarios, seleccionados, onChange }) {
+  return (
+    <div>
+      <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Asignar a</label>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {usuarios.map(u => {
+          const activo = seleccionados.includes(String(u.id))
+          return (
+            <button key={u.id}
+              onClick={e => {
+                e.stopPropagation(); e.preventDefault()
+                const uid = String(u.id)
+                onChange(activo ? seleccionados.filter(id => id !== uid) : [...seleccionados, uid])
+              }}
+              style={{ padding: '10px 16px', borderRadius: '20px', border: '2px solid', borderColor: activo ? '#00953B' : '#374151', background: activo ? '#064e3b' : '#111827', color: activo ? '#6ee7b7' : '#9ca3af', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+              {u.nombre ? u.nombre.split(' ')[0] : u.id}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+const FORM_NUEVA_VACIO = { nombre: '', tarea_padre_id: '', tarea_padre_tipo: '', fecha_exacta: '', fecha_limite: '', etiqueta: '', asignados: [] }
 const FORM_EVENTO_VACIO = { titulo: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', descripcion: '' }
 
 export default function MovilCampo() {
@@ -90,7 +115,7 @@ export default function MovilCampo() {
   const [modalEditar, setModalEditar] = useState(null)
   const [modalNueva, setModalNueva] = useState(false)
   const [modalEvento, setModalEvento] = useState(false)
-  const [formNueva, setFormNueva] = useState(FORM_NUEVA_VACIO)
+  const [formNueva, setFormNueva] = useState({ ...FORM_NUEVA_VACIO, asignados: [] })
   const [formEvento, setFormEvento] = useState(FORM_EVENTO_VACIO)
   const [guardando, setGuardando] = useState(false)
   const intervalRef = useRef(null)
@@ -200,12 +225,18 @@ export default function MovilCampo() {
     const t = modalEditar
     const fechaExacta = t.fecha_exacta && t.fecha_exacta.trim() !== '' ? t.fecha_exacta : ''
     const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
+
+    // Convertir asignados array a string
+    const asignadosStr = Array.isArray(t._asignados) ? t._asignados.join(',') : (t.asignados || '')
+
     if (t._tipo === 'proyecto') {
-      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechaExacta, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, asignadosStr, diaCalculado, fechaExacta, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     } else if (t._tipo === 'soporte') {
-      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechaExacta, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, asignadosStr, diaCalculado, fechaExacta, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     } else {
-      await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, fechaExacta, t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
+      // planner: usuario_id es el asignado principal (primer elemento)
+      const usuarioDestino = t._asignados && t._asignados.length > 0 ? t._asignados[0] : t.usuario_id
+      await actualizarFila('tareas_planner', t.id, [t.id, usuarioDestino, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, fechaExacta, t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || ''], accessToken)
     }
     setModalEditar(null)
     setGuardando(false)
@@ -218,10 +249,11 @@ export default function MovilCampo() {
     const id = Date.now().toString()
     const fechaExacta = formNueva.fecha_exacta && formNueva.fecha_exacta.trim() !== '' ? formNueva.fecha_exacta : ''
     const diaCalculado = getDiaSemana(fechaExacta) || 'por_asignar'
-    const usuarioDestino = formNueva.asignadoA || String(usuario.id)
+    // Para tareas_planner: usuario_id es el primer asignado o el usuario actual
+    const usuarioDestino = formNueva.asignados.length > 0 ? formNueva.asignados[0] : String(usuario.id)
     await escribirFila('tareas_planner', [id, usuarioDestino, formNueva.tarea_padre_id || '', formNueva.tarea_padre_tipo || '', formNueva.nombre, diaCalculado, fechaExacta, formNueva.fecha_limite || '', 'pendiente', new Date().toISOString(), formNueva.etiqueta || ''], accessToken)
     setModalNueva(false)
-    setFormNueva(FORM_NUEVA_VACIO)
+    setFormNueva({ ...FORM_NUEVA_VACIO, asignados: [] })
     setGuardando(false)
     cargarDatos()
   }
@@ -298,7 +330,11 @@ export default function MovilCampo() {
           return (
             <TarjetaMovil key={tarea.id + tarea._tipo} tarea={tarea} ctx={ctx} activa={activa}
               pausada={activa && !cronActivo?.inicio} tiempoActual={activa ? tiempoActual : 0}
-              onEditar={() => setModalEditar({ ...tarea })} onIniciar={() => iniciarCronometro(tarea)}
+              onEditar={() => setModalEditar({
+                ...tarea,
+                _asignados: tarea.asignados ? tarea.asignados.split(',').map(s => s.trim()).filter(Boolean) : [String(usuario.id)]
+              })}
+              onIniciar={() => iniciarCronometro(tarea)}
               onPausar={pausarCronometro} onReanudar={reanudarCronometro} />
           )
         })}
@@ -316,7 +352,11 @@ export default function MovilCampo() {
             return (
               <TarjetaMovil key={tarea.id + tarea._tipo} tarea={tarea} ctx={ctx} activa={activa}
                 pausada={activa && !cronActivo?.inicio} tiempoActual={activa ? tiempoActual : 0}
-                onEditar={() => setModalEditar({ ...tarea })} onIniciar={() => iniciarCronometro(tarea)}
+                onEditar={() => setModalEditar({
+                  ...tarea,
+                  _asignados: tarea.asignados ? tarea.asignados.split(',').map(s => s.trim()).filter(Boolean) : [String(usuario.id)]
+                })}
+                onIniciar={() => iniciarCronometro(tarea)}
                 onPausar={pausarCronometro} onReanudar={reanudarCronometro} />
             )
           })}
@@ -349,6 +389,14 @@ export default function MovilCampo() {
               <input value={modalEditar.nombre || ''} onChange={e => setModalEditar({ ...modalEditar, nombre: e.target.value })}
                 placeholder="Nombre de la tarea"
                 style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
+
+              {/* SELECTOR MÚLTIPLE DE PERSONAS */}
+              <SelectorPersonasCampo
+                usuarios={usuarios}
+                seleccionados={modalEditar._asignados || []}
+                onChange={ids => setModalEditar({ ...modalEditar, _asignados: ids })}
+              />
+
               <InputFecha label="Fecha exacta (opcional)" value={modalEditar.fecha_exacta || ''}
                 onChange={val => setModalEditar({ ...modalEditar, fecha_exacta: val })} />
               <InputFecha label="Fecha límite (opcional)" value={modalEditar.fecha_limite || ''}
@@ -410,21 +458,12 @@ export default function MovilCampo() {
                 placeholder="Nombre de la tarea *"
                 style={{ padding: '14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: 'white', fontSize: '16px', width: '100%' }} />
 
-              {/* ASIGNAR A */}
-              <div>
-                <label style={{ fontSize: '13px', color: '#9ca3af', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Asignar a</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {usuarios.map(u => {
-                    const seleccionado = formNueva.asignadoA === String(u.id) || (!formNueva.asignadoA && String(u.id) === String(usuario.id))
-                    return (
-                      <button key={u.id} onClick={e => { e.stopPropagation(); e.preventDefault(); setFormNueva({ ...formNueva, asignadoA: String(u.id) }) }}
-                        style={{ padding: '10px 16px', borderRadius: '20px', border: '2px solid', borderColor: seleccionado ? '#00953B' : '#374151', background: seleccionado ? '#064e3b' : '#111827', color: seleccionado ? '#6ee7b7' : '#9ca3af', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
-                        {u.nombre.split(' ')[0]}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+              {/* SELECTOR MÚLTIPLE DE PERSONAS */}
+              <SelectorPersonasCampo
+                usuarios={usuarios}
+                seleccionados={formNueva.asignados}
+                onChange={ids => setFormNueva({ ...formNueva, asignados: ids })}
+              />
 
               <InputFecha label="Fecha exacta (opcional)" value={formNueva.fecha_exacta}
                 onChange={val => setFormNueva({ ...formNueva, fecha_exacta: val })} />
@@ -466,7 +505,7 @@ export default function MovilCampo() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNueva(false); setFormNueva(FORM_NUEVA_VACIO) }}
+              <button onClick={() => { setModalNueva(false); setFormNueva({ ...FORM_NUEVA_VACIO, asignados: [] }) }}
                 style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', fontWeight: '600' }}>Cancelar</button>
               <button onClick={crearTarea} disabled={guardando || !formNueva.nombre}
                 style={{ flex: 2, padding: '16px', borderRadius: '12px', border: 'none', background: formNueva.nombre ? '#00953B' : '#374151', color: 'white', fontSize: '16px', cursor: 'pointer', fontWeight: '700' }}>

@@ -37,7 +37,7 @@ function Modal({ titulo, onClose, onSave, children }) {
 
 function ConfirmEliminar({ nombre, onClose, onConfirm }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1002 }}>
       <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
         <p style={{ fontSize: '48px', margin: '0 0 16px' }}>⚠️</p>
         <h2 style={{ marginBottom: '8px' }}>¿Eliminar?</h2>
@@ -63,6 +63,7 @@ function BtnAccion({ onClick, tipo, children }) {
     </button>
   )
 }
+
 function InputFechasMultiples({ label, value, onChange }) {
   const [inputFecha, setInputFecha] = useState('')
   const fechas = value ? value.split(',').map(f => f.trim()).filter(Boolean) : []
@@ -190,6 +191,27 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
   )
 }
 
+// Selector de personas reutilizable
+function SelectorPersonas({ usuarios, seleccionados, onChange, color = '#00953B' }) {
+  return (
+    <div>
+      <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {usuarios.map(u => {
+          const activo = seleccionados.includes(u.id)
+          return (
+            <button key={u.id}
+              onClick={() => onChange(activo ? seleccionados.filter(id => id !== u.id) : [...seleccionados, u.id])}
+              style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: activo ? color : '#f3f4f6', color: activo ? 'white' : '#373A36', border: `2px solid ${activo ? color : '#e5e7eb'}` }}>
+              {u.nombre ? u.nombre.split(' ')[0] : u.id}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function Proyectos() {
   const { accessToken, usuario } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -226,7 +248,6 @@ export default function Proyectos() {
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
-  // Navegación desde campanita — se ejecuta cuando los datos ya están cargados
   useEffect(() => {
     if (cargando) return
     const ensayoId = searchParams.get('ensayo')
@@ -314,19 +335,19 @@ export default function Proyectos() {
     cargarDatos()
   }
 
- async function guardarEditAccion() {
-  if (!editAccion) return
-  await actualizarFila('acciones', editAccion.id, [
-    editAccion.id, editAccion.estado_id, editAccion.proyecto_id,
-    editAccion.nombre, editAccion.descripcion, editAccion.fecha_creacion,
-    editAccion.fecha_inicio, editAccion.fecha_fin,
-    editAccion.fecha_inicio_original || editAccion.fecha_inicio,
-    editAccion.fecha_fin_original || editAccion.fecha_fin,
-    editAccion.estado || 'pendiente'
-  ], accessToken)
-  setEditAccion(null)
-  cargarDatos()
-}
+  async function guardarEditAccion() {
+    if (!editAccion) return
+    await actualizarFila('acciones', editAccion.id, [
+      editAccion.id, editAccion.estado_id, editAccion.proyecto_id,
+      editAccion.nombre, editAccion.descripcion, editAccion.fecha_creacion,
+      editAccion.fecha_inicio, editAccion.fecha_fin,
+      editAccion.fecha_inicio_original || editAccion.fecha_inicio,
+      editAccion.fecha_fin_original || editAccion.fecha_fin,
+      editAccion.estado || 'pendiente'
+    ], accessToken)
+    setEditAccion(null)
+    cargarDatos()
+  }
 
   async function crearEnsayo() {
     if (!nuevoEnsayo.nombre || !modalEnsayo) return
@@ -342,20 +363,20 @@ export default function Proyectos() {
     cargarDatos()
   }
 
- async function guardarEditEnsayo() {
-  if (!editEnsayo) return
-  await actualizarFila('ensayos', editEnsayo.id, [
-    editEnsayo.id, editEnsayo.accion_id, editEnsayo.proyecto_id,
-    editEnsayo.tipo, editEnsayo.nombre, editEnsayo.descripcion, editEnsayo.fecha_creacion,
-    editEnsayo.fecha_inicio, editEnsayo.fecha_fin,
-    editEnsayo.fecha_inicio_original || editEnsayo.fecha_inicio,
-    editEnsayo.fecha_fin_original || editEnsayo.fecha_fin,
-    editEnsayo.estado || 'pendiente'
-  ], accessToken)
-  setVistaEnsayo(editEnsayo)
-  setEditEnsayo(null)
-  cargarDatos()
-}
+  async function guardarEditEnsayo() {
+    if (!editEnsayo) return
+    await actualizarFila('ensayos', editEnsayo.id, [
+      editEnsayo.id, editEnsayo.accion_id, editEnsayo.proyecto_id,
+      editEnsayo.tipo, editEnsayo.nombre, editEnsayo.descripcion, editEnsayo.fecha_creacion,
+      editEnsayo.fecha_inicio, editEnsayo.fecha_fin,
+      editEnsayo.fecha_inicio_original || editEnsayo.fecha_inicio,
+      editEnsayo.fecha_fin_original || editEnsayo.fecha_fin,
+      editEnsayo.estado || 'pendiente'
+    ], accessToken)
+    setVistaEnsayo(editEnsayo)
+    setEditEnsayo(null)
+    cargarDatos()
+  }
 
   async function crearTarea() {
     if (!nuevaTarea.nombre || !modalTarea) return
@@ -364,7 +385,7 @@ export default function Proyectos() {
     const diaRec = [nuevaTarea.dia_recomendado, nuevaTarea.fecha_recomendada].filter(Boolean).join(' ')
     const fechasExactas = nuevaTarea.fechas_exactas || ''
     const primeraFecha = fechasExactas.split(',')[0]?.trim() || ''
-    const diaCalculado = primeraFecha ? (new Date(primeraFecha + 'T12:00:00').toLocaleDateString('es-ES', {weekday:'long'}).toLowerCase()) : 'por_asignar'
+    const diaCalculado = primeraFecha ? (new Date(primeraFecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long' }).toLowerCase()) : 'por_asignar'
     await escribirFila('tareas', [
       id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
       nuevaTarea.nombre, asignadosStr, diaCalculado, fechasExactas,
@@ -372,10 +393,11 @@ export default function Proyectos() {
       '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g'
     ], accessToken)
     setModalTarea(null)
-    setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
+    setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' })
     cargarDatos()
   }
-async function guardarEditTarea() {
+
+  async function guardarEditTarea() {
     if (!editTarea) return
     const asignadosStr = Array.isArray(editTarea.asignados) ? editTarea.asignados.join(',') : editTarea.asignados
     const diaRec = [editTarea.dia_recomendado, editTarea.fecha_recomendada].filter(Boolean).join(' ')
@@ -420,6 +442,7 @@ async function guardarEditTarea() {
       if (vistaEnsayo?.id === item.id) setVistaEnsayo(null)
     } else if (tipo === 'tarea') {
       await marcarEliminado('tareas', item.id, accessToken)
+      if (vistaTarea?.id === item.id) setVistaTarea(null)
     }
     setConfirmEliminar(null)
     cargarDatos()
@@ -444,6 +467,139 @@ async function guardarEditTarea() {
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
+  // Modales compartidos entre todas las vistas — siempre se renderizan al final
+  const modalesCompartidos = (
+    <>
+      {editTarea && (
+        <Modal titulo="Editar tarea" onClose={() => setEditTarea(null)} onSave={guardarEditTarea}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <input placeholder="Nombre *" value={editTarea.nombre} onChange={e => setEditTarea({ ...editTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+            <textarea placeholder="Descripción (opcional)" value={editTarea.descripcion || ''} onChange={e => setEditTarea({ ...editTarea, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+            <SelectorPersonas
+              usuarios={usuarios}
+              seleccionados={Array.isArray(editTarea.asignados) ? editTarea.asignados : (editTarea.asignados ? editTarea.asignados.split(',').filter(Boolean) : [])}
+              onChange={ids => setEditTarea({ ...editTarea, asignados: ids })}
+            />
+            <InputFechasMultiples label="Días asignados en planner:" value={editTarea.fecha_exacta || ''} onChange={val => setEditTarea({ ...editTarea, fecha_exacta: val })} />
+            <div>
+              <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select value={editTarea.dia_recomendado || ''} onChange={e => setEditTarea({ ...editTarea, dia_recomendado: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                  <option value="">Sin día específico</option>
+                  {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
+                </select>
+                <input type="date" value={editTarea.fecha_recomendada || ''} onChange={e => setEditTarea({ ...editTarea, fecha_recomendada: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
+              <input type="date" value={editTarea.fecha_limite || ''} onChange={e => setEditTarea({ ...editTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+            </div>
+            <SeccionActualizaciones tareaId={editTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
+          </div>
+        </Modal>
+      )}
+      {editEnsayo && (
+        <Modal titulo="Editar ensayo/informe" onClose={() => setEditEnsayo(null)} onSave={guardarEditEnsayo}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <select value={editEnsayo.tipo} onChange={e => setEditEnsayo({ ...editEnsayo, tipo: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+              <option value="ensayo">Ensayo</option>
+              <option value="informe">Informe</option>
+            </select>
+            <input placeholder="Nombre *" value={editEnsayo.nombre} onChange={e => setEditEnsayo({ ...editEnsayo, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+            <textarea placeholder="Descripción" value={editEnsayo.descripcion || ''} onChange={e => setEditEnsayo({ ...editEnsayo, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
+                <input type="date" value={editEnsayo.fecha_inicio || ''} onChange={e => setEditEnsayo({ ...editEnsayo, fecha_inicio: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
+                <input type="date" value={editEnsayo.fecha_fin || ''} onChange={e => setEditEnsayo({ ...editEnsayo, fecha_fin: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
+              <select value={editEnsayo.estado || 'pendiente'} onChange={e => setEditEnsayo({ ...editEnsayo, estado: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                <option value="pendiente">Pendiente</option>
+                <option value="en_curso">En curso</option>
+                <option value="completado">Completado</option>
+              </select>
+            </div>
+            {editEnsayo.fecha_inicio_original && (
+              <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
+                📌 Fechas originales: {editEnsayo.fecha_inicio_original} → {editEnsayo.fecha_fin_original || '?'}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+      {editAccion && (
+        <Modal titulo="Editar acción" onClose={() => setEditAccion(null)} onSave={guardarEditAccion}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <input placeholder="Nombre *" value={editAccion.nombre} onChange={e => setEditAccion({ ...editAccion, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+            <textarea placeholder="Descripción" value={editAccion.descripcion || ''} onChange={e => setEditAccion({ ...editAccion, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
+                <input type="date" value={editAccion.fecha_inicio || ''} onChange={e => setEditAccion({ ...editAccion, fecha_inicio: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
+                <input type="date" value={editAccion.fecha_fin || ''} onChange={e => setEditAccion({ ...editAccion, fecha_fin: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
+              <select value={editAccion.estado || 'pendiente'} onChange={e => setEditAccion({ ...editAccion, estado: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                <option value="pendiente">Pendiente</option>
+                <option value="en_curso">En curso</option>
+                <option value="completado">Completado</option>
+              </select>
+            </div>
+            {editAccion.fecha_inicio_original && (
+              <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
+                📌 Fechas originales: {editAccion.fecha_inicio_original} → {editAccion.fecha_fin_original || '?'}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+      {editProyecto && (
+        <Modal titulo="Editar proyecto" onClose={() => setEditProyecto(null)} onSave={guardarEditProyecto}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <input placeholder="Nombre *" value={editProyecto.nombre} onChange={e => setEditProyecto({ ...editProyecto, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+            <textarea placeholder="Descripción" value={editProyecto.descripcion || ''} onChange={e => setEditProyecto({ ...editProyecto, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+            <select value={editProyecto.tipo} onChange={e => setEditProyecto({ ...editProyecto, tipo: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+              {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <label style={{ fontSize: '14px', color: '#555' }}>Color:</label>
+              <input type="color" value={editProyecto.color} onChange={e => setEditProyecto({ ...editProyecto, color: e.target.value })} style={{ width: '48px', height: '36px', border: 'none', cursor: 'pointer' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
+                <input type="date" value={editProyecto.fecha_inicio || ''} onChange={e => setEditProyecto({ ...editProyecto, fecha_inicio: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin</label>
+                <input type="date" value={editProyecto.fecha_fin || ''} onChange={e => setEditProyecto({ ...editProyecto, fecha_fin: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {confirmEliminar && (
+        <ConfirmEliminar
+          nombre={confirmEliminar.item.nombre}
+          onClose={() => setConfirmEliminar(null)}
+          onConfirm={ejecutarEliminar}
+        />
+      )}
+    </>
+  )
+
   // VISTA TAREA DETALLE
   if (vistaTarea) {
     return (
@@ -467,37 +623,7 @@ async function guardarEditTarea() {
           )}
           <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
         </div>
-        {editTarea && (
-          <Modal titulo="Editar tarea" onClose={() => setEditTarea(null)} onSave={guardarEditTarea}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <input placeholder="Nombre *" value={editTarea.nombre} onChange={e => setEditTarea({...editTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <textarea placeholder="Descripción (opcional)" value={editTarea.descripcion || ''} onChange={e => setEditTarea({...editTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {usuarios.map(u => <button key={u.id} onClick={() => setEditTarea(prev => ({ ...prev, asignados: prev.asignados.includes(u.id) ? prev.asignados.filter(id => id !== u.id) : [...prev.asignados, u.id] }))} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: editTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6', color: editTarea.asignados.includes(u.id) ? 'white' : '#373A36', border: editTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb' }}>{u.nombre ? u.nombre.split(' ')[0] : u.id}</button>)}
-                </div>
-              </div>
-              <InputFechasMultiples label="Días asignados en planner:" value={editTarea.fecha_exacta || ''} onChange={val => setEditTarea({...editTarea, fecha_exacta: val})} />
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <select value={editTarea.dia_recomendado || ''} onChange={e => setEditTarea({...editTarea, dia_recomendado: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                    <option value="">Sin día específico</option>
-                    {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
-                  </select>
-                  <input type="date" value={editTarea.fecha_recomendada || ''} onChange={e => setEditTarea({...editTarea, fecha_recomendada: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
-                <input type="date" value={editTarea.fecha_limite || ''} onChange={e => setEditTarea({...editTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-              </div>
-              <SeccionActualizaciones tareaId={editTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
-            </div>
-          </Modal>
-        )}
-        {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
+        {modalesCompartidos}
       </div>
     )
   }
@@ -519,7 +645,7 @@ async function guardarEditTarea() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <BtnAccion tipo="editar" onClick={() => setEditEnsayo({...vistaEnsayo})}>✏️ Editar</BtnAccion>
+            <BtnAccion tipo="editar" onClick={() => setEditEnsayo({ ...vistaEnsayo })}>✏️ Editar</BtnAccion>
             <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: vistaEnsayo })}>🗑 Eliminar</BtnAccion>
             <button onClick={() => setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id })} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
           </div>
@@ -555,69 +681,31 @@ async function guardarEditTarea() {
         </div>
 
         {modalTarea && (
-          <Modal titulo="Nueva tarea" onClose={() => { setModalTarea(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' }) }} onSave={crearTarea}>
+          <Modal titulo="Nueva tarea" onClose={() => { setModalTarea(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={crearTarea}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534' }}>📁 Ensayo: <strong>{vistaEnsayo.nombre}</strong></div>
-              <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({...nuevaTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <textarea placeholder="Descripción (opcional)" value={nuevaTarea.descripcion || ''} onChange={e => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {usuarios.map(u => <button key={u.id} onClick={() => setNuevaTarea(prev => ({ ...prev, asignados: prev.asignados.includes(u.id) ? prev.asignados.filter(id => id !== u.id) : [...prev.asignados, u.id] }))} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: nuevaTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6', color: nuevaTarea.asignados.includes(u.id) ? 'white' : '#373A36', border: nuevaTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb' }}>{u.nombre ? u.nombre.split(' ')[0] : u.id}</button>)}
-                </div>
-              </div>
-              <InputFechasMultiples label="Días asignados en planner (opcional):" value={nuevaTarea.fechas_exactas || ''}
-                onChange={val => setNuevaTarea({...nuevaTarea, fechas_exactas: val})} />
+              <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={nuevaTarea.descripcion || ''} onChange={e => setNuevaTarea({ ...nuevaTarea, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <SelectorPersonas usuarios={usuarios} seleccionados={nuevaTarea.asignados} onChange={ids => setNuevaTarea({ ...nuevaTarea, asignados: ids })} />
+              <InputFechasMultiples label="Días asignados en planner (opcional):" value={nuevaTarea.fechas_exactas || ''} onChange={val => setNuevaTarea({ ...nuevaTarea, fechas_exactas: val })} />
               <div>
                 <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado (opcional):</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <select value={nuevaTarea.dia_recomendado} onChange={e => setNuevaTarea({...nuevaTarea, dia_recomendado: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+                  <select value={nuevaTarea.dia_recomendado} onChange={e => setNuevaTarea({ ...nuevaTarea, dia_recomendado: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
                     <option value="">Sin día específico</option>
                     {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
                   </select>
-                  <input type="date" value={nuevaTarea.fecha_recomendada} onChange={e => setNuevaTarea({...nuevaTarea, fecha_recomendada: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+                  <input type="date" value={nuevaTarea.fecha_recomendada} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_recomendada: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
                 </div>
               </div>
               <div>
                 <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label>
-                <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({...nuevaTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
             </div>
           </Modal>
         )}
-
-       {editTarea && (
-          <Modal titulo="Editar tarea" onClose={() => setEditTarea(null)} onSave={guardarEditTarea}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <input placeholder="Nombre *" value={editTarea.nombre} onChange={e => setEditTarea({...editTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <textarea placeholder="Descripción (opcional)" value={editTarea.descripcion || ''} onChange={e => setEditTarea({...editTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Asignar a:</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {usuarios.map(u => <button key={u.id} onClick={() => setEditTarea(prev => ({ ...prev, asignados: prev.asignados.includes(u.id) ? prev.asignados.filter(id => id !== u.id) : [...prev.asignados, u.id] }))} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: editTarea.asignados.includes(u.id) ? '#00953B' : '#f3f4f6', color: editTarea.asignados.includes(u.id) ? 'white' : '#373A36', border: editTarea.asignados.includes(u.id) ? '2px solid #00953B' : '2px solid #e5e7eb' }}>{u.nombre ? u.nombre.split(' ')[0] : u.id}</button>)}
-                </div>
-              </div>
-              <InputFechasMultiples label="Días asignados en planner:" value={editTarea.fecha_exacta || ''} onChange={val => setEditTarea({...editTarea, fecha_exacta: val})} />
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <select value={editTarea.dia_recomendado || ''} onChange={e => setEditTarea({...editTarea, dia_recomendado: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                    <option value="">Sin día específico</option>
-                    {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
-                  </select>
-                  <input type="date" value={editTarea.fecha_recomendada || ''} onChange={e => setEditTarea({...editTarea, fecha_recomendada: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
-                <input type="date" value={editTarea.fecha_limite || ''} onChange={e => setEditTarea({...editTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-              </div>
-              <SeccionActualizaciones tareaId={editTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
-            </div>
-          </Modal>
-        )}
-
-        {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
+        {modalesCompartidos}
       </div>
     )
   }
@@ -639,7 +727,7 @@ async function guardarEditTarea() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <BtnAccion tipo="editar" onClick={() => setEditProyecto({...vistaProyecto})}>✏️ Editar</BtnAccion>
+            <BtnAccion tipo="editar" onClick={() => setEditProyecto({ ...vistaProyecto })}>✏️ Editar</BtnAccion>
             <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'proyecto', item: vistaProyecto })}>🗑 Eliminar</BtnAccion>
           </div>
         </div>
@@ -673,13 +761,13 @@ async function guardarEditTarea() {
                         )}
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        <BtnAccion tipo="editar" onClick={() => setEditAccion({...accion})}>✏️</BtnAccion>
+                        <BtnAccion tipo="editar" onClick={() => setEditAccion({ ...accion })}>✏️</BtnAccion>
                         <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'accion', item: accion })}>🗑</BtnAccion>
                         <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo</BtnAccion>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-         {ensayosDeAccion(accion.id).map(ensayo => (
+                      {ensayosDeAccion(accion.id).map(ensayo => (
                         <div key={ensayo.id} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <span style={{ background: ensayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7', color: ensayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: '600' }}>{ensayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}</span>
@@ -691,7 +779,7 @@ async function guardarEditTarea() {
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: '12px', color: '#888' }}>{tareasDeEnsayo(ensayo.id).length} tareas</span>
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              <BtnAccion tipo="editar" onClick={() => setEditEnsayo({...ensayo})}>✏️</BtnAccion>
+                              <BtnAccion tipo="editar" onClick={() => setEditEnsayo({ ...ensayo })}>✏️</BtnAccion>
                               <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: ensayo })}>🗑</BtnAccion>
                               <span onClick={() => setVistaEnsayo(ensayo)} style={{ color: '#00953B', fontSize: '14px', cursor: 'pointer', fontWeight: '700' }}>→ Ver</span>
                             </div>
@@ -711,32 +799,6 @@ async function guardarEditTarea() {
           </button>
         </div>
 
-        {editProyecto && (
-          <Modal titulo="Editar proyecto" onClose={() => setEditProyecto(null)} onSave={guardarEditProyecto}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <input placeholder="Nombre *" value={editProyecto.nombre} onChange={e => setEditProyecto({...editProyecto, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <textarea placeholder="Descripción" value={editProyecto.descripcion || ''} onChange={e => setEditProyecto({...editProyecto, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-              <select value={editProyecto.tipo} onChange={e => setEditProyecto({...editProyecto, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <label style={{ fontSize: '14px', color: '#555' }}>Color:</label>
-                <input type="color" value={editProyecto.color} onChange={e => setEditProyecto({...editProyecto, color: e.target.value})} style={{ width: '48px', height: '36px', border: 'none', cursor: 'pointer' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
-                  <input type="date" value={editProyecto.fecha_inicio || ''} onChange={e => setEditProyecto({...editProyecto, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin</label>
-                  <input type="date" value={editProyecto.fecha_fin || ''} onChange={e => setEditProyecto({...editProyecto, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-              </div>
-            </div>
-          </Modal>
-        )}
-
         {modalEstado && (
           <Modal titulo="Añadir estado adicional" onClose={() => setModalEstado(null)} onSave={crearEstado}>
             <input placeholder="Nombre del estado *" value={nuevoEstado.nombre} onChange={e => setNuevoEstado({ nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
@@ -746,50 +808,18 @@ async function guardarEditTarea() {
         {modalAccion && (
           <Modal titulo="Nueva acción" onClose={() => setModalAccion(null)} onSave={crearAccion}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <input placeholder="Nombre de la acción *" value={nuevaAccion.nombre} onChange={e => setNuevaAccion({...nuevaAccion, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <textarea placeholder="Descripción (opcional)" value={nuevaAccion.descripcion} onChange={e => setNuevaAccion({...nuevaAccion, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <input placeholder="Nombre de la acción *" value={nuevaAccion.nombre} onChange={e => setNuevaAccion({ ...nuevaAccion, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={nuevaAccion.descripcion} onChange={e => setNuevaAccion({ ...nuevaAccion, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
-                  <input type="date" value={nuevaAccion.fecha_inicio} onChange={e => setNuevaAccion({...nuevaAccion, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                  <input type="date" value={nuevaAccion.fecha_inicio} onChange={e => setNuevaAccion({ ...nuevaAccion, fecha_inicio: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
-                  <input type="date" value={nuevaAccion.fecha_fin} onChange={e => setNuevaAccion({...nuevaAccion, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                  <input type="date" value={nuevaAccion.fecha_fin} onChange={e => setNuevaAccion({ ...nuevaAccion, fecha_fin: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
               </div>
-            </div>
-          </Modal>
-        )}
-
-        {editAccion && (
-          <Modal titulo="Editar acción" onClose={() => setEditAccion(null)} onSave={guardarEditAccion}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <input placeholder="Nombre *" value={editAccion.nombre} onChange={e => setEditAccion({...editAccion, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <textarea placeholder="Descripción" value={editAccion.descripcion || ''} onChange={e => setEditAccion({...editAccion, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
-                  <input type="date" value={editAccion.fecha_inicio || ''} onChange={e => setEditAccion({...editAccion, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
-                  <input type="date" value={editAccion.fecha_fin || ''} onChange={e => setEditAccion({...editAccion, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-              </div>
-              <div>
-  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
-  <select value={editAccion.estado || 'pendiente'} onChange={e => setEditAccion({...editAccion, estado: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-    <option value="pendiente">Pendiente</option>
-    <option value="en_curso">En curso</option>
-    <option value="completado">Completado</option>
-  </select>
-</div>
-              {editAccion.fecha_inicio_original && (
-                <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
-                  📌 Fechas originales: {editAccion.fecha_inicio_original} → {editAccion.fecha_fin_original || '?'}
-                </div>
-              )}
             </div>
           </Modal>
         )}
@@ -797,64 +827,27 @@ async function guardarEditTarea() {
         {modalEnsayo && (
           <Modal titulo="Nuevo ensayo o informe" onClose={() => setModalEnsayo(null)} onSave={crearEnsayo}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <select value={nuevoEnsayo.tipo} onChange={e => setNuevoEnsayo({...nuevoEnsayo, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+              <select value={nuevoEnsayo.tipo} onChange={e => setNuevoEnsayo({ ...nuevoEnsayo, tipo: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
                 <option value="ensayo">Ensayo</option>
                 <option value="informe">Informe</option>
               </select>
-              <input placeholder="Nombre *" value={nuevoEnsayo.nombre} onChange={e => setNuevoEnsayo({...nuevoEnsayo, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <textarea placeholder="Descripción (opcional)" value={nuevoEnsayo.descripcion} onChange={e => setNuevoEnsayo({...nuevoEnsayo, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <input placeholder="Nombre *" value={nuevoEnsayo.nombre} onChange={e => setNuevoEnsayo({ ...nuevoEnsayo, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={nuevoEnsayo.descripcion} onChange={e => setNuevoEnsayo({ ...nuevoEnsayo, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
-                  <input type="date" value={nuevoEnsayo.fecha_inicio} onChange={e => setNuevoEnsayo({...nuevoEnsayo, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                  <input type="date" value={nuevoEnsayo.fecha_inicio} onChange={e => setNuevoEnsayo({ ...nuevoEnsayo, fecha_inicio: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
-                  <input type="date" value={nuevoEnsayo.fecha_fin} onChange={e => setNuevoEnsayo({...nuevoEnsayo, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                  <input type="date" value={nuevoEnsayo.fecha_fin} onChange={e => setNuevoEnsayo({ ...nuevoEnsayo, fecha_fin: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
               </div>
             </div>
           </Modal>
         )}
 
-        {editEnsayo && (
-          <Modal titulo="Editar ensayo/informe" onClose={() => setEditEnsayo(null)} onSave={guardarEditEnsayo}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <select value={editEnsayo.tipo} onChange={e => setEditEnsayo({...editEnsayo, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                <option value="ensayo">Ensayo</option>
-                <option value="informe">Informe</option>
-              </select>
-              <input placeholder="Nombre *" value={editEnsayo.nombre} onChange={e => setEditEnsayo({...editEnsayo, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              <textarea placeholder="Descripción" value={editEnsayo.descripcion || ''} onChange={e => setEditEnsayo({...editEnsayo, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
-                  <input type="date" value={editEnsayo.fecha_inicio || ''} onChange={e => setEditEnsayo({...editEnsayo, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
-                  <input type="date" value={editEnsayo.fecha_fin || ''} onChange={e => setEditEnsayo({...editEnsayo, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
-                <select value={editEnsayo.estado || 'pendiente'} onChange={e => setEditEnsayo({...editEnsayo, estado: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                  <option value="pendiente">Pendiente</option>
-                  <option value="en_curso">En curso</option>
-                  <option value="completado">Completado</option>
-                </select>
-              </div>
-
-              {editEnsayo.fecha_inicio_original && (
-                <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#166534' }}>
-                  📌 Fechas originales: {editEnsayo.fecha_inicio_original} → {editEnsayo.fecha_fin_original || '?'}
-                </div>
-              )}
-            </div>
-          </Modal>
-        )}
-
-        {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
+        {modalesCompartidos}
       </div>
     )
   }
@@ -887,23 +880,23 @@ async function guardarEditTarea() {
       {modalProyecto && (
         <Modal titulo="Nuevo proyecto" onClose={() => setModalProyecto(false)} onSave={crearProyecto}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <input placeholder="Nombre del proyecto *" value={nuevoProyecto.nombre} onChange={e => setNuevoProyecto({...nuevoProyecto, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-            <textarea placeholder="Descripción (opcional)" value={nuevoProyecto.descripcion} onChange={e => setNuevoProyecto({...nuevoProyecto, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
-            <select value={nuevoProyecto.tipo} onChange={e => setNuevoProyecto({...nuevoProyecto, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+            <input placeholder="Nombre del proyecto *" value={nuevoProyecto.nombre} onChange={e => setNuevoProyecto({ ...nuevoProyecto, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+            <textarea placeholder="Descripción (opcional)" value={nuevoProyecto.descripcion} onChange={e => setNuevoProyecto({ ...nuevoProyecto, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+            <select value={nuevoProyecto.tipo} onChange={e => setNuevoProyecto({ ...nuevoProyecto, tipo: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
               {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <label style={{ fontSize: '14px', color: '#555' }}>Color:</label>
-              <input type="color" value={nuevoProyecto.color} onChange={e => setNuevoProyecto({...nuevoProyecto, color: e.target.value})} style={{ width: '48px', height: '36px', border: 'none', cursor: 'pointer' }} />
+              <input type="color" value={nuevoProyecto.color} onChange={e => setNuevoProyecto({ ...nuevoProyecto, color: e.target.value })} style={{ width: '48px', height: '36px', border: 'none', cursor: 'pointer' }} />
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>
-                <input type="date" value={nuevoProyecto.fecha_inicio} onChange={e => setNuevoProyecto({...nuevoProyecto, fecha_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                <input type="date" value={nuevoProyecto.fecha_inicio} onChange={e => setNuevoProyecto({ ...nuevoProyecto, fecha_inicio: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha fin estimada</label>
-                <input type="date" value={nuevoProyecto.fecha_fin} onChange={e => setNuevoProyecto({...nuevoProyecto, fecha_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                <input type="date" value={nuevoProyecto.fecha_fin} onChange={e => setNuevoProyecto({ ...nuevoProyecto, fecha_fin: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
               </div>
             </div>
             <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '12px', fontSize: '13px', color: '#166534' }}>
@@ -912,6 +905,7 @@ async function guardarEditTarea() {
           </div>
         </Modal>
       )}
+      {modalesCompartidos}
     </div>
   )
 }
