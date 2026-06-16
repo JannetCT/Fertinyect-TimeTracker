@@ -457,6 +457,7 @@ function Planner() {
   const [acciones, setAcciones] = useState([])
   const [ensayos, setEnsayos] = useState([])
   const [categoriasSoporte, setCategoriasSoporte] = useState([])
+  const [categoriasDireccion, setCategoriasDireccion] = useState([])
   const [proyectosSoporte, setProyectosSoporte] = useState([])
   const [subcarpetasSoporte, setSubcarpetasSoporte] = useState([])
   const [todasTareasProyecto, setTodasTareasProyecto] = useState([])
@@ -471,7 +472,7 @@ function Planner() {
   const [modalNuevoEvento, setModalNuevoEvento] = useState(false)
   const [modalEditarEvento, setModalEditarEvento] = useState(null)
   const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
-  const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [] })
+  const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [], _tipoLigar: '', _origenId: '', _origenTipo: '', _opcionProyectoId: '', _opcionSoporteId: '', _opcionDireccionId: '' })
   const [cronActivo, setCronActivo] = useState(() => loadCron())
   const [tiempoActual, setTiempoActual] = useState(0)
   const intervalRef = useRef(null)
@@ -502,6 +503,7 @@ function Planner() {
       setEventos(ev.filter(e => e.usuario_id && e.usuario_id.split(',').map(s => s.trim()).includes(misId)))
       setProyectos(p); setEstadosProyecto(ep); setAcciones(ac); setEnsayos(en)
       setCategoriasSoporte(cs); setProyectosSoporte(ps); setSubcarpetasSoporte(ss)
+      setCategoriasDireccion(await leerHoja('categorias_direccion', accessToken))
       setTodasTareasProyecto(t); setTodasTareasSoporte(ts)
       const counts = {}
       cl.forEach(item => { const key = `${item.tarea_id}_${item.tipo_tarea}`; if (!counts[key]) counts[key] = { total: 0, completados: 0 }; counts[key].total++; if (item.completado === 'true') counts[key].completados++ })
@@ -547,7 +549,9 @@ function Planner() {
     const duracionSegundos = ((hF * 60 + mF) - (hI * 60 + mI)) * 60
     if (duracionSegundos <= 0) return
     const fechaBase = evento.fecha_exacta + 'T' + evento.hora_inicio + ':00'
-    await escribirFila('registros', [Date.now().toString(), evento.id, usuario.id, new Date(fechaBase).toISOString(), new Date(new Date(fechaBase).getTime() + duracionSegundos * 1000).toISOString(), duracionSegundos, new Date().toDateString(), 'evento', evento.titulo], accessToken)
+    const registroTareaId = evento.origen_id || evento.id
+const registroTipo = evento.origen_tipo || 'evento'
+await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario.id, new Date(fechaBase).toISOString(), new Date(new Date(fechaBase).getTime() + duracionSegundos * 1000).toISOString(), duracionSegundos, new Date().toDateString(), registroTipo, evento.titulo], accessToken)
     await actualizarFila('eventos', evento.id, [evento.id, evento.usuario_id, evento.titulo, evento.descripcion || '', evento.fecha_exacta, evento.hora_inicio, evento.hora_fin, evento.tipo, evento.fecha_creacion, 'completado'], accessToken)
     cargarDatos()
   }
@@ -612,7 +616,7 @@ function Planner() {
     if (!formEvento.titulo || !formEvento.fecha_exacta) return
     const id = Date.now().toString()
     const asignadosStr = formEvento._asignados && formEvento._asignados.length > 0 ? formEvento._asignados.join(',') : String(usuario.id)
-    await escribirFila('eventos', [id, asignadosStr, formEvento.titulo, formEvento.descripcion, formEvento.fecha_exacta, formEvento.hora_inicio, formEvento.hora_fin, formEvento.tipo, new Date().toISOString(), ''], accessToken)
+    await escribirFila('eventos', [id, asignadosStr, formEvento.titulo, formEvento.descripcion, formEvento.fecha_exacta, formEvento.hora_inicio, formEvento.hora_fin, formEvento.tipo, new Date().toISOString(), '', formEvento._origenId || '', formEvento._origenTipo || ''], accessToken)
     setModalNuevoEvento(false)
     setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [] })
     cargarDatos()
@@ -1074,9 +1078,36 @@ function Planner() {
                 <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin</label><input type="time" value={formEvento.hora_fin} onChange={e => setFormEvento({...formEvento, hora_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
               </div>
               <textarea placeholder="Descripción (opcional)" value={formEvento.descripcion} onChange={e => setFormEvento({...formEvento, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Ligar a proyecto (opcional):</label>
+                <select value={formEvento._tipoLigar || ''} onChange={e => setFormEvento({...formEvento, _tipoLigar: e.target.value, _origenId: '', _origenTipo: '', _opcionProyectoId: '', _opcionSoporteId: '', _opcionDireccionId: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
+                  <option value="">Sin ligar</option>
+                  <option value="proyecto">Proyectos I+D</option>
+                  <option value="soporte">Soporte</option>
+                  <option value="direccion">Dirección</option>
+                </select>
+                {formEvento._tipoLigar === 'proyecto' && (
+                  <select value={formEvento._opcionProyectoId || ''} onChange={e => { const op = opcionesProyecto().find(o => o.id === e.target.value); if (op) setFormEvento({...formEvento, _origenId: op.realId, _origenTipo: op.tipo, _opcionProyectoId: op.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                    <option value="">Selecciona elemento...</option>
+                    {opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
+                  </select>
+                )}
+                {formEvento._tipoLigar === 'soporte' && (
+                  <select value={formEvento._opcionSoporteId || ''} onChange={e => { const op = opcionesSoporte().find(o => o.id === e.target.value); if (op) setFormEvento({...formEvento, _origenId: op.realId, _origenTipo: op.tipo, _opcionSoporteId: op.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                    <option value="">Selecciona elemento...</option>
+                    {opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
+                  </select>
+                )}
+                {formEvento._tipoLigar === 'direccion' && (
+                  <select value={formEvento._opcionDireccionId || ''} onChange={e => setFormEvento({...formEvento, _origenId: e.target.value, _origenTipo: 'direccion', _opcionDireccionId: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                    <option value="">Selecciona categoría...</option>
+                    {categoriasDireccion.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNuevoEvento(false); setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [] }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => { setModalNuevoEvento(false); setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [], _tipoLigar: '', _origenId: '', _origenTipo: '', _opcionProyectoId: '', _opcionSoporteId: '', _opcionDireccionId: '' }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
               <button onClick={crearEvento} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear evento</button>
             </div>
           </div>
