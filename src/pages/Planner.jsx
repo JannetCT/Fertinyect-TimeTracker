@@ -727,7 +727,7 @@ function Planner() {
     })
     return opciones
   }
-
+  
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando planner...</p></div>
 
   const esMobile = window.innerWidth < 768
