@@ -578,10 +578,10 @@ function Planner() {
       if (tareaOrigen && hoja === 'tareas') await actualizarFila('tareas', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.ensayo_id, tareaOrigen.accion_id, tareaOrigen.proyecto_id, tareaOrigen.nombre, tareaOrigen.asignados, tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || '', tiempoEstimado], accessToken)
       else if (tareaOrigen && hoja === 'tareas_soporte') await actualizarFila('tareas_soporte', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.categoria_id, tareaOrigen.proyecto_soporte_id || '', tareaOrigen.subcarpeta_id || '', tareaOrigen.nombre, tareaOrigen.asignados, tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || '', tiempoEstimado], accessToken)
     }
-    if (t._tipo === 'proyecto') await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
-    else if (t._tipo === 'soporte') await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
-    else if (t._tipo === 'direccion') await actualizarFila('tareas_direccion', t.id, [t.id, t.categoria_id, t.proyecto_direccion_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
-    else await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado], accessToken)
+    if (t._tipo === 'proyecto') await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
+    else if (t._tipo === 'soporte') await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
+    else if (t._tipo === 'direccion') await actualizarFila('tareas_direccion', t.id, [t.id, t.categoria_id, t.proyecto_direccion_id || '', t.subcarpeta_id || '', t.nombre, t.asignados, diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
+    else await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
     setModalEditarTarea(null); cargarDatos()
   }
   async function guardarEditarEvento() {
@@ -672,16 +672,26 @@ function Planner() {
   }
   function calcularPosicionesDia(fechaStr) {
     const lista = tareasDeDia(fechaStr)
-    const sinTiempo = lista.filter(t => !parseInt(t.tiempo_estimado))
+    const sinTiempo = lista.filter(t => !parseInt(t.tiempo_estimado) && !t.hora_inicio)
+    // Tareas con hora_inicio explícita
+    const conHora = lista.filter(t => t.hora_inicio).map(t => {
+      const [hh, mm] = t.hora_inicio.split(':').map(Number)
+      const horaDecimal = hh + mm / 60
+      const durH = parseInt(t.tiempo_estimado) > 0 ? parseInt(t.tiempo_estimado) / 60 : 1
+      const top = (horaDecimal - HORA_INICIO) * ALTURA_HORA
+      const height = durH * ALTURA_HORA
+      return { ...t, _top: top, _height: height }
+    })
+    // Tareas con tiempo estimado pero sin hora_inicio — se colocan automáticamente
     let cursor = HORA_INICIO
-    const conPosicion = lista.filter(t => parseInt(t.tiempo_estimado) > 0).map(t => {
+    const conPosicionAuto = lista.filter(t => parseInt(t.tiempo_estimado) > 0 && !t.hora_inicio).map(t => {
       const durH = parseInt(t.tiempo_estimado) / 60
       const top = (cursor - HORA_INICIO) * ALTURA_HORA
       const height = durH * ALTURA_HORA
       cursor += durH + 0.25
       return { ...t, _top: top, _height: height }
     })
-    return { sinTiempo, conPosicion }
+    return { sinTiempo, conPosicion: [...conHora, ...conPosicionAuto] }
   }
   function opcionesProyecto() {
     const opciones = []
@@ -1097,6 +1107,13 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
           <InputFechasMultiples label="Días asignados:" value={modalEditarTarea.fechas_exactas || modalEditarTarea.fecha_exacta || ''} onChange={val => setModalEditarTarea({...modalEditarTarea, fechas_exactas: val})} />
           <InputFechaPlanner label="Fecha límite (opcional):" value={modalEditarTarea.fecha_limite} onChange={val => setModalEditarTarea({...modalEditarTarea, fecha_limite: val})} />
           <SelectorTiempoEstimado horas={modalEditarTarea._horas || 0} minutos={modalEditarTarea._minutos || 0} onChangeHoras={h => setModalEditarTarea({...modalEditarTarea, _horas: h})} onChangeMinutos={m => setModalEditarTarea({...modalEditarTarea, _minutos: m})} />
+            <div>
+  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio (opcional):</label>
+  <div style={{ display: 'flex', gap: '6px' }}>
+    <input type="time" value={modalEditarTarea.hora_inicio || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, hora_inicio: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+    {modalEditarTarea.hora_inicio && <button onClick={() => setModalEditarTarea({...modalEditarTarea, hora_inicio: ''})} style={{ padding: '10px 12px', borderRadius: '8px', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>✕</button>}
+  </div>
+</div>
           <div>
             <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
             <BotonesPrioridad etiqueta={modalEditarTarea.etiqueta} onChange={val => setModalEditarTarea({...modalEditarTarea, etiqueta: val})} />
