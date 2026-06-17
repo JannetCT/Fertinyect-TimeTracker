@@ -981,7 +981,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         <ModalEditarTareaComponent modalEditarTarea={modalEditarTarea} setModalEditarTarea={setModalEditarTarea}
           guardarEditarTarea={guardarEditarTarea} eliminarTarea={eliminarTarea}
           opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte}
-          usuario={usuario} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
+          usuario={usuario} usuarios={usuarios} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
         />
       )}
 
