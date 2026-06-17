@@ -785,7 +785,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
           <ModalEditarTareaComponent modalEditarTarea={modalEditarTarea} setModalEditarTarea={setModalEditarTarea}
             guardarEditarTarea={async () => { await guardarEditarTarea(); setVistaTarea({...vistaTarea, descripcion: modalEditarTarea.descripcion}) }}
             eliminarTarea={eliminarTarea} opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte}
-            usuario={usuario} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
+            usuario={usuario} usuarios={usuarios} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
           />
         )}
       </div>
@@ -1117,7 +1117,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   )
 }
 
-function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guardarEditarTarea, eliminarTarea, opcionesProyecto, opcionesSoporte, usuario, accessToken, getRefId, getRefTipo }) {
+function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guardarEditarTarea, eliminarTarea, opcionesProyecto, opcionesSoporte, usuario, usuarios, accessToken, getRefId, getRefTipo }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1125,6 +1125,23 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <input value={modalEditarTarea.nombre || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
           <textarea placeholder="Descripción (opcional)" value={modalEditarTarea.descripcion || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+          {usuarios && usuarios.length > 0 && (
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Asignar a:</label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {usuarios.map(u => {
+                  const asignados = modalEditarTarea.asignados ? (Array.isArray(modalEditarTarea.asignados) ? modalEditarTarea.asignados : modalEditarTarea.asignados.split(',').filter(Boolean)) : []
+                  const activo = asignados.includes(u.id)
+                  return (
+                    <button key={u.id} onClick={e => { e.preventDefault(); e.stopPropagation(); const actual = modalEditarTarea.asignados ? (Array.isArray(modalEditarTarea.asignados) ? modalEditarTarea.asignados : modalEditarTarea.asignados.split(',').filter(Boolean)) : []; const nuevo = actual.includes(u.id) ? actual.filter(id => id !== u.id) : [...actual, u.id]; if (nuevo.length === 0) return; setModalEditarTarea({...modalEditarTarea, asignados: nuevo}) }}
+                      style={{ padding: '6px 14px', borderRadius: '20px', border: '2px solid', borderColor: activo ? '#00953B' : '#e5e7eb', background: activo ? '#f0fdf4' : 'white', color: activo ? '#00953B' : '#6b7280', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
+                      {u.nombre ? u.nombre.split(' ')[0] : u.id}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           {modalEditarTarea._tipo === 'planner' && (
             <div>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Enlazar a (opcional):</label>
