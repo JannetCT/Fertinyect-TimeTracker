@@ -18,6 +18,35 @@ export function useAuth() {
     setCargando(false)
   }, [])
 
+  useEffect(() => {
+    if (!usuario) return
+    function renovarToken() {
+      const scope = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid'
+      const redirectUri = window.location.origin
+      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&prompt=none&scope=${encodeURIComponent(scope)}&login_hint=${usuario.email}`
+      const iframe = document.createElement('iframe')
+      iframe.style.display = 'none'
+      iframe.src = url
+      iframe.onload = () => {
+        try {
+          const params = new URLSearchParams(iframe.contentWindow.location.hash.substring(1))
+          const nuevoToken = params.get('access_token')
+          if (nuevoToken) {
+            sessionStorage.setItem('access_token', nuevoToken)
+            setAccessToken(nuevoToken)
+          }
+        } catch (e) {
+          console.warn('No se pudo renovar token silenciosamente')
+        } finally {
+          document.body.removeChild(iframe)
+        }
+      }
+      document.body.appendChild(iframe)
+    }
+    const intervalo = setInterval(renovarToken, 50 * 60 * 1000)
+    return () => clearInterval(intervalo)
+  }, [usuario])
+
   async function setUsuarioDesdeToken(token) {
     try {
       setCargando(true)
