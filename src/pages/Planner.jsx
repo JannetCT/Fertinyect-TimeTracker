@@ -462,6 +462,7 @@ function Planner() {
   const [subcarpetasSoporte, setSubcarpetasSoporte] = useState([])
   const [todasTareasProyecto, setTodasTareasProyecto] = useState([])
   const [todasTareasSoporte, setTodasTareasSoporte] = useState([])
+  const [usuarios, setUsuarios] = useState([])
   const [checklistCounts, setChecklistCounts] = useState({})
   const [cargando, setCargando] = useState(true)
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
@@ -488,12 +489,13 @@ function Planner() {
 
   async function cargarDatos() {
     try {
-      const [t, ts, td, tp, ev, p, ep, ac, en, cs, ps, ss, cl] = await Promise.all([
+      const [t, ts, td, tp, ev, p, ep, ac, en, cs, ps, ss, cl, us] = await Promise.all([
         leerHoja('tareas', accessToken), leerHoja('tareas_soporte', accessToken), leerHoja('tareas_direccion', accessToken),
         leerHoja('tareas_planner', accessToken), leerHoja('eventos', accessToken), leerHoja('proyectos', accessToken),
         leerHoja('estados_proyecto', accessToken), leerHoja('acciones', accessToken), leerHoja('ensayos', accessToken),
         leerHoja('categorias_soporte', accessToken), leerHoja('proyectos_soporte', accessToken), leerHoja('subcarpetas_soporte', accessToken),
         leerHoja('checklist_items', accessToken),
+leerHoja('usuarios', accessToken),
       ])
       const misId = String(usuario.id)
       setTareas(t.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
@@ -508,6 +510,7 @@ function Planner() {
       const counts = {}
       cl.forEach(item => { const key = `${item.tarea_id}_${item.tipo_tarea}`; if (!counts[key]) counts[key] = { total: 0, completados: 0 }; counts[key].total++; if (item.completado === 'true') counts[key].completados++ })
       setChecklistCounts(counts)
+      setUsuarios(us)
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
