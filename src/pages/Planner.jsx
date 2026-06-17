@@ -575,7 +575,6 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   async function guardarEditarTarea() {
     if (!modalEditarTarea) return
     const t = modalEditarTarea
-    console.log('GUARDAR:', t._tipo, 'asignados:', t.asignados, 'usuario_id:', t.usuario_id)
     const fechasExactas = t.fechas_exactas || t.fecha_exacta || ''
     const primeraFecha = fechasExactas.split(',')[0]?.trim() || ''
     const diaCalculado = getDiaSemana(primeraFecha) || t.dia_semana || 'por_asignar'
