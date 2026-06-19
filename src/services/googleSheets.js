@@ -1,10 +1,29 @@
 const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
 
+const _cache = new Map()
+const CACHE_MS = 8000
+
+async function fetchConCache(url) {
+  const ahora = Date.now()
+  const entrada = _cache.get(url)
+  if (entrada && (ahora - entrada.tiempo) < CACHE_MS) {
+    return entrada.promesa
+  }
+  const promesa = fetch(url).then(r => r.json())
+  _cache.set(url, { tiempo: ahora, promesa })
+  return promesa
+}
+
+function invalidarCache(nombreHoja) {
+  for (const key of _cache.keys()) {
+    if (key.includes(`/values/${nombreHoja}`)) _cache.delete(key)
+  }
+}
+
 export async function leerHoja(nombreHoja, accessToken) {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}?key=${API_KEY}`
-  const res = await fetch(url)
-  const data = await res.json()
+  const data = await fetchConCache(url)
   const filas = data.values || []
   if (filas.length === 0) return []
   const cabeceras = filas[0].map(c => c.toLowerCase())
@@ -22,11 +41,11 @@ export async function escribirFila(nombreHoja, fila, accessToken) {
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ values: [fila] })
   })
+  invalidarCache(nombreHoja)
 }
 
 export async function actualizarFila(nombreHoja, id, valoresNuevos, accessToken) {
-  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}?key=${API_KEY}`)
-  const data = await res.json()
+  const data = await fetchConCache(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}?key=${API_KEY}`)
   const filas = data.values || []
   const idx = filas.findIndex(f => f[0] === id)
   if (idx === -1) return
@@ -36,11 +55,11 @@ export async function actualizarFila(nombreHoja, id, valoresNuevos, accessToken)
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ values: [valoresNuevos] })
   })
+  invalidarCache(nombreHoja)
 }
 
 export async function marcarEliminado(nombreHoja, id, accessToken) {
-  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}?key=${API_KEY}`)
-  const data = await res.json()
+  const data = await fetchConCache(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${nombreHoja}?key=${API_KEY}`)
   const filas = data.values || []
   const idx = filas.findIndex(f => f[0] === id)
   if (idx === -1) return
@@ -52,6 +71,7 @@ export async function marcarEliminado(nombreHoja, id, accessToken) {
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ values: [filaActual] })
   })
+  invalidarCache(nombreHoja)
 }
 
 export async function buscarFilaPorId(nombreHoja, id, accessToken) {
