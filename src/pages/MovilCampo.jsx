@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja, escribirFila, actualizarFila, marcarEliminado } from '../services/googleSheets'
+import { escribirFila, actualizarFila } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
 
 const PRIORIDADES = {
   urgente:    { bg: '#fee2e2', color: '#dc2626', emoji: '🔴' },
@@ -100,6 +101,7 @@ const FORM_EVENTO_VACIO = { titulo: '', fecha_exacta: '', hora_inicio: '', hora_
 
 export default function MovilCampo() {
   const { usuario, accessToken } = useAuth()
+  const { obtenerHoja } = useDatos()
   const navigate = useNavigate()
   const [tareas, setTareas] = useState([])
   const [tareasSoporte, setTareasSoporte] = useState([])
@@ -137,12 +139,12 @@ export default function MovilCampo() {
   async function cargarDatos() {
     try {
       const [t, ts, tp, p, cs, u] = await Promise.all([
-        leerHoja('tareas', accessToken),
-        leerHoja('tareas_soporte', accessToken),
-        leerHoja('tareas_planner', accessToken),
-        leerHoja('proyectos', accessToken),
-        leerHoja('categorias_soporte', accessToken),
-        leerHoja('usuarios', accessToken),
+        obtenerHoja('tareas'),
+        obtenerHoja('tareas_soporte'),
+        obtenerHoja('tareas_planner'),
+        obtenerHoja('proyectos'),
+        obtenerHoja('categorias_soporte'),
+        obtenerHoja('usuarios'),
       ])
       const misId = String(usuario.id)
       setTareas(t.filter(x => x.asignados && x.asignados.split(',').map(s => s.trim()).includes(misId)))
