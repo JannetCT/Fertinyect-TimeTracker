@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../contexts/AuthContext'
 import { actualizarFila } from '../services/googleSheets'
 import { useDatos } from '../contexts/DatosContext'
 
