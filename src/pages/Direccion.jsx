@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../contexts/AuthContext'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
 import Checklist from '../components/Checklist'
 
 function Modal({ titulo, onClose, onSave, children }) {
@@ -190,6 +191,7 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
 
 export default function Direccion() {
   const { usuario, accessToken } = useAuth()
+  const { obtenerHoja } = useDatos()
 
   const [categorias, setCategorias] = useState([])
   const [proyectosDireccion, setProyectosDireccion] = useState([])
@@ -218,11 +220,11 @@ export default function Direccion() {
   async function cargarDatos() {
     try {
       const [c, p, s, t, u] = await Promise.all([
-        leerHoja('categorias_direccion', accessToken),
-        leerHoja('proyectos_direccion', accessToken),
-        leerHoja('subcarpetas_direccion', accessToken),
-        leerHoja('tareas_direccion', accessToken),
-        leerHoja('usuarios', accessToken)
+        obtenerHoja('categorias_direccion'),
+        obtenerHoja('proyectos_direccion'),
+        obtenerHoja('subcarpetas_direccion'),
+        obtenerHoja('tareas_direccion'),
+        obtenerHoja('usuarios')
       ])
       setCategorias(c)
       setProyectosDireccion(p)

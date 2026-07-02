@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
 import Checklist from '../components/Checklist'
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
@@ -192,6 +193,7 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
 
 export default function Soporte() {
   const { accessToken, usuario } = useAuth()
+  const { obtenerHoja } = useDatos()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [categorias, setCategorias] = useState([])
@@ -255,11 +257,11 @@ export default function Soporte() {
   async function cargarDatos() {
     try {
       const [c, p, s, t, u] = await Promise.all([
-        leerHoja('categorias_soporte', accessToken),
-        leerHoja('proyectos_soporte', accessToken),
-        leerHoja('subcarpetas_soporte', accessToken),
-        leerHoja('tareas_soporte', accessToken),
-        leerHoja('usuarios', accessToken)
+        obtenerHoja('categorias_soporte'),
+        obtenerHoja('proyectos_soporte'),
+        obtenerHoja('subcarpetas_soporte'),
+        obtenerHoja('tareas_soporte'),
+        obtenerHoja('usuarios')
       ])
       setCategorias(c)
       setProyectosSoporte(p)
