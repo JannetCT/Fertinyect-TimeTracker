@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
 import Checklist from '../components/Checklist'
 
 const FASES_DEFAULT = [
@@ -215,6 +216,7 @@ function SelectorPersonas({ usuarios, seleccionados, onChange, color = '#00953B'
 
 export default function Proyectos() {
   const { accessToken, usuario } = useAuth()
+  const { obtenerHoja } = useDatos()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [proyectos, setProyectos] = useState([])
@@ -272,12 +274,12 @@ export default function Proyectos() {
   async function cargarDatos() {
     try {
       const [p, e, a, en, t, u] = await Promise.all([
-        leerHoja('proyectos', accessToken),
-        leerHoja('estados_proyecto', accessToken),
-        leerHoja('acciones', accessToken),
-        leerHoja('ensayos', accessToken),
-        leerHoja('tareas', accessToken),
-        leerHoja('usuarios', accessToken)
+        obtenerHoja('proyectos'),
+        obtenerHoja('estados_proyecto'),
+        obtenerHoja('acciones'),
+        obtenerHoja('ensayos'),
+        obtenerHoja('tareas'),
+        obtenerHoja('usuarios')
       ])
       setProyectos(p)
       setEstados(e)
