@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
 import * as XLSX from 'xlsx'
 
 const COLORES_USUARIO = {
@@ -83,6 +83,7 @@ const DIAS_LABEL = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
 
 function Dashboard() {
   const { accessToken } = useAuth()
+  const { obtenerHoja } = useDatos()
   const [periodo, setPeriodo] = useState('semana_actual')
   const [registros, setRegistros] = useState([])
   const [tareas, setTareas] = useState([])
@@ -98,14 +99,14 @@ function Dashboard() {
     async function cargarDatos() {
       try {
         const [reg, tar, tarS, tarD, proy, catS, catD, usu] = await Promise.all([
-          leerHoja('registros', accessToken),
-          leerHoja('tareas', accessToken),
-          leerHoja('tareas_soporte', accessToken),
-          leerHoja('tareas_direccion', accessToken),
-          leerHoja('proyectos', accessToken),
-          leerHoja('categorias_soporte', accessToken),
-          leerHoja('categorias_direccion', accessToken),
-          leerHoja('usuarios', accessToken),
+          obtenerHoja('registros'),
+          obtenerHoja('tareas'),
+          obtenerHoja('tareas_soporte'),
+          obtenerHoja('tareas_direccion'),
+          obtenerHoja('proyectos'),
+          obtenerHoja('categorias_soporte'),
+          obtenerHoja('categorias_direccion'),
+          obtenerHoja('usuarios'),
         ])
         setRegistros(reg)
         setTareas(tar)

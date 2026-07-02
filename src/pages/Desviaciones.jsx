@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
 
 function calcularDesviacion(fechaOriginal, fechaActual) {
   if (!fechaOriginal || !fechaActual) return null
@@ -45,6 +45,7 @@ function BadgeEstado({ estado }) {
 
 export default function Desviaciones() {
   const { accessToken } = useAuth()
+  const { obtenerHoja } = useDatos()
   const [proyectos, setProyectos] = useState([])
   const [estadosProyecto, setEstadosProyecto] = useState([])
   const [acciones, setAcciones] = useState([])
@@ -57,10 +58,10 @@ export default function Desviaciones() {
   async function cargarDatos() {
     try {
       const [p, ep, ac, en] = await Promise.all([
-        leerHoja('proyectos', accessToken),
-        leerHoja('estados_proyecto', accessToken),
-        leerHoja('acciones', accessToken),
-        leerHoja('ensayos', accessToken),
+        obtenerHoja('proyectos'),
+        obtenerHoja('estados_proyecto'),
+        obtenerHoja('acciones'),
+        obtenerHoja('ensayos'),
       ])
       setProyectos(p.filter(p => p.fecha_creacion !== 'eliminado' && p.id))
       setEstadosProyecto(ep)

@@ -3,7 +3,8 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja, actualizarFila } from '../services/googleSheets'
+import { actualizarFila } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const MESES_COMPLETOS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -37,6 +38,7 @@ function hexToRgb(hex) {
 
 function Gantt() {
   const { accessToken } = useAuth()
+  const { obtenerHoja } = useDatos()
   const [proyectos, setProyectos] = useState([])
   const [acciones, setAcciones] = useState([])
   const [ensayos, setEnsayos] = useState([])
@@ -53,10 +55,10 @@ function Gantt() {
   async function cargarDatos() {
     try {
       const [p, a, e, t] = await Promise.all([
-        leerHoja('proyectos', accessToken),
-        leerHoja('acciones', accessToken),
-        leerHoja('ensayos', accessToken),
-        leerHoja('tareas', accessToken)
+        obtenerHoja('proyectos'),
+        obtenerHoja('acciones'),
+        obtenerHoja('ensayos'),
+        obtenerHoja('tareas')
       ])
       setProyectos(p.filter(p => p.fecha_creacion !== 'eliminado' && p.id))
       setAcciones(a)
@@ -83,6 +85,10 @@ function Gantt() {
       ], accessToken)
     }
     setEditando(null)
+    await Promise.all([
+      obtenerHoja('acciones', { forzar: true }),
+      obtenerHoja('ensayos', { forzar: true }),
+    ])
     cargarDatos()
   }
 

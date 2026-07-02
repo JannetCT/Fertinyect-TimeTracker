@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
 
 function getLunesDeSemana(fecha) {
   const d = new Date(fecha)
@@ -86,6 +86,7 @@ function DonutChart({ datos, total }) {
 
 function Graficas() {
   const { usuario, accessToken } = useAuth()
+  const { obtenerHoja } = useDatos()
   const [semanaBase, setSemanaBase] = useState(() => getLunesDeSemana(new Date()))
   const [registros, setRegistros] = useState([])
   const [tareas, setTareas] = useState([])
@@ -98,11 +99,11 @@ function Graficas() {
     async function cargarDatos() {
       try {
         const [reg, tar, tarS, proy, catS] = await Promise.all([
-          leerHoja('registros', accessToken),
-          leerHoja('tareas', accessToken),
-          leerHoja('tareas_soporte', accessToken),
-          leerHoja('proyectos', accessToken),
-          leerHoja('categorias_soporte', accessToken)
+          obtenerHoja('registros'),
+          obtenerHoja('tareas'),
+          obtenerHoja('tareas_soporte'),
+          obtenerHoja('proyectos'),
+          obtenerHoja('categorias_soporte')
         ])
         setRegistros(reg.filter(r => r.usuario_id === usuario.id || r.usuarios_id === usuario.id))
         setTareas(tar)

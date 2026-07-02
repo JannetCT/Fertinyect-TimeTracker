@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { leerHoja } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS_CABECERA = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
@@ -74,6 +74,7 @@ function IndicadorCarga({ items }) {
 
 export default function CalendarioEquipo() {
   const { usuario, accessToken } = useAuth()
+  const { obtenerHoja } = useDatos()
   const [vista, setVista] = useState('mes')
   const [mesBase, setMesBase] = useState(() => new Date())
   const [semanaBase, setSemanaBase] = useState(() => getLunesDeSemana(new Date()))
@@ -96,13 +97,13 @@ export default function CalendarioEquipo() {
   async function cargarDatos() {
     try {
       const [t, ts, tp, ev, p, u, cs] = await Promise.all([
-        leerHoja('tareas', accessToken),
-        leerHoja('tareas_soporte', accessToken),
-        leerHoja('tareas_planner', accessToken),
-        leerHoja('eventos', accessToken),
-        leerHoja('proyectos', accessToken),
-        leerHoja('usuarios', accessToken),
-        leerHoja('categorias_soporte', accessToken),
+        obtenerHoja('tareas'),
+        obtenerHoja('tareas_soporte'),
+        obtenerHoja('tareas_planner'),
+        obtenerHoja('eventos'),
+        obtenerHoja('proyectos'),
+        obtenerHoja('usuarios'),
+        obtenerHoja('categorias_soporte'),
       ])
       setTareas(t.filter(t => t.estado !== 'eliminado'))
       setTareasSoporte(ts.filter(t => t.estado !== 'eliminado'))
