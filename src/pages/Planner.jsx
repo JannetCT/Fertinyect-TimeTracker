@@ -543,8 +543,17 @@ function Planner() {
     if (completar) {
       const allTareas = [...tareas, ...tareasSoporte, ...tareasDireccion, ...tareasPlanner]
       const tarea = allTareas.find(t => t.id === cronActivo.tareaId)
-      if (tarea && cronActivo.tipo === 'planner') {
-        await actualizarEstado(tarea, 'planner', 'completada')
+      if (tarea) {
+        if (cronActivo.tipo === 'planner') {
+          await actualizarEstado(tarea, 'planner', 'completada')
+        } else {
+          await escribirFila('tareas_planner', [
+            Date.now().toString(), String(usuario.id), tarea.id, cronActivo.tipo,
+            tarea.nombre, tarea.dia_semana || 'por_asignar', tarea.fecha_exacta || '',
+            tarea.fecha_limite || '', 'completada', new Date().toISOString(),
+            tarea.etiqueta || '', '', '', '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', String(usuario.id)
+          ], accessToken)
+        }
       }
     }
     setCronActivo(null); saveCron(null); setTiempoActual(0); cargarDatos()
@@ -640,10 +649,15 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   }
 
   function todasLasTareas() {
+    const completadasEnPlanner = new Set(
+      tareasPlanner
+        .filter(tp => tp.estado === 'completada' && tp.tarea_padre_id)
+        .map(tp => tp.tarea_padre_id)
+    )
     return [
-      ...tareas.map(t => ({ ...t, _tipo: 'proyecto' })),
-      ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte' })),
-      ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion' })),
+      ...tareas.map(t => ({ ...t, _tipo: 'proyecto' })).filter(t => !completadasEnPlanner.has(t.id)),
+      ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte' })).filter(t => !completadasEnPlanner.has(t.id)),
+      ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion' })).filter(t => !completadasEnPlanner.has(t.id)),
       ...tareasPlanner.map(t => ({ ...t, _tipo: 'planner' }))
     ]
   }
