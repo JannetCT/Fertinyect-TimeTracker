@@ -543,8 +543,8 @@ function Planner() {
     if (completar) {
       const allTareas = [...tareas, ...tareasSoporte, ...tareasDireccion, ...tareasPlanner]
       const tarea = allTareas.find(t => t.id === cronActivo.tareaId)
-      if (tarea) {
-        await actualizarEstado(tarea, cronActivo.tipo, 'completada')
+      if (tarea && cronActivo.tipo === 'planner') {
+        await actualizarEstado(tarea, 'planner', 'completada')
       }
     }
     setCronActivo(null); saveCron(null); setTiempoActual(0); cargarDatos()
