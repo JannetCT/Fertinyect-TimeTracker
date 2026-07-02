@@ -545,13 +545,6 @@ function Planner() {
       const tarea = allTareas.find(t => t.id === cronActivo.tareaId)
       if (tarea) {
         await actualizarEstado(tarea, cronActivo.tipo, 'completada')
-        if (cronActivo.tipo === 'planner' && tarea.tarea_padre_id && tarea.tarea_padre_tipo) {
-          const tipoOrigen = tarea.tarea_padre_tipo.startsWith('direccion') ? 'direccion' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : null
-          if (tipoOrigen) {
-            const tareaOrigen = [...todasTareasProyecto, ...todasTareasSoporte, ...tareasDireccion].find(t => t.id === tarea.tarea_padre_id)
-            if (tareaOrigen) await actualizarEstado(tareaOrigen, tipoOrigen, 'completada')
-          }
-        }
       }
     }
     setCronActivo(null); saveCron(null); setTiempoActual(0); cargarDatos()
