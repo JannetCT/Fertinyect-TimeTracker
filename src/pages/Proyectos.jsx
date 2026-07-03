@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
-import { guardarFechaPersonalEnPlanner } from '../services/plannerHelpers'
 import Checklist from '../components/Checklist'
 
 const FASES_DEFAULT = [
@@ -414,7 +413,7 @@ export default function Proyectos() {
     ], accessToken)
     // Guardamos fecha personal en tareas_planner
     if (editTarea._fechaPersonal !== undefined) {
-      await guardarFechaPersonalEnPlanner(editTarea.id, 'proyecto', editTarea._fechaPersonal, usuario, accessToken)
+      await guardarFechaPersonalEnPlanner(editTarea.id, 'proyecto', editTarea._fechaPersonal, usuario, accessToken, editTarea.nombre)
     }
     setEditTarea(null)
     cargarDatos()

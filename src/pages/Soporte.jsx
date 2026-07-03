@@ -222,7 +222,8 @@ export default function Soporte() {
   const [formTarea, setFormTarea] = useState({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
-   useEffect(() => {
+
+  useEffect(() => {
     if (cargando) return
     const subcarpetaId = searchParams.get('subcarpeta')
     const proyectoId = searchParams.get('proyecto')
@@ -297,11 +298,13 @@ export default function Soporte() {
   }
 
   async function guardarEditTareaConFecha(fila, fechaPersonal) {
+    // Guarda datos compartidos en la tabla origen (sin fecha_exacta)
     const filaShared = [...fila]
-    filaShared[7] = ''
+    filaShared[7] = '' // posición 7 = fecha_exacta — la dejamos vacía en el origen
     await actualizarFila('tareas_soporte', editItem.id, filaShared, accessToken)
+    // Guarda la fecha personal en tareas_planner del usuario actual
     if (fechaPersonal !== undefined) {
-      await guardarFechaPersonalEnPlanner(editItem.id, 'soporte', fechaPersonal, usuario, accessToken)
+      await guardarFechaPersonalEnPlanner(editItem.id, 'soporte', fechaPersonal, usuario, accessToken, editItem.nombre)
     }
     if (editItem._tipo === 'categoria') setVistaCategoria({...editItem})
     if (editItem._tipo === 'proyecto') setVistaProyecto({...editItem, nombre: form.nombre, descripcion: form.descripcion})
@@ -338,6 +341,7 @@ export default function Soporte() {
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
+  // VISTA TAREA DETALLE
   if (vistaTarea) {
     return (
       <div className="proyectos-container">
@@ -370,6 +374,7 @@ export default function Soporte() {
     )
   }
 
+  // VISTA SUBCARPETA
   if (vistaSubcarpeta) {
     const tareasAqui = tareasDirectasSubcarpeta(vistaSubcarpeta.id)
     const cat = categorias.find(c => c.id === vistaProyecto?.categoria_id)
@@ -404,6 +409,7 @@ export default function Soporte() {
     )
   }
 
+  // VISTA PROYECTO SOPORTE
   if (vistaProyecto) {
     const subcarpetasAqui = subcarpetasDeProyecto(vistaProyecto.id)
     const tareasDirectas = tareasDirectasProyecto(vistaProyecto.id)
@@ -462,6 +468,7 @@ export default function Soporte() {
     )
   }
 
+  // VISTA CATEGORIA
   if (vistaCategoria) {
     const proyectosAqui = proyectosDeCategoria(vistaCategoria.id)
     const tareasDirectas = tareasDirectasCategoria(vistaCategoria.id)
@@ -514,6 +521,7 @@ export default function Soporte() {
     )
   }
 
+  // LISTA CATEGORIAS
   return (
     <div className="proyectos-container">
       <div className="proyectos-header">
@@ -593,6 +601,7 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
 function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario, accessToken, tareasPlanner = [] }) {
   const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
   const [inputFecha, setInputFecha] = useState('')
+  // Usamos la fecha personal del usuario (de tareas_planner), no la compartida de la tarea origen
   const fechaPersonalInicial = obtenerFechaPersonal(editItem.id, usuario?.id, tareasPlanner)
   const [fechaPersonal, setFechaPersonal] = useState(fechaPersonalInicial)
   const fechas = fechaPersonal ? fechaPersonal.split(',').map(f => f.trim()).filter(Boolean) : []
@@ -637,7 +646,7 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
             </div>
           </div>
           <div>
-            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Mi día en el planner (solo para mí):</label>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Días asignados en planner:</label>
             {fechas.length > 0 && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                 {fechas.map(f => (
@@ -669,8 +678,7 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
           </div>
           <div>
             <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Descripción:</label>
-            <textarea value={editItem.descripcion || ''} onChange={e => setEditItem({...editItem, descripcion: e.target.value})
-}
+            <textarea value={editItem.descripcion || ''} onChange={e => setEditItem({...editItem, descripcion: e.target.value})}
               style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', height: '80px', resize: 'none' }} />
           </div>
           <Checklist tareaId={editItem.id} tipoTarea="soporte" accessToken={accessToken} />
@@ -716,4 +724,4 @@ function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConf
       })}
     </div>
   )
-} 
+}

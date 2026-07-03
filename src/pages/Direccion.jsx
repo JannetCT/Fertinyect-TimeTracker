@@ -129,6 +129,7 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
     setCargando(false)
   }
 
+
   async function guardarEdicion(id) {
     if (!textoEdit.trim()) return
     const act = actualizaciones.find(a => a.id === id)
@@ -258,10 +259,10 @@ export default function Direccion() {
 
   async function guardarEditTareaConFecha(fila, fechaPersonal) {
     const filaShared = [...fila]
-    filaShared[7] = ''
+    filaShared[7] = '' // fecha_exacta vacía en origen compartido
     await actualizarFila('tareas_direccion', editItem.id, filaShared, accessToken)
     if (fechaPersonal !== undefined) {
-      await guardarFechaPersonalEnPlanner(editItem.id, 'direccion', fechaPersonal, usuario, accessToken)
+      await guardarFechaPersonalEnPlanner(editItem.id, 'direccion', fechaPersonal, usuario, accessToken, editItem.nombre)
     }
     setEditItem(null)
     setForm({ nombre: '', descripcion: '' })
@@ -295,6 +296,7 @@ export default function Direccion() {
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
+  // VISTA TAREA DETALLE
   if (vistaTarea) {
     return (
       <div className="proyectos-container">
@@ -327,6 +329,7 @@ export default function Direccion() {
     )
   }
 
+  // VISTA SUBCARPETA
   if (vistaSubcarpeta) {
     const tareasAqui = tareasDeSubcarpeta(vistaSubcarpeta.id)
     const cat = categorias.find(c => c.id === vistaProyecto?.categoria_id)
@@ -366,6 +369,7 @@ export default function Direccion() {
     )
   }
 
+  // VISTA PROYECTO
   if (vistaProyecto) {
     const subcarpetasAqui = subcarpetasDeProyecto(vistaProyecto.id)
     const tareasDirectas = tareasDirectasProyecto(vistaProyecto.id)
@@ -431,6 +435,7 @@ export default function Direccion() {
     )
   }
 
+  // VISTA CATEGORIA
   if (vistaCategoria) {
     const proyectosAqui = proyectosDeCategoria(vistaCategoria.id)
     const tareasDirectas = tareasDirectasCategoria(vistaCategoria.id)
@@ -489,6 +494,7 @@ export default function Direccion() {
     )
   }
 
+  // LISTA CATEGORIAS
   return (
     <div className="proyectos-container">
       <div className="proyectos-header">
@@ -605,7 +611,7 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
             </div>
           </div>
           <div>
-            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Mi día en el planner (solo para mí):</label>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Días asignados en planner:</label>
             {fechas.length > 0 && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                 {fechas.map(f => (
