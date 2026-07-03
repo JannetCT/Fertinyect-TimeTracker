@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
 import { useDatos } from '../contexts/DatosContext'
 import Checklist from '../components/Checklist'
+import { guardarFechaPersonalEnPlanner, obtenerFechaPersonal } from '../services/plannerHelpers'
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
 
@@ -201,6 +202,7 @@ export default function Soporte() {
   const [subcarpetas, setSubcarpetas] = useState([])
   const [tareas, setTareas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [tareasPlanner, setTareasPlanner] = useState([])
   const [cargando, setCargando] = useState(true)
 
   const [vistaCategoria, setVistaCategoria] = useState(null)
@@ -220,8 +222,7 @@ export default function Soporte() {
   const [formTarea, setFormTarea] = useState({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
-
-  useEffect(() => {
+   useEffect(() => {
     if (cargando) return
     const subcarpetaId = searchParams.get('subcarpeta')
     const proyectoId = searchParams.get('proyecto')
@@ -256,18 +257,20 @@ export default function Soporte() {
 
   async function cargarDatos() {
     try {
-      const [c, p, s, t, u] = await Promise.all([
+      const [c, p, s, t, u, tp] = await Promise.all([
         obtenerHoja('categorias_soporte'),
         obtenerHoja('proyectos_soporte'),
         obtenerHoja('subcarpetas_soporte'),
         obtenerHoja('tareas_soporte'),
-        obtenerHoja('usuarios')
+        obtenerHoja('usuarios'),
+        obtenerHoja('tareas_planner')
       ])
       setCategorias(c)
       setProyectosSoporte(p)
       setSubcarpetas(s)
       setTareas(t)
       setUsuarios(u)
+      setTareasPlanner(tp)
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
@@ -286,6 +289,21 @@ export default function Soporte() {
   async function guardarEdit(hoja, fila) {
     await actualizarFila(hoja, editItem.id, fila, accessToken)
     if (editItem._tipo === 'categoria') setVistaCategoria({...editItem, ...fila})
+    if (editItem._tipo === 'proyecto') setVistaProyecto({...editItem, nombre: form.nombre, descripcion: form.descripcion})
+    if (editItem._tipo === 'subcarpeta') setVistaSubcarpeta({...editItem, nombre: form.nombre, descripcion: form.descripcion})
+    setEditItem(null)
+    setForm({ nombre: '', descripcion: '' })
+    cargarDatos()
+  }
+
+  async function guardarEditTareaConFecha(fila, fechaPersonal) {
+    const filaShared = [...fila]
+    filaShared[7] = ''
+    await actualizarFila('tareas_soporte', editItem.id, filaShared, accessToken)
+    if (fechaPersonal !== undefined) {
+      await guardarFechaPersonalEnPlanner(editItem.id, 'soporte', fechaPersonal, usuario, accessToken)
+    }
+    if (editItem._tipo === 'categoria') setVistaCategoria({...editItem})
     if (editItem._tipo === 'proyecto') setVistaProyecto({...editItem, nombre: form.nombre, descripcion: form.descripcion})
     if (editItem._tipo === 'subcarpeta') setVistaSubcarpeta({...editItem, nombre: form.nombre, descripcion: form.descripcion})
     setEditItem(null)
@@ -320,7 +338,6 @@ export default function Soporte() {
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
-  // VISTA TAREA DETALLE
   if (vistaTarea) {
     return (
       <div className="proyectos-container">
@@ -345,15 +362,14 @@ export default function Soporte() {
           <SeccionActualizaciones tareaId={vistaTarea.id} tipoTarea="soporte" usuario={usuario} accessToken={accessToken} />
         </div>
         {editItem && editItem._tipo === 'tarea' && (
-          <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken}
-            guardarEdit={(hoja, fila) => { guardarEdit(hoja, fila); setVistaTarea({...editItem}) }} />
+          <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken} tareasPlanner={tareasPlanner}
+            guardarEdit={(fila, fechaPersonal) => { guardarEditTareaConFecha(fila, fechaPersonal); setVistaTarea({...editItem}) }} />
         )}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
   }
 
-  // VISTA SUBCARPETA
   if (vistaSubcarpeta) {
     const tareasAqui = tareasDirectasSubcarpeta(vistaSubcarpeta.id)
     const cat = categorias.find(c => c.id === vistaProyecto?.categoria_id)
@@ -381,14 +397,13 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', ''])
           }} />}
-        {editItem && editItem._tipo !== 'subcarpeta' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} usuario={usuario} accessToken={accessToken} />}
+        {editItem && editItem._tipo !== 'subcarpeta' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEditTareaConFecha} usuario={usuario} accessToken={accessToken} tareasPlanner={tareasPlanner} />}
         {editItem && editItem._tipo === 'subcarpeta' && <Modal titulo="Editar subcarpeta" onClose={() => setEditItem(null)} onSave={() => guardarEdit('subcarpetas_soporte', [editItem.id, editItem.proyecto_soporte_id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
   }
 
-  // VISTA PROYECTO SOPORTE
   if (vistaProyecto) {
     const subcarpetasAqui = subcarpetasDeProyecto(vistaProyecto.id)
     const tareasDirectas = tareasDirectasProyecto(vistaProyecto.id)
@@ -441,13 +456,12 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crear('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', ''])
           }} />}
-        {editItem && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} usuario={usuario} accessToken={accessToken} />}
+        {editItem && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEditTareaConFecha} usuario={usuario} accessToken={accessToken} tareasPlanner={tareasPlanner} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
   }
 
-  // VISTA CATEGORIA
   if (vistaCategoria) {
     const proyectosAqui = proyectosDeCategoria(vistaCategoria.id)
     const tareasDirectas = tareasDirectasCategoria(vistaCategoria.id)
@@ -494,13 +508,12 @@ export default function Soporte() {
             crear('tareas_soporte', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', ''])
           }} />}
         {editItem && editItem._tipo === 'categoria' && <Modal titulo="Editar categoría" onClose={() => setEditItem(null)} onSave={() => guardarEdit('categorias_soporte', [editItem.id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
-        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEdit} usuario={usuario} accessToken={accessToken} />}
+        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEditTareaConFecha} usuario={usuario} accessToken={accessToken} tareasPlanner={tareasPlanner} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
   }
 
-  // LISTA CATEGORIAS
   return (
     <div className="proyectos-container">
       <div className="proyectos-header">
@@ -577,22 +590,24 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
   )
 }
 
-function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario, accessToken }) {
+function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario, accessToken, tareasPlanner = [] }) {
   const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
   const [inputFecha, setInputFecha] = useState('')
-  const fechas = editItem.fecha_exacta ? editItem.fecha_exacta.split(',').map(f => f.trim()).filter(Boolean) : []
+  const fechaPersonalInicial = obtenerFechaPersonal(editItem.id, usuario?.id, tareasPlanner)
+  const [fechaPersonal, setFechaPersonal] = useState(fechaPersonalInicial)
+  const fechas = fechaPersonal ? fechaPersonal.split(',').map(f => f.trim()).filter(Boolean) : []
 
   function agregarFecha() {
     if (!inputFecha) return
     if (fechas.includes(inputFecha)) return
     const nuevas = [...fechas, inputFecha].sort()
-    setEditItem({...editItem, fecha_exacta: nuevas.join(',')})
+    setFechaPersonal(nuevas.join(','))
     setInputFecha('')
   }
 
   function quitarFecha(f) {
     const nuevas = fechas.filter(x => x !== f)
-    setEditItem({...editItem, fecha_exacta: nuevas.join(',')})
+    setFechaPersonal(nuevas.join(','))
   }
 
   const asignadosList = editItem.asignados ? editItem.asignados.split(',').filter(Boolean) : []
@@ -622,7 +637,7 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
             </div>
           </div>
           <div>
-            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Días asignados en planner:</label>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Mi día en el planner (solo para mí):</label>
             {fechas.length > 0 && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                 {fechas.map(f => (
@@ -654,7 +669,8 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
           </div>
           <div>
             <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Descripción:</label>
-            <textarea value={editItem.descripcion || ''} onChange={e => setEditItem({...editItem, descripcion: e.target.value})}
+            <textarea value={editItem.descripcion || ''} onChange={e => setEditItem({...editItem, descripcion: e.target.value})
+}
               style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', height: '80px', resize: 'none' }} />
           </div>
           <Checklist tareaId={editItem.id} tipoTarea="soporte" accessToken={accessToken} />
@@ -662,7 +678,7 @@ function ModalEditTarea({ editItem, setEditItem, usuarios, guardarEdit, usuario,
         </div>
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
           <button onClick={() => setEditItem(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={() => guardarEdit('tareas_soporte', [editItem.id, editItem.categoria_id, editItem.proyecto_soporte_id || '', editItem.subcarpeta_id || '', editItem.nombre, editItem.asignados || '', editItem.dia_semana || 'por_asignar', editItem.fecha_exacta || '', editItem.dia_recomendado || '', editItem.fecha_limite || '', editItem.estado || 'pendiente', editItem.fecha_creacion, editItem.etiqueta || '', editItem.fecha_limite_original || editItem.fecha_limite || '', editItem.descripcion || '', editItem.tarea_grupo_id || ''])}
+          <button onClick={() => guardarEdit([editItem.id, editItem.categoria_id, editItem.proyecto_soporte_id || '', editItem.subcarpeta_id || '', editItem.nombre, editItem.asignados || '', editItem.dia_semana || 'por_asignar', '', editItem.dia_recomendado || '', editItem.fecha_limite || '', editItem.estado || 'pendiente', editItem.fecha_creacion, editItem.etiqueta || '', editItem.fecha_limite_original || editItem.fecha_limite || '', editItem.descripcion || '', editItem.tarea_grupo_id || ''], fechaPersonal)}
             style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#1d4ed8', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
         </div>
       </div>
@@ -700,4 +716,4 @@ function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConf
       })}
     </div>
   )
-}
+} 

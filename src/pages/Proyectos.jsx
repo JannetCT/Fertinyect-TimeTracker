@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
-import { useDatos } from '../contexts/DatosContext'
 import Checklist from '../components/Checklist'
 
 const FASES_DEFAULT = [
@@ -216,7 +215,6 @@ function SelectorPersonas({ usuarios, seleccionados, onChange, color = '#00953B'
 
 export default function Proyectos() {
   const { accessToken, usuario } = useAuth()
-  const { obtenerHoja } = useDatos()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [proyectos, setProyectos] = useState([])
@@ -224,6 +222,7 @@ export default function Proyectos() {
   const [acciones, setAcciones] = useState([])
   const [ensayos, setEnsayos] = useState([])
   const [tareas, setTareas] = useState([])
+  const [tareasPlanner, setTareasPlanner] = useState([])
   const [usuarios, setUsuarios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [vistaProyecto, setVistaProyecto] = useState(null)
@@ -274,12 +273,12 @@ export default function Proyectos() {
   async function cargarDatos() {
     try {
       const [p, e, a, en, t, u] = await Promise.all([
-        obtenerHoja('proyectos'),
-        obtenerHoja('estados_proyecto'),
-        obtenerHoja('acciones'),
-        obtenerHoja('ensayos'),
-        obtenerHoja('tareas'),
-        obtenerHoja('usuarios')
+        leerHoja('proyectos', accessToken),
+        leerHoja('estados_proyecto', accessToken),
+        leerHoja('acciones', accessToken),
+        leerHoja('ensayos', accessToken),
+        leerHoja('tareas', accessToken),
+        leerHoja('usuarios', accessToken)
       ])
       setProyectos(p)
       setEstados(e)
@@ -404,14 +403,18 @@ export default function Proyectos() {
     if (!editTarea) return
     const asignadosStr = Array.isArray(editTarea.asignados) ? editTarea.asignados.join(',') : editTarea.asignados
     const diaRec = [editTarea.dia_recomendado, editTarea.fecha_recomendada].filter(Boolean).join(' ')
-    const fechasExactas = editTarea.fecha_exacta || ''
+    // Guardamos datos compartidos en tareas (sin fecha_exacta — esa es personal)
     await actualizarFila('tareas', editTarea.id, [
       editTarea.id, editTarea.ensayo_id, editTarea.accion_id, editTarea.proyecto_id,
-      editTarea.nombre, asignadosStr, editTarea.dia_semana, fechasExactas,
+      editTarea.nombre, asignadosStr, editTarea.dia_semana, '',
       diaRec, editTarea.fecha_limite, editTarea.estado, editTarea.fecha_creacion,
       editTarea.etiqueta || '', editTarea.fecha_limite_original || editTarea.fecha_limite,
       editTarea.descripcion || '', editTarea.tarea_grupo_id || ''
     ], accessToken)
+    // Guardamos fecha personal en tareas_planner
+    if (editTarea._fechaPersonal !== undefined) {
+      await guardarFechaPersonalEnPlanner(editTarea.id, 'proyecto', editTarea._fechaPersonal, usuario, accessToken)
+    }
     setEditTarea(null)
     cargarDatos()
   }
@@ -484,7 +487,8 @@ export default function Proyectos() {
               seleccionados={Array.isArray(editTarea.asignados) ? editTarea.asignados : (editTarea.asignados ? editTarea.asignados.split(',').filter(Boolean) : [])}
               onChange={ids => setEditTarea({ ...editTarea, asignados: ids })}
             />
-            <InputFechasMultiples label="Días asignados en planner:" value={editTarea.fecha_exacta || ''} onChange={val => setEditTarea({ ...editTarea, fecha_exacta: val })} />
+            {/* Fecha personal — usa tareas_planner, no la tarea compartida */}
+            <InputFechasMultiples label="Mi día en el planner (solo para mí):" value={editTarea._fechaPersonal !== undefined ? editTarea._fechaPersonal : (tareasPlanner.find(tp => tp.tarea_padre_id === editTarea.id && String(tp.usuario_id) === String(usuario?.id))?.fecha_exacta || '')} onChange={val => setEditTarea({ ...editTarea, _fechaPersonal: val })} />
             <div>
               <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
               <div style={{ display: 'flex', gap: '8px' }}>

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
-import { useDatos } from '../contexts/DatosContext'
 
 const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
 const DIAS_LABEL = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes' }
@@ -444,7 +443,6 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, cronAct
 
 function Planner() {
   const { usuario, accessToken } = useAuth()
-  const { obtenerHoja } = useDatos()
   const [semanaBase, setSemanaBase] = useState(() => getLunesDeSemana(new Date()))
   const [vista, setVista] = useState('semana')
   const [mesBase, setMesBase] = useState(() => new Date())
@@ -492,12 +490,12 @@ function Planner() {
   async function cargarDatos() {
     try {
       const [t, ts, td, tp, ev, p, ep, ac, en, cs, ps, ss, cl, us] = await Promise.all([
-        obtenerHoja('tareas'), obtenerHoja('tareas_soporte'), obtenerHoja('tareas_direccion'),
-        obtenerHoja('tareas_planner'), obtenerHoja('eventos'), obtenerHoja('proyectos'),
-        obtenerHoja('estados_proyecto'), obtenerHoja('acciones'), obtenerHoja('ensayos'),
-        obtenerHoja('categorias_soporte'), obtenerHoja('proyectos_soporte'), obtenerHoja('subcarpetas_soporte'),
-        obtenerHoja('checklist_items'),
-        obtenerHoja('usuarios'),
+        leerHoja('tareas', accessToken), leerHoja('tareas_soporte', accessToken), leerHoja('tareas_direccion', accessToken),
+        leerHoja('tareas_planner', accessToken), leerHoja('eventos', accessToken), leerHoja('proyectos', accessToken),
+        leerHoja('estados_proyecto', accessToken), leerHoja('acciones', accessToken), leerHoja('ensayos', accessToken),
+        leerHoja('categorias_soporte', accessToken), leerHoja('proyectos_soporte', accessToken), leerHoja('subcarpetas_soporte', accessToken),
+        leerHoja('checklist_items', accessToken),
+leerHoja('usuarios', accessToken),
       ])
       const misId = String(usuario.id)
       setTareas(t.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
@@ -507,7 +505,7 @@ function Planner() {
       setEventos(ev.filter(e => e.usuario_id && e.usuario_id.split(',').map(s => s.trim()).includes(misId)))
       setProyectos(p); setEstadosProyecto(ep); setAcciones(ac); setEnsayos(en)
       setCategoriasSoporte(cs); setProyectosSoporte(ps); setSubcarpetasSoporte(ss)
-      setCategoriasDireccion(await obtenerHoja('categorias_direccion'))
+      setCategoriasDireccion(await leerHoja('categorias_direccion', accessToken))
       setTodasTareasProyecto(t); setTodasTareasSoporte(ts)
       const counts = {}
       cl.forEach(item => { const key = `${item.tarea_id}_${item.tipo_tarea}`; if (!counts[key]) counts[key] = { total: 0, completados: 0 }; counts[key].total++; if (item.completado === 'true') counts[key].completados++ })
@@ -541,20 +539,9 @@ function Planner() {
     if (!cronActivo) return
     if (cronActivo.inicio) await _guardarTramo(cronActivo)
     if (completar) {
-      const allTareas = [...tareas, ...tareasSoporte, ...tareasDireccion, ...tareasPlanner]
+      const allTareas = [...tareas, ...tareasSoporte, ...tareasPlanner]
       const tarea = allTareas.find(t => t.id === cronActivo.tareaId)
-      if (tarea) {
-        if (cronActivo.tipo === 'planner') {
-          await actualizarEstado(tarea, 'planner', 'completada')
-        } else {
-          await escribirFila('tareas_planner', [
-            Date.now().toString(), String(usuario.id), tarea.id, cronActivo.tipo,
-            tarea.nombre, tarea.dia_semana || 'por_asignar', tarea.fecha_exacta || '',
-            tarea.fecha_limite || '', 'completada', new Date().toISOString(),
-            tarea.etiqueta || '', '', '', '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', String(usuario.id)
-          ], accessToken)
-        }
-      }
+      if (tarea) await actualizarEstado(tarea, cronActivo.tipo, 'completada')
     }
     setCronActivo(null); saveCron(null); setTiempoActual(0); cargarDatos()
   }
@@ -574,7 +561,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   async function actualizarEstado(tarea, tipo, estado) {
     if (tipo === 'proyecto') await actualizarFila('tareas', tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
     else if (tipo === 'soporte') await actualizarFila('tareas_soporte', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_soporte_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
-    else if (tipo === 'direccion') await actualizarFila('tareas_direccion', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_direccion_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || '', tarea.tiempo_estimado || '', tarea.hora_inicio || ''], accessToken)
+    else if (tipo === 'direccion') await actualizarFila('tareas_direccion', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_direccion_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
     else await actualizarFila('tareas_planner', tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana, tarea.fecha_exacta || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
   }
   async function eliminarTarea(tarea) {
@@ -598,9 +585,18 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       if (tareaOrigen && hoja === 'tareas') await actualizarFila('tareas', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.ensayo_id, tareaOrigen.accion_id, tareaOrigen.proyecto_id, tareaOrigen.nombre, Array.isArray(t.asignados) ? t.asignados.join(',') : (t.asignados || tareaOrigen.asignados), tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
       else if (tareaOrigen && hoja === 'tareas_soporte') await actualizarFila('tareas_soporte', tareaOrigen.id, [tareaOrigen.id, tareaOrigen.categoria_id, tareaOrigen.proyecto_soporte_id || '', tareaOrigen.subcarpeta_id || '', tareaOrigen.nombre, Array.isArray(t.asignados) ? t.asignados.join(',') : (t.asignados || tareaOrigen.asignados), tareaOrigen.dia_semana, fechasExactas, tareaOrigen.dia_recomendado || '', tareaOrigen.fecha_limite || '', tareaOrigen.estado, tareaOrigen.fecha_creacion, tareaOrigen.etiqueta || '', tareaOrigen.fecha_limite_original || tareaOrigen.fecha_limite || '', t.descripcion || '', tareaOrigen.tarea_grupo_id || '', tiempoEstimado], accessToken)
     }
-    if (t._tipo === 'proyecto') await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, Array.isArray(t.asignados) ? t.asignados.join(',') : (t.asignados || ''), diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
-    else if (t._tipo === 'soporte') await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, Array.isArray(t.asignados) ? t.asignados.join(',') : (t.asignados || ''), diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
-    else if (t._tipo === 'direccion') await actualizarFila('tareas_direccion', t.id, [t.id, t.categoria_id, t.proyecto_direccion_id || '', t.subcarpeta_id || '', t.nombre, Array.isArray(t.asignados) ? t.asignados.join(',') : (t.asignados || ''), diaCalculado, fechasExactas, t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
+    if (t._tipo === 'proyecto') {
+      await actualizarFila('tareas', t.id, [t.id, t.ensayo_id, t.accion_id, t.proyecto_id, t.nombre, Array.isArray(t.asignados) ? t.asignados.join(',') : (t.asignados || ''), diaCalculado, '', t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
+      await guardarFechaPersonalEnPlanner(t.id, 'proyecto', fechasExactas, usuario, accessToken)
+    }
+    else if (t._tipo === 'soporte') {
+      await actualizarFila('tareas_soporte', t.id, [t.id, t.categoria_id, t.proyecto_soporte_id || '', t.subcarpeta_id || '', t.nombre, Array.isArray(t.asignados) ? t.asignados.join(',') : (t.asignados || ''), diaCalculado, '', t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
+      await guardarFechaPersonalEnPlanner(t.id, 'soporte', fechasExactas, usuario, accessToken)
+    }
+    else if (t._tipo === 'direccion') {
+      await actualizarFila('tareas_direccion', t.id, [t.id, t.categoria_id, t.proyecto_direccion_id || '', t.subcarpeta_id || '', t.nombre, Array.isArray(t.asignados) ? t.asignados.join(',') : (t.asignados || ''), diaCalculado, '', t.dia_recomendado || '', t.fecha_limite || '', t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || ''], accessToken)
+      await guardarFechaPersonalEnPlanner(t.id, 'direccion', fechasExactas, usuario, accessToken)
+    }
     else {
       const asignadosNuevos = Array.isArray(t.asignados) ? t.asignados : (t.asignados ? t.asignados.split(',').filter(Boolean) : [t.usuario_id])
       await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(',')], accessToken)
@@ -649,15 +645,10 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   }
 
   function todasLasTareas() {
-    const completadasEnPlanner = new Set(
-      tareasPlanner
-        .filter(tp => tp.estado === 'completada' && tp.tarea_padre_id)
-        .map(tp => tp.tarea_padre_id)
-    )
     return [
-      ...tareas.map(t => ({ ...t, _tipo: 'proyecto' })).filter(t => !completadasEnPlanner.has(t.id)),
-      ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte' })).filter(t => !completadasEnPlanner.has(t.id)),
-      ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion' })).filter(t => !completadasEnPlanner.has(t.id)),
+      ...tareas.map(t => ({ ...t, _tipo: 'proyecto' })),
+      ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte' })),
+      ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion' })),
       ...tareasPlanner.map(t => ({ ...t, _tipo: 'planner' }))
     ]
   }
@@ -779,7 +770,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     return (
       <TarjetaTarea key={tarea.id + tarea._tipo} tarea={tarea} contexto={getContexto(tarea)} checklistCount={clCount}
         onVerDetalle={() => setVistaTarea(tarea)}
-        onEditar={() => { const tipoLigar = tarea.tarea_padre_tipo ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''; const te = parseTiempoEstimado(tarea); const asignadosArr = tarea.asignados ? (Array.isArray(tarea.asignados) ? tarea.asignados : tarea.asignados.split(',').filter(Boolean)) : [tarea.usuario_id || '']; setModalEditarTarea({ ...tarea, descripcion: getDescripcionTarea(tarea), fechas_exactas: tarea.fecha_exacta || '', _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos, asignados: asignadosArr }) }}
+        onEditar={() => { const tipoLigar = tarea.tarea_padre_tipo ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''; const te = parseTiempoEstimado(tarea); const asignadosArr = tarea.asignados ? (Array.isArray(tarea.asignados) ? tarea.asignados : tarea.asignados.split(',').filter(Boolean)) : [tarea.usuario_id || '']; const fechaPersonal = ['proyecto','soporte','direccion'].includes(tarea._tipo) ? (tareasPlanner.find(tp => tp.tarea_padre_id === tarea.id && String(tp.usuario_id) === String(usuario.id))?.fecha_exacta || '') : (tarea.fecha_exacta || ''); setModalEditarTarea({ ...tarea, descripcion: getDescripcionTarea(tarea), fechas_exactas: fechaPersonal, _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos, asignados: asignadosArr }) }}
         onIniciar={() => iniciarCronometro(tarea)} onPausar={pausarYGuardar} onReanudar={reanudarCronometro} onCompletar={() => detenerCronometro(true)}
         activa={activa} pausada={pausada} tiempoActual={activa ? tiempoActual : 0}
       />
