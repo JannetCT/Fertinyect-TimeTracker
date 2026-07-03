@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
+import { guardarFechaPersonalEnPlanner } from '../services/plannerHelpers'
 import Checklist from '../components/Checklist'
 
 const FASES_DEFAULT = [
