@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
+import { useDatos } from '../contexts/DatosContext'
+import { guardarFechaPersonalEnPlanner } from '../services/plannerHelpers'
 
 const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
 const DIAS_LABEL = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes' }
@@ -443,6 +445,7 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, cronAct
 
 function Planner() {
   const { usuario, accessToken } = useAuth()
+  const { obtenerHoja } = useDatos()
   const [semanaBase, setSemanaBase] = useState(() => getLunesDeSemana(new Date()))
   const [vista, setVista] = useState('semana')
   const [mesBase, setMesBase] = useState(() => new Date())
@@ -490,12 +493,12 @@ function Planner() {
   async function cargarDatos() {
     try {
       const [t, ts, td, tp, ev, p, ep, ac, en, cs, ps, ss, cl, us] = await Promise.all([
-        leerHoja('tareas', accessToken), leerHoja('tareas_soporte', accessToken), leerHoja('tareas_direccion', accessToken),
-        leerHoja('tareas_planner', accessToken), leerHoja('eventos', accessToken), leerHoja('proyectos', accessToken),
-        leerHoja('estados_proyecto', accessToken), leerHoja('acciones', accessToken), leerHoja('ensayos', accessToken),
-        leerHoja('categorias_soporte', accessToken), leerHoja('proyectos_soporte', accessToken), leerHoja('subcarpetas_soporte', accessToken),
-        leerHoja('checklist_items', accessToken),
-leerHoja('usuarios', accessToken),
+        obtenerHoja('tareas'), obtenerHoja('tareas_soporte'), obtenerHoja('tareas_direccion'),
+        obtenerHoja('tareas_planner'), obtenerHoja('eventos'), obtenerHoja('proyectos'),
+        obtenerHoja('estados_proyecto'), obtenerHoja('acciones'), obtenerHoja('ensayos'),
+        obtenerHoja('categorias_soporte'), obtenerHoja('proyectos_soporte'), obtenerHoja('subcarpetas_soporte'),
+        obtenerHoja('checklist_items'),
+        obtenerHoja('usuarios'),
       ])
       const misId = String(usuario.id)
       setTareas(t.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
@@ -505,7 +508,7 @@ leerHoja('usuarios', accessToken),
       setEventos(ev.filter(e => e.usuario_id && e.usuario_id.split(',').map(s => s.trim()).includes(misId)))
       setProyectos(p); setEstadosProyecto(ep); setAcciones(ac); setEnsayos(en)
       setCategoriasSoporte(cs); setProyectosSoporte(ps); setSubcarpetasSoporte(ss)
-      setCategoriasDireccion(await leerHoja('categorias_direccion', accessToken))
+      setCategoriasDireccion(await obtenerHoja('categorias_direccion'))
       setTodasTareasProyecto(t); setTodasTareasSoporte(ts)
       const counts = {}
       cl.forEach(item => { const key = `${item.tarea_id}_${item.tipo_tarea}`; if (!counts[key]) counts[key] = { total: 0, completados: 0 }; counts[key].total++; if (item.completado === 'true') counts[key].completados++ })
