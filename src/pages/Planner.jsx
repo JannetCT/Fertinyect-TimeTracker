@@ -674,7 +674,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte', fecha_exacta: fechaPersonalDe(t.id) })).filter(t => !completadasEnPlanner.has(t.id)),
       ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion', fecha_exacta: fechaPersonalDe(t.id) })).filter(t => !completadasEnPlanner.has(t.id)),
       ...tareasPlanner
-        .filter(t => !['proyecto', 'soporte', 'direccion'].includes(t.tarea_padre_tipo))
+        .filter(t => !['proyecto', 'soporte', 'direccion'].includes(t.tarea_padre_tipo) || t.estado === 'completada')
         .map(t => ({ ...t, _tipo: 'planner' }))
     ]
   }
