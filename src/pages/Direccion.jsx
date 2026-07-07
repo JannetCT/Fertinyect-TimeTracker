@@ -269,6 +269,20 @@ export default function Direccion() {
     cargarDatos()
   }
 
+  async function crearTareaConFechaPersonal(hoja, fila, asignados, nombre, fechasExactas, tipo) {
+    await escribirFila(hoja, fila, accessToken)
+    if (fechasExactas && asignados.length > 0) {
+      const tareaId = fila[0]
+      for (const uid of asignados) {
+        await guardarFechaPersonalEnPlanner(tareaId, tipo, fechasExactas, { id: uid }, accessToken, nombre)
+      }
+    }
+    setModalCategoria(false); setModalProyecto(null); setModalSubcarpeta(null); setModalTarea(null)
+    setForm({ nombre: '', descripcion: '' })
+    setFormTarea({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
+    cargarDatos()
+  }
+
   async function ejecutarEliminar() {
     if (!confirmEliminar) return
     await marcarEliminado(confirmEliminar.hoja, confirmEliminar.item.id, accessToken)
@@ -360,7 +374,7 @@ export default function Direccion() {
             const id = Date.now().toString()
             const grupoId = Date.now().toString() + '_g'
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
-            crear('tareas_direccion', [id, modalTarea.categoria_id || '', modalTarea.proyecto_direccion_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', grupoId])
+            crearTareaConFechaPersonal('tareas_direccion', [id, modalTarea.categoria_id || '', modalTarea.proyecto_direccion_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', grupoId], formTarea.asignados, formTarea.nombre, formTarea.fechas_exactas || '', 'direccion')
           }} />}
         {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken} guardarEdit={guardarEditTareaConFecha} tareasPlanner={tareasPlanner} />}
         {editItem && editItem._tipo === 'subcarpeta' && <Modal titulo="Editar subcarpeta" onClose={() => setEditItem(null)} onSave={() => guardarEdit('subcarpetas_direccion', [editItem.id, editItem.proyecto_direccion_id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
@@ -426,7 +440,7 @@ export default function Direccion() {
             const id = Date.now().toString()
             const grupoId = Date.now().toString() + '_g'
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
-            crear('tareas_direccion', [id, modalTarea.categoria_id || '', modalTarea.proyecto_direccion_id || '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', grupoId])
+            crearTareaConFechaPersonal('tareas_direccion', [id, modalTarea.categoria_id || '', modalTarea.proyecto_direccion_id || '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', grupoId], formTarea.asignados, formTarea.nombre, formTarea.fechas_exactas || '', 'direccion')
           }} />}
         {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken} guardarEdit={guardarEditTareaConFecha} tareasPlanner={tareasPlanner} />}
         {editItem && editItem._tipo === 'proyecto' && <Modal titulo="Editar proyecto" onClose={() => setEditItem(null)} onSave={() => guardarEdit('proyectos_direccion', [editItem.id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
@@ -485,7 +499,7 @@ export default function Direccion() {
             const id = Date.now().toString()
             const grupoId = Date.now().toString() + '_g'
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
-            crear('tareas_direccion', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', formTarea.fechas_exactas || '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', grupoId])
+            crearTareaConFechaPersonal('tareas_direccion', [id, modalTarea.categoria_id || '', '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', grupoId], formTarea.asignados, formTarea.nombre, formTarea.fechas_exactas || '', 'direccion')
           }} />}
         {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken} guardarEdit={guardarEditTareaConFecha} tareasPlanner={tareasPlanner} />}
         {editItem && editItem._tipo === 'categoria' && <Modal titulo="Editar categoría" onClose={() => setEditItem(null)} onSave={() => guardarEdit('categorias_direccion', [editItem.id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}

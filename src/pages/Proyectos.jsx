@@ -386,14 +386,17 @@ export default function Proyectos() {
     const asignadosStr = nuevaTarea.asignados.join(',')
     const diaRec = [nuevaTarea.dia_recomendado, nuevaTarea.fecha_recomendada].filter(Boolean).join(' ')
     const fechasExactas = nuevaTarea.fechas_exactas || ''
-    const primeraFecha = fechasExactas.split(',')[0]?.trim() || ''
-    const diaCalculado = primeraFecha ? (new Date(primeraFecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long' }).toLowerCase()) : 'por_asignar'
     await escribirFila('tareas', [
       id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
-      nuevaTarea.nombre, asignadosStr, diaCalculado, fechasExactas,
+      nuevaTarea.nombre, asignadosStr, 'por_asignar', '',
       diaRec, nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(),
       '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g'
     ], accessToken)
+    if (fechasExactas && nuevaTarea.asignados.length > 0) {
+      for (const uid of nuevaTarea.asignados) {
+        await guardarFechaPersonalEnPlanner(id, 'proyecto', fechasExactas, { id: uid }, accessToken, nuevaTarea.nombre)
+      }
+    }
     setModalTarea(null)
     setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' })
     cargarDatos()
