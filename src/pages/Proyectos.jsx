@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
 import Checklist from '../components/Checklist'
+import { useDatos } from '../contexts/DatosContext'
+import { guardarFechaPersonalEnPlanner } from '../services/plannerHelpers'
 
 const FASES_DEFAULT = [
   { nombre: 'Estudio viabilidad', orden: 1 },
@@ -215,6 +217,7 @@ function SelectorPersonas({ usuarios, seleccionados, onChange, color = '#00953B'
 
 export default function Proyectos() {
   const { accessToken, usuario } = useAuth()
+  const { refrescar } = useDatos()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [proyectos, setProyectos] = useState([])
@@ -386,9 +389,11 @@ export default function Proyectos() {
     const asignadosStr = nuevaTarea.asignados.join(',')
     const diaRec = [nuevaTarea.dia_recomendado, nuevaTarea.fecha_recomendada].filter(Boolean).join(' ')
     const fechasExactas = nuevaTarea.fechas_exactas || ''
+    const primeraFecha2 = fechasExactas.split(',')[0]?.trim() || ''
+    const diaCalculado2 = primeraFecha2 ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(primeraFecha2 + 'T12:00:00').getDay()]) : 'por_asignar'
     await escribirFila('tareas', [
       id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
-      nuevaTarea.nombre, asignadosStr, 'por_asignar', '',
+      nuevaTarea.nombre, asignadosStr, diaCalculado2, fechasExactas,
       diaRec, nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(),
       '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g'
     ], accessToken)
