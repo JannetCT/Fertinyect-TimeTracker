@@ -192,7 +192,7 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
 
 export default function Direccion() {
   const { usuario, accessToken } = useAuth()
-  const { obtenerHoja } = useDatos()
+  const { obtenerHoja, refrescar } = useDatos()
 
   const [categorias, setCategorias] = useState([])
   const [proyectosDireccion, setProyectosDireccion] = useState([])

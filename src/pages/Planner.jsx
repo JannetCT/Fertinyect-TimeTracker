@@ -445,7 +445,7 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, cronAct
 
 function Planner() {
   const { usuario, accessToken } = useAuth()
-  const { obtenerHoja } = useDatos()
+  const { obtenerHoja, refrescar } = useDatos()
   const [semanaBase, setSemanaBase] = useState(() => getLunesDeSemana(new Date()))
   const [vista, setVista] = useState('semana')
   const [mesBase, setMesBase] = useState(() => new Date())
@@ -557,7 +557,7 @@ function Planner() {
         }
       }
     }
-    setCronActivo(null); saveCron(null); setTiempoActual(0); cargarDatos()
+    setCronActivo(null); saveCron(null); setTiempoActual(0); await refrescar('tareas_planner'); cargarDatos()
   }
   async function completarEvento(evento) {
     if (!evento.hora_inicio || !evento.hora_fin) return
@@ -622,7 +622,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         }
       }
     }
-    setModalEditarTarea(null); cargarDatos()
+    setModalEditarTarea(null); await refrescar('tareas_planner'); cargarDatos()
   }
   async function guardarEditarEvento() {
     if (!modalEditarEvento) return
@@ -673,9 +673,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       ...tareas.map(t => ({ ...t, _tipo: 'proyecto', fecha_exacta: fechaPersonalDe(t.id) })).filter(t => !completadasEnPlanner.has(t.id)),
       ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte', fecha_exacta: fechaPersonalDe(t.id) })).filter(t => !completadasEnPlanner.has(t.id)),
       ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion', fecha_exacta: fechaPersonalDe(t.id) })).filter(t => !completadasEnPlanner.has(t.id)),
-      ...tareasPlanner
-        .filter(t => !['proyecto', 'soporte', 'direccion'].includes(t.tarea_padre_tipo) || t.estado === 'completada')
-        .map(t => ({ ...t, _tipo: 'planner' }))
+      ...tareasPlanner.map(t => ({ ...t, _tipo: 'planner' }))
     ]
   }
   function getDiasDeSemana(lunes) {

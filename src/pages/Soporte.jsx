@@ -194,7 +194,7 @@ function SeccionActualizaciones({ tareaId, tipoTarea, usuario, accessToken }) {
 
 export default function Soporte() {
   const { accessToken, usuario } = useAuth()
-  const { obtenerHoja } = useDatos()
+  const { obtenerHoja, refrescar } = useDatos()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [categorias, setCategorias] = useState([])
@@ -325,7 +325,7 @@ export default function Soporte() {
     setModalCategoria(false); setModalProyecto(null); setModalSubcarpeta(null); setModalTarea(null)
     setForm({ nombre: '', descripcion: '' })
     setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
-    cargarDatos()
+    await refrescar('tareas_planner'); cargarDatos()
   }
 
   async function ejecutarEliminar() {

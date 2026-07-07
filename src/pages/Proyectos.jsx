@@ -399,7 +399,7 @@ export default function Proyectos() {
     }
     setModalTarea(null)
     setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' })
-    cargarDatos()
+    await refrescar('tareas_planner'); cargarDatos()
   }
 
   async function guardarEditTarea() {
@@ -419,7 +419,7 @@ export default function Proyectos() {
       await guardarFechaPersonalEnPlanner(editTarea.id, 'proyecto', editTarea._fechaPersonal, usuario, accessToken, editTarea.nombre)
     }
     setEditTarea(null)
-    cargarDatos()
+    await refrescar('tareas_planner'); cargarDatos()
   }
 
   async function eliminarYReordenarEstados(estadoId, proyectoId) {
