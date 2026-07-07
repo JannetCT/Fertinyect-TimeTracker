@@ -215,9 +215,52 @@ function SelectorPersonas({ usuarios, seleccionados, onChange, color = '#00953B'
   )
 }
 
+function ModalCompletarTarea({ tarea, onConfirmar, onCancelar }) {
+  const now = new Date()
+  const horaActual = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`
+  const [horaInicio, setHoraInicio] = useState(tarea.hora_inicio || '')
+  const [horaFin, setHoraFin] = useState(horaActual)
+  function calcularDuracion() {
+    if (!horaInicio || !horaFin) return 0
+    const [hI, mI] = horaInicio.split(':').map(Number)
+    const [hF, mF] = horaFin.split(':').map(Number)
+    return Math.max(0, ((hF * 60 + mF) - (hI * 60 + mI)) * 60)
+  }
+  const duracion = calcularDuracion()
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+      <div style={{ background: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px' }}>
+        <h3 style={{ marginBottom: '8px', fontSize: '16px' }}>✅ Completar tarea</h3>
+        <p style={{ fontSize: '13px', color: '#555', marginBottom: '16px', fontWeight: '600' }}>{tarea.nombre}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio:</label>
+            <input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin:</label>
+            <input type="time" value={horaFin} onChange={e => setHoraFin(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+          </div>
+          {duracion > 0 && (
+            <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px', fontSize: '13px', color: '#166534', textAlign: 'center', fontWeight: '600' }}>
+              ⏱ {Math.floor(duracion/3600) > 0 ? `${Math.floor(duracion/3600)}h ` : ''}{Math.floor((duracion%3600)/60)}min registradas
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+          <button onClick={onCancelar} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={() => onConfirmar(horaInicio, horaFin, duracion)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Completar</button>
+        </div>
+        <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', marginTop: '8px' }}>Puedes dejar las horas vacías para completar sin registrar tiempo</p>
+      </div>
+    </div>
+  )
+}
+
 export default function Proyectos() {
   const { accessToken, usuario } = useAuth()
   const { refrescar } = useDatos()
+  const [modalCompletar, setModalCompletar] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [proyectos, setProyectos] = useState([])
@@ -441,6 +484,18 @@ export default function Proyectos() {
     }
   }
 
+  async function completarTareaConHoras(tarea, horaInicio, horaFin, duracionSegundos) {
+    if (duracionSegundos > 0) {
+      const fechaStr = new Date().toISOString().split('T')[0]
+      const inicioISO = horaInicio ? new Date(`${fechaStr}T${horaInicio}:00`).toISOString() : new Date().toISOString()
+      const finISO = horaFin ? new Date(`${fechaStr}T${horaFin}:00`).toISOString() : new Date().toISOString()
+      await escribirFila('registros', [Date.now().toString(), tarea.id, usuario.id, inicioISO, finISO, duracionSegundos, new Date().toDateString(), 'proyecto', tarea.nombre], accessToken)
+    }
+    await actualizarFila('tareas', tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', 'completada', tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || ''], accessToken)
+    setModalCompletar(null)
+    cargarDatos()
+  }
+
   async function ejecutarEliminar() {
     if (!confirmEliminar) return
     const { tipo, item } = confirmEliminar
@@ -607,6 +662,7 @@ export default function Proyectos() {
           </div>
         </Modal>
       )}
+      {modalCompletar && <ModalCompletarTarea tarea={modalCompletar} onCancelar={() => setModalCompletar(null)} onConfirmar={(hi, hf, dur) => completarTareaConHoras(modalCompletar, hi, hf, dur)} />}
       {confirmEliminar && (
         <ConfirmEliminar
           nombre={confirmEliminar.item.nombre}
@@ -689,6 +745,7 @@ export default function Proyectos() {
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
                     <BtnAccion tipo="editar" onClick={() => setEditTarea({ ...tarea, asignados: tarea.asignados ? tarea.asignados.split(',').filter(Boolean) : [] })}>✏️</BtnAccion>
+                    {tarea.estado !== 'completada' && <button onClick={() => setModalCompletar(tarea)} style={{ background: '#f0fdf4', color: '#00953B', border: '1px solid #00953B', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>✅</button>}
                     <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: tarea })}>🗑</BtnAccion>
                     <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : tarea.estado === 'en_curso' ? '#dbeafe' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : tarea.estado === 'en_curso' ? '#1d4ed8' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>{tarea.estado || 'pendiente'}</span>
                   </div>
