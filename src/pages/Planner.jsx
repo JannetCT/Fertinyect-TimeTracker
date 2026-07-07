@@ -670,10 +670,12 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       return tp?.fecha_exacta || ''
     }
     return [
-      ...tareas.map(t => ({ ...t, _tipo: 'proyecto', fecha_exacta: fechaPersonalDe(t.id) })).filter(t => !completadasEnPlanner.has(t.id)),
-      ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte', fecha_exacta: fechaPersonalDe(t.id) })).filter(t => !completadasEnPlanner.has(t.id)),
-      ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion', fecha_exacta: fechaPersonalDe(t.id) })).filter(t => !completadasEnPlanner.has(t.id)),
-      ...tareasPlanner.map(t => ({ ...t, _tipo: 'planner' }))
+      ...tareas.map(t => ({ ...t, _tipo: 'proyecto', fecha_exacta: fechaPersonalDe(t.id), estado: completadasEnPlanner.has(t.id) ? 'completada' : t.estado })),
+      ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte', fecha_exacta: fechaPersonalDe(t.id), estado: completadasEnPlanner.has(t.id) ? 'completada' : t.estado })),
+      ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion', fecha_exacta: fechaPersonalDe(t.id), estado: completadasEnPlanner.has(t.id) ? 'completada' : t.estado })),
+      ...tareasPlanner
+        .filter(t => !['proyecto', 'soporte', 'direccion'].includes(t.tarea_padre_tipo))
+        .map(t => ({ ...t, _tipo: 'planner' }))
     ]
   }
   function getDiasDeSemana(lunes) {
