@@ -643,6 +643,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     }
     setModalNuevaTarea(false)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
+    await refrescar('tareas_planner')
     cargarDatos()
   }
   async function crearEvento() {
@@ -693,7 +694,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       return !t.fecha_exacta || t.fecha_exacta === ''
     })
   }
-  function eventosDeDia(fechaStr) { return eventos.filter(e => e.fecha_exacta === fechaStr && (mostrarCompletadas || e.estado !== 'completado')) }
+  function eventosDeDia(fechaStr) { return eventos.filter(e => e.fecha_exacta === fechaStr) }
   function minutosEstimadosDia(fechaStr) { return tareasDeDia(fechaStr).filter(t => t.estado !== 'completada').reduce((sum, t) => sum + (parseInt(t.tiempo_estimado) || 0), 0) }
   function getContexto(tarea) {
     if (tarea._tipo === 'proyecto') { const p = proyectos.find(p => p.id === tarea.proyecto_id); return p ? p.nombre : 'Proyecto' }
