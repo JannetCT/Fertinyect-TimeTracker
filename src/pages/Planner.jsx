@@ -402,7 +402,7 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
                 <div key={t.id} onClick={() => onVerDetalle(t)} style={{ background: col.bg, border: `2px solid ${col.border}`, borderRadius: '8px', padding: '4px 10px', cursor: 'pointer', maxWidth: '220px' }}>
                   <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: col.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.nombre}</p>
                   <div style={{ display: 'flex', gap: '4px', marginTop: '3px' }}>
-                    <button onClick={e => { e.stopPropagation(); onCompletarCron(t) }} style={{ background: col.border, color: 'white', border: 'none', borderRadius: '4px', padding: '1px 6px', cursor: 'pointer', fontSize: '10px' }}>✅</button>
+                    <button onClick={e => { e.stopPropagation(); onCompletarCron(t, fecha) }} style={{ background: col.border, color: 'white', border: 'none', borderRadius: '4px', padding: '1px 6px', cursor: 'pointer', fontSize: '10px' }}>✅</button>
                   </div>
                 </div>
               )
@@ -455,7 +455,7 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
                   <p onClick={() => onVerDetalle(tarea)} style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: col.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>{tarea.nombre}</p>
                   <div style={{ display: 'flex', gap: '2px', marginLeft: '4px', flexShrink: 0 }}>
                     <button onClick={e => { e.stopPropagation(); onEditarTarea(tarea) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', padding: '0 1px' }}>✏️</button>
-                    <button onClick={e => { e.stopPropagation(); onCompletarCron(tarea) }} style={{ background: col.border, color: 'white', border: 'none', borderRadius: '3px', padding: '1px 5px', cursor: 'pointer', fontSize: '10px' }}>✅</button>
+                    <button onClick={e => { e.stopPropagation(); onCompletarCron(tarea, fecha) }} style={{ background: col.border, color: 'white', border: 'none', borderRadius: '3px', padding: '1px 5px', cursor: 'pointer', fontSize: '10px' }}>✅</button>
                   </div>
                 </div>
                 {tarea._height > 38 && <p style={{ margin: '2px 0 0', fontSize: '10px', color: col.text, opacity: 0.8 }}>⏳ {formatMinutos(parseInt(tarea.tiempo_estimado))}</p>}
@@ -536,15 +536,25 @@ function Planner() {
 
   function getChecklistCount(tareaId, tipoTarea) { return checklistCounts[`${tareaId}_${tipoTarea}`] || { total: 0, completados: 0 } }
 
-  async function completarTareaConHoras(tarea, horaInicio, horaFin, duracionSegundos) {
+  async function completarTareaConHoras(tarea, horaInicio, horaFin, duracionSegundos, diaCompletado) {
+    const fechaStr = diaCompletado || tarea.fecha_exacta?.split(',')[0]?.trim() || getISODate(new Date())
     if (duracionSegundos > 0) {
-      const fechaStr = tarea.fecha_exacta?.split(',')[0]?.trim() || getISODate(new Date())
       const inicioISO = horaInicio ? new Date(`${fechaStr}T${horaInicio}:00`).toISOString() : new Date().toISOString()
       const finISO = horaFin ? new Date(`${fechaStr}T${horaFin}:00`).toISOString() : new Date().toISOString()
       await escribirFila('registros', [Date.now().toString(), tarea.id, usuario.id, inicioISO, finISO, duracionSegundos, new Date().toDateString(), tarea._tipo, tarea.nombre], accessToken)
     }
     if (tarea._tipo === 'planner') {
-      await actualizarEstado(tarea, 'planner', 'completada')
+      // Multi-día: quitar solo el día completado de fecha_exacta
+      const fechas = (tarea.fecha_exacta || '').split(',').map(f => f.trim()).filter(Boolean)
+      const fechasRestantes = fechas.filter(f => f !== fechaStr)
+      if (fechasRestantes.length > 0) {
+        // Quedan más días — solo quitar este día
+        const nuevaDiaSemana = getDiaSemana(fechasRestantes[0]) || 'por_asignar'
+        await actualizarFila('tareas_planner', tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, nuevaDiaSemana, tarea.fecha_limite || '', fechasRestantes.join(','), tarea.estado, tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', tarea.asignados || ''], accessToken)
+      } else {
+        // Era el único día — marcar como completada
+        await actualizarEstado(tarea, 'planner', 'completada')
+      }
     } else {
       await escribirFila('tareas_planner', [
         Date.now().toString(), String(usuario.id), tarea.id, tarea._tipo,
@@ -789,7 +799,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   const hoy = getISODate(new Date())
   const misId = String(usuario.id)
 
-  function renderTarjeta(tarea) {
+  function renderTarjeta(tarea, fechaDia) {
     const refId = tarea._tipo === 'planner' ? getRefId(tarea) : tarea.id
     const refTipo = tarea._tipo === 'planner' ? getRefTipo(tarea) : tarea._tipo
     const clCount = getChecklistCount(refId, refTipo)
@@ -797,7 +807,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       <TarjetaTarea key={tarea.id + tarea._tipo} tarea={tarea} contexto={getContexto(tarea)} checklistCount={clCount}
         onVerDetalle={() => setVistaTarea(tarea)}
         onEditar={() => { const tipoLigar = tarea.tarea_padre_tipo ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''; const te = parseTiempoEstimado(tarea); const asignadosArr = tarea.asignados ? (Array.isArray(tarea.asignados) ? tarea.asignados : tarea.asignados.split(',').filter(Boolean)) : [tarea.usuario_id || '']; const fechaPersonal = ['proyecto','soporte','direccion'].includes(tarea._tipo) ? (tareasPlanner.find(tp => tp.tarea_padre_id === tarea.id && String(tp.usuario_id) === String(usuario.id))?.fecha_exacta || '') : (tarea.fecha_exacta || ''); setModalEditarTarea({ ...tarea, descripcion: getDescripcionTarea(tarea), fechas_exactas: fechaPersonal, _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos, asignados: asignadosArr }) }}
-        onCompletar={() => setModalCompletar(tarea)}
+        onCompletar={(dia) => setModalCompletar({ tarea, dia: dia || fechaDia })}
       />
     )
   }
@@ -917,7 +927,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                         </div>
                       )
                     })}
-                    {tareasDelDia.map(tarea => renderTarjeta(tarea))}
+                    {tareasDelDia.map(tarea => renderTarjeta(tarea, fecha))}
                   </div>
                   {minEstimados > 0 && (
                     <div style={{ padding: '6px 8px', borderTop: '1px solid #f3f4f6', marginTop: '4px' }}>
@@ -1003,7 +1013,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                 fecha={diaBase} tareasConPosicion={conPosicion} tareasTodoDia={sinTiempo} eventosDia={evsDia}
                 onVerDetalle={t => setVistaTarea(t)}
                 onEditarTarea={tarea => { const tipoLigar = tarea.tarea_padre_tipo ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''; const te = parseTiempoEstimado(tarea); setModalEditarTarea({ ...tarea, descripcion: getDescripcionTarea(tarea), fechas_exactas: tarea.fecha_exacta || '', _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos }) }}
-                onCompletarCron={tarea => setModalCompletar(tarea)}
+                onCompletarCron={(tarea, dia) => setModalCompletar({ tarea, dia })}
                 onEditarEvento={ev => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId] })}
                 onCompletarEvento={completarEvento} getChecklistCount={getChecklistCount}
               />
@@ -1259,7 +1269,7 @@ function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar,
 
 function ModalCompletarWrapper({ modalCompletar, setModalCompletar, completarTareaConHoras }) {
   if (!modalCompletar) return null
-  return <ModalCompletarTarea tarea={modalCompletar} onCancelar={() => setModalCompletar(null)} onConfirmar={(hi, hf, dur) => completarTareaConHoras(modalCompletar, hi, hf, dur)} />
+  return <ModalCompletarTarea tarea={modalCompletar.tarea} onCancelar={() => setModalCompletar(null)} onConfirmar={(hi, hf, dur) => completarTareaConHoras(modalCompletar.tarea, hi, hf, dur, modalCompletar.dia)} />
 }
 
 export default Planner

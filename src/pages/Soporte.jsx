@@ -402,7 +402,7 @@ export default function Soporte() {
     return u ? (u.nombre ? u.nombre.split(' ')[0] : id) : id
   }
 
-  function proyectosDeCategoria(catId) { return proyectosSoporte.filter(p => p.categoria_id === catId) }
+  function proyectosDeCategoria(catId) { return proyectosSoporte.filter(p => p.categoria_id === catId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function subcarpetasDeProyecto(pId) { return subcarpetas.filter(s => s.proyecto_soporte_id === pId) }
   const tareasDirectasCategoria = (catId) => tareas.filter(t => t.categoria_id === catId && !t.proyecto_soporte_id)
   const tareasDirectasProyecto = (pId) => tareas.filter(t => t.proyecto_soporte_id === pId && !t.subcarpeta_id)

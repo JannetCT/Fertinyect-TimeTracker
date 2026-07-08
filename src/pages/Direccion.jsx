@@ -360,11 +360,11 @@ export default function Direccion() {
     return u ? (u.nombre ? u.nombre.split(' ')[0] : id) : id
   }
 
-  function proyectosDeCategoria(catId) { return proyectosDireccion.filter(p => p.categoria_id === catId) }
-  function subcarpetasDeProyecto(pId) { return subcarpetas.filter(s => s.proyecto_direccion_id === pId) }
-  function tareasDeSubcarpeta(sId) { return tareas.filter(t => t.subcarpeta_id === sId) }
-  function tareasDirectasProyecto(pId) { return tareas.filter(t => t.proyecto_direccion_id === pId && !t.subcarpeta_id) }
-  function tareasDirectasCategoria(catId) { return tareas.filter(t => t.categoria_id === catId && !t.proyecto_direccion_id) }
+  function proyectosDeCategoria(catId) { return proyectosDireccion.filter(p => p.categoria_id === catId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function subcarpetasDeProyecto(pId) { return subcarpetas.filter(s => s.proyecto_direccion_id === pId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function tareasDeSubcarpeta(sId) { return tareas.filter(t => t.subcarpeta_id === sId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function tareasDirectasProyecto(pId) { return tareas.filter(t => t.proyecto_direccion_id === pId && !t.subcarpeta_id).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function tareasDirectasCategoria(catId) { return tareas.filter(t => t.categoria_id === catId && !t.proyecto_direccion_id).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 

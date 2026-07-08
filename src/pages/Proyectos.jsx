@@ -524,16 +524,16 @@ export default function Proyectos() {
   }
 
   function estadosDeProyecto(pId) { return estados.filter(e => e.proyecto_id === pId).sort((a, b) => Number(a.orden) - Number(b.orden)) }
-  function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId) }
-  function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId) }
-  function tareasDeEnsayo(eId) { return tareas.filter(t => t.ensayo_id === eId) }
+  function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function tareasDeEnsayo(eId) { return tareas.filter(t => t.ensayo_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function progresoProyecto(pId) {
     const t = tareas.filter(t => t.proyecto_id === pId)
     if (!t.length) return 0
     return Math.round((t.filter(t => t.estado === 'completada').length / t.length) * 100)
   }
 
-  const proyectosActivos = proyectos.filter(p => p.fecha_creacion !== 'eliminado' && p.id)
+  const proyectosActivos = proyectos.filter(p => p.fecha_creacion !== 'eliminado' && p.id).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es'))
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
