@@ -605,7 +605,7 @@ export default function Soporte() {
       </div>
       <div className="proyectos-lista">
         {categorias.length === 0 && <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}><p style={{ fontSize: '48px' }}>🛠️</p><p>No hay categorías aún.</p></div>}
-        {categorias.map(cat => (
+        {[...categorias].sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')).map(cat => (
           <div key={cat.id} className="proyecto-card" style={{ borderLeftColor: '#3b82f6', cursor: 'pointer' }} onClick={() => setVistaCategoria(cat)}>
             <div className="proyecto-header">
               <div>
