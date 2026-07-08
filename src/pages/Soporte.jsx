@@ -472,8 +472,9 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crearTareaConFechaPersonal('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', ''], formTarea.asignados, formTarea.nombre, formTarea.fechas_exactas || '', 'soporte')
           }} />}
-        {editItem && editItem._tipo !== 'subcarpeta' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEditTareaConFecha} usuario={usuario} accessToken={accessToken} tareasPlanner={tareasPlanner} />}
+        {editItem && editItem._tipo === 'proyecto' && <Modal titulo="Editar proyecto" onClose={() => setEditItem(null)} onSave={() => guardarEdit('proyectos_soporte', [editItem.id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {editItem && editItem._tipo === 'subcarpeta' && <Modal titulo="Editar subcarpeta" onClose={() => setEditItem(null)} onSave={() => guardarEdit('subcarpetas_soporte', [editItem.id, editItem.proyecto_soporte_id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
+        {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEditTareaConFecha} usuario={usuario} accessToken={accessToken} tareasPlanner={tareasPlanner} />}
         {modalCompletar && <ModalCompletarTarea tarea={modalCompletar} onCancelar={() => setModalCompletar(null)} onConfirmar={(hi, hf, dur) => completarTareaConHoras(modalCompletar, hi, hf, dur)} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
