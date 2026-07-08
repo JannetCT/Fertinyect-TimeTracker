@@ -259,6 +259,7 @@ export default function Soporte() {
 
   const [editItem, setEditItem] = useState(null)
   const [confirmEliminar, setConfirmEliminar] = useState(null)
+  const [modalCompletar, setModalCompletar] = useState(null)
 
   const [form, setForm] = useState({ nombre: '', descripcion: '' })
   const [formTarea, setFormTarea] = useState({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
