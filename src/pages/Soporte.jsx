@@ -332,7 +332,8 @@ export default function Soporte() {
 
   async function guardarEdit(hoja, fila) {
     await actualizarFila(hoja, editItem.id, fila, accessToken)
-    if (editItem._tipo === 'categoria') setVistaCategoria({...editItem, ...fila})
+    await refrescar(hoja)
+    if (editItem._tipo === 'categoria') setVistaCategoria({...editItem, nombre: form.nombre, descripcion: form.descripcion})
     if (editItem._tipo === 'proyecto') setVistaProyecto({...editItem, nombre: form.nombre, descripcion: form.descripcion})
     if (editItem._tipo === 'subcarpeta') setVistaSubcarpeta({...editItem, nombre: form.nombre, descripcion: form.descripcion})
     setEditItem(null)
@@ -349,11 +350,10 @@ export default function Soporte() {
     if (fechaPersonal !== undefined) {
       await guardarFechaPersonalEnPlanner(editItem.id, 'soporte', fechaPersonal, usuario, accessToken, editItem.nombre)
     }
-    if (editItem._tipo === 'categoria') setVistaCategoria({...editItem})
-    if (editItem._tipo === 'proyecto') setVistaProyecto({...editItem, nombre: form.nombre, descripcion: form.descripcion})
-    if (editItem._tipo === 'subcarpeta') setVistaSubcarpeta({...editItem, nombre: form.nombre, descripcion: form.descripcion})
     setEditItem(null)
     setForm({ nombre: '', descripcion: '' })
+    await refrescar('tareas_soporte')
+    await refrescar('tareas_planner')
     cargarDatos()
   }
 

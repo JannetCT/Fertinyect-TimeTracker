@@ -295,6 +295,7 @@ export default function Direccion() {
 
   async function guardarEdit(hoja, fila) {
     await actualizarFila(hoja, editItem.id, fila, accessToken)
+    await refrescar(hoja)
     setEditItem(null)
     setForm({ nombre: '', descripcion: '' })
     cargarDatos()
@@ -309,6 +310,8 @@ export default function Direccion() {
     }
     setEditItem(null)
     setForm({ nombre: '', descripcion: '' })
+    await refrescar('tareas_direccion')
+    await refrescar('tareas_planner')
     cargarDatos()
   }
 
