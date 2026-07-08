@@ -322,9 +322,10 @@ function getRefId(tarea) { return tarea.tarea_padre_id || tarea.id }
 function getRefTipo(tarea) {
   if (tarea._tipo && tarea._tipo !== 'planner') return tarea._tipo
   if (!tarea.tarea_padre_tipo) return 'planner'
-  if (tarea.tarea_padre_tipo.startsWith('proyecto')) return 'proyecto'
-  if (tarea.tarea_padre_tipo.startsWith('soporte')) return 'soporte'
-  if (tarea.tarea_padre_tipo.startsWith('direccion')) return 'direccion'
+  const tipo = tarea.tarea_padre_tipo.replace('planner_', '')
+  if (tipo.startsWith('proyecto')) return 'proyecto'
+  if (tipo.startsWith('soporte')) return 'soporte'
+  if (tipo.startsWith('direccion')) return 'direccion'
   return 'planner'
 }
 function getRefHoja(tarea) {
@@ -637,9 +638,12 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     const misId = String(usuario.id)
     const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
     const tiempoEstimado = ((formTarea._horas || 0) * 60 + (formTarea._minutos || 0)).toString()
+    const tipoParaPlanner = ['proyecto','soporte','direccion'].includes(formTarea.tarea_padre_tipo)
+      ? 'planner_' + formTarea.tarea_padre_tipo
+      : formTarea.tarea_padre_tipo || ''
     for (const uid of asignados) {
       const id = Date.now().toString() + uid
-      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', formTarea.tarea_padre_tipo || '', formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado], accessToken)
+      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', tipoParaPlanner, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado], accessToken)
     }
     setModalNuevaTarea(false)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
