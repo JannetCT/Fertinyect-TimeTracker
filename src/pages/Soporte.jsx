@@ -461,7 +461,7 @@ export default function Soporte() {
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Btn tipo="editar" onClick={() => { setEditItem({...vistaSubcarpeta, _tipo: 'subcarpeta'}); setForm({ nombre: vistaSubcarpeta.nombre, descripcion: vistaSubcarpeta.descripcion || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'subcarpetas_soporte', item: vistaSubcarpeta })}>🗑 Eliminar</Btn>
-            <button onClick={() => setModalTarea({ subcarpeta_id: vistaSubcarpeta.id, proyecto_soporte_id: vistaProyecto?.id, categoria_id: vistaProyecto?.categoria_id })} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
+            <button onClick={() => { setFormTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ subcarpeta_id: vistaSubcarpeta.id, proyecto_soporte_id: vistaProyecto?.id, categoria_id: vistaProyecto?.categoria_id }) }} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
           </div>
         </div>
         <TareasList tareas={tareasAqui} usuarios={usuarios} getNombre={getNombre} setEditItem={setEditItem} setForm={setForm} setConfirmEliminar={setConfirmEliminar} onVerDetalle={t => setVistaTarea(t)} />
@@ -555,7 +555,7 @@ export default function Soporte() {
             <Btn tipo="editar" onClick={() => { setEditItem({...vistaCategoria, _tipo: 'categoria'}); setForm({ nombre: vistaCategoria.nombre, descripcion: vistaCategoria.descripcion || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'categorias_soporte', item: vistaCategoria })}>🗑 Eliminar</Btn>
             <Btn tipo="añadir" onClick={() => setModalProyecto({ categoria_id: vistaCategoria.id })}>+ Proyecto</Btn>
-            <button onClick={() => setModalTarea({ categoria_id: vistaCategoria.id })} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
+            <button onClick={() => { setFormTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ categoria_id: vistaCategoria.id }) }} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -647,16 +647,7 @@ function ModalTarea({ titulo, contexto, formTarea, setFormTarea, usuarios, onClo
               {usuarios.map(u => <button key={u.id} onClick={() => setFormTarea(prev => ({ ...prev, asignados: prev.asignados.includes(u.id) ? prev.asignados.filter(id => id !== u.id) : [...prev.asignados, u.id] }))} style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '13px', cursor: 'pointer', fontWeight: '600', background: formTarea.asignados.includes(u.id) ? '#1d4ed8' : '#f3f4f6', color: formTarea.asignados.includes(u.id) ? 'white' : '#373A36', border: formTarea.asignados.includes(u.id) ? '2px solid #1d4ed8' : '2px solid #e5e7eb' }}>{u.nombre ? u.nombre.split(' ')[0] : u.id}</button>)}
             </div>
           </div>
-          <div>
-            <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <select value={formTarea.dia_recomendado} onChange={e => setFormTarea({...formTarea, dia_recomendado: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                <option value="">Sin día específico</option>
-                {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
-              </select>
-              <input type="date" value={formTarea.fecha_recomendada} onChange={e => setFormTarea({...formTarea, fecha_recomendada: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-            </div>
-          </div>
+
           <div>
             <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
             <input type="date" value={formTarea.fecha_limite} onChange={e => setFormTarea({...formTarea, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />

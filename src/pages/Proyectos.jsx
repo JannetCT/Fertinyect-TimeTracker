@@ -552,16 +552,7 @@ export default function Proyectos() {
             />
             {/* Fecha personal — usa tareas_planner, no la tarea compartida */}
             <InputFechasMultiples label="Mi día en el planner (solo para mí):" value={editTarea._fechaPersonal !== undefined ? editTarea._fechaPersonal : (tareasPlanner.find(tp => tp.tarea_padre_id === editTarea.id && String(tp.usuario_id) === String(usuario?.id))?.fecha_exacta || '')} onChange={val => setEditTarea({ ...editTarea, _fechaPersonal: val })} />
-            <div>
-              <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado:</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select value={editTarea.dia_recomendado || ''} onChange={e => setEditTarea({ ...editTarea, dia_recomendado: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                  <option value="">Sin día específico</option>
-                  {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
-                </select>
-                <input type="date" value={editTarea.fecha_recomendada || ''} onChange={e => setEditTarea({ ...editTarea, fecha_recomendada: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-              </div>
-            </div>
+
             <div>
               <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
               <input type="date" value={editTarea.fecha_limite || ''} onChange={e => setEditTarea({ ...editTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
@@ -721,7 +712,7 @@ export default function Proyectos() {
           <div style={{ display: 'flex', gap: '8px' }}>
             <BtnAccion tipo="editar" onClick={() => setEditEnsayo({ ...vistaEnsayo })}>✏️ Editar</BtnAccion>
             <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: vistaEnsayo })}>🗑 Eliminar</BtnAccion>
-            <button onClick={() => setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id })} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
+            <button onClick={() => { setNuevaTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id }) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
           </div>
         </div>
 
@@ -739,7 +730,6 @@ export default function Proyectos() {
                     <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#888' }}>📁 {vistaEnsayo.nombre}</p>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {asignados.map(id => <span key={id} style={{ background: '#f0fdf4', color: '#00953B', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
-                      {tarea.dia_recomendado && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>📌 {tarea.dia_recomendado}</span>}
                       {tarea.fecha_limite && <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>{vencida ? '⚠️ Vencida' : '📅'} {tarea.fecha_limite}</span>}
                     </div>
                   </div>
@@ -763,16 +753,7 @@ export default function Proyectos() {
               <textarea placeholder="Descripción (opcional)" value={nuevaTarea.descripcion || ''} onChange={e => setNuevaTarea({ ...nuevaTarea, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
               <SelectorPersonas usuarios={usuarios} seleccionados={nuevaTarea.asignados} onChange={ids => setNuevaTarea({ ...nuevaTarea, asignados: ids })} />
               <InputFechasMultiples label="Días asignados en planner (opcional):" value={nuevaTarea.fechas_exactas || ''} onChange={val => setNuevaTarea({ ...nuevaTarea, fechas_exactas: val })} />
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Día recomendado (opcional):</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <select value={nuevaTarea.dia_recomendado} onChange={e => setNuevaTarea({ ...nuevaTarea, dia_recomendado: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
-                    <option value="">Sin día específico</option>
-                    {DIAS.map(d => <option key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</option>)}
-                  </select>
-                  <input type="date" value={nuevaTarea.fecha_recomendada} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_recomendada: e.target.value })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
-                </div>
-              </div>
+
               <div>
                 <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label>
                 <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />

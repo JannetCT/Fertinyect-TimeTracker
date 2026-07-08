@@ -415,7 +415,7 @@ export default function Direccion() {
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Btn tipo="editar" onClick={() => { setEditItem({...vistaSubcarpeta, _tipo: 'subcarpeta'}); setForm({ nombre: vistaSubcarpeta.nombre, descripcion: vistaSubcarpeta.descripcion || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'subcarpetas_direccion', item: vistaSubcarpeta })}>🗑 Eliminar</Btn>
-            <button onClick={() => setModalTarea({ subcarpeta_id: vistaSubcarpeta.id, proyecto_direccion_id: vistaProyecto?.id, categoria_id: vistaProyecto?.categoria_id })}
+            <button onClick={() => { setFormTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ subcarpeta_id: vistaSubcarpeta.id, proyecto_direccion_id: vistaProyecto?.id, categoria_id: vistaProyecto?.categoria_id }) }}
               style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
           </div>
         </div>
@@ -457,7 +457,7 @@ export default function Direccion() {
             <Btn tipo="editar" onClick={() => { setEditItem({...vistaProyecto, _tipo: 'proyecto'}); setForm({ nombre: vistaProyecto.nombre, descripcion: vistaProyecto.descripcion || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'proyectos_direccion', item: vistaProyecto })}>🗑 Eliminar</Btn>
             <Btn tipo="añadir" onClick={() => setModalSubcarpeta({ proyecto_direccion_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id })}>+ Subcarpeta</Btn>
-            <button onClick={() => setModalTarea({ proyecto_direccion_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id })}
+            <button onClick={() => { setFormTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ proyecto_direccion_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id }) }}
               style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
           </div>
         </div>
@@ -520,7 +520,7 @@ export default function Direccion() {
             <Btn tipo="editar" onClick={() => { setEditItem({...vistaCategoria, _tipo: 'categoria'}); setForm({ nombre: vistaCategoria.nombre, descripcion: vistaCategoria.descripcion || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'categorias_direccion', item: vistaCategoria })}>🗑 Eliminar</Btn>
             <Btn tipo="añadir" onClick={() => setModalProyecto({ categoria_id: vistaCategoria.id })}>+ Proyecto</Btn>
-            <button onClick={() => setModalTarea({ categoria_id: vistaCategoria.id })}
+            <button onClick={() => { setFormTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ categoria_id: vistaCategoria.id }) }}
               style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
           </div>
         </div>

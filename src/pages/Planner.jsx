@@ -567,7 +567,7 @@ function Planner() {
 const registroTipo = evento.origen_tipo || 'evento'
 await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario.id, new Date(fechaBase).toISOString(), new Date(new Date(fechaBase).getTime() + duracionSegundos * 1000).toISOString(), duracionSegundos, new Date().toDateString(), registroTipo, evento.titulo], accessToken)
     await actualizarFila('eventos', evento.id, [evento.id, evento.usuario_id, evento.titulo, evento.descripcion || '', evento.fecha_exacta, evento.hora_inicio, evento.hora_fin, evento.tipo, evento.fecha_creacion, 'completado'], accessToken)
-    cargarDatos()
+    await refrescar('eventos'); cargarDatos()
   }
   async function actualizarEstado(tarea, tipo, estado) {
     if (tipo === 'proyecto') await actualizarFila('tareas', tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', estado, tarea.fecha_creacion, tarea.etiqueta || ''], accessToken)
@@ -849,7 +849,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: esMobile ? 'flex-start' : 'flex-end' }}>
             <button onClick={() => setMostrarCompletadas(prev => !prev)} style={{ background: mostrarCompletadas ? '#f0fdf4' : '#f3f4f6', color: mostrarCompletadas ? '#00953B' : '#6b7280', border: '1px solid ' + (mostrarCompletadas ? '#00953B' : '#e5e7eb'), borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{mostrarCompletadas ? '✅ Ocultar' : '☑️ Completadas'}</button>
             <button onClick={() => setModalNuevoEvento(true)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Evento</button>
-            <button onClick={() => setModalNuevaTarea(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Tarea</button>
+            <button onClick={() => { setFormTarea(prev => ({ ...prev, asignadoA: String(usuario.id) })); setModalNuevaTarea(true) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Tarea</button>
           </div>
         </div>
 
