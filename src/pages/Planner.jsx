@@ -694,7 +694,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       return !t.fecha_exacta || t.fecha_exacta === ''
     })
   }
-  function eventosDeDia(fechaStr) { return eventos.filter(e => e.fecha_exacta === fechaStr) }
+  function eventosDeDia(fechaStr) { return eventos.filter(e => e.fecha_exacta === fechaStr && (mostrarCompletadas || e.estado !== 'completado')) }
   function minutosEstimadosDia(fechaStr) { return tareasDeDia(fechaStr).filter(t => t.estado !== 'completada').reduce((sum, t) => sum + (parseInt(t.tiempo_estimado) || 0), 0) }
   function getContexto(tarea) {
     if (tarea._tipo === 'proyecto') { const p = proyectos.find(p => p.id === tarea.proyecto_id); return p ? p.nombre : 'Proyecto' }
