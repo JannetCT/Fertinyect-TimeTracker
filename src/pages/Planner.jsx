@@ -643,12 +643,31 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     }
     else {
       const asignadosNuevos = Array.isArray(t.asignados) ? t.asignados : (t.asignados ? t.asignados.split(',').filter(Boolean) : [t.usuario_id])
-      await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(',')], accessToken)
+      const creadorId = t.creado_por || t.usuario_id
+      // Si el usuario actual sigue en la lista, actualizar su fila
+      if (asignadosNuevos.includes(String(t.usuario_id))) {
+        await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, '', '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
+      } else {
+        // El usuario actual se quitó a sí mismo — eliminar su fila
+        await marcarEliminado('tareas_planner', t.id, accessToken)
+      }
+      // Gestionar filas de otros usuarios asignados
+      const otrasFilas = tareasPlanner.filter(tp => tp.tarea_padre_id === t.id && String(tp.usuario_id) !== String(t.usuario_id))
       for (const uid of asignadosNuevos) {
-        if (uid === t.usuario_id) continue
-        const existe = tareasPlanner.find(tp => tp.tarea_padre_id === t.id && String(tp.usuario_id) === String(uid))
+        if (uid === String(t.usuario_id)) continue
+        const existe = otrasFilas.find(tp => String(tp.usuario_id) === String(uid))
         if (!existe) {
-          await escribirFila('tareas_planner', [Date.now().toString() + uid, uid, t.id, 'planner', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(',')], accessToken)
+          // Añadir nueva fila para este usuario (sin tarea_padre_id para que no aparezca como subtarea)
+          await escribirFila('tareas_planner', [Date.now().toString() + uid, uid, '', '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
+        } else {
+          // Actualizar fila existente
+          await actualizarFila('tareas_planner', existe.id, [existe.id, uid, '', '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
+        }
+      }
+      // Eliminar filas de usuarios que ya no están asignados
+      for (const fila of otrasFilas) {
+        if (!asignadosNuevos.includes(String(fila.usuario_id))) {
+          await marcarEliminado('tareas_planner', fila.id, accessToken)
         }
       }
     }
@@ -675,7 +694,10 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       : formTarea.tarea_padre_tipo || ''
     for (const uid of asignados) {
       const id = Date.now().toString() + uid
-      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', tipoParaPlanner, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, '', uid, String(usuario.id)], accessToken)
+      const tienePadrePlanner = tipoParaPlanner && tipoParaPlanner.includes('planner')
+      const padreIdParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : (formTarea.tarea_padre_id || '')
+      const tipoParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : tipoParaPlanner
+      await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, '', uid, String(usuario.id)], accessToken)
     }
     setModalNuevaTarea(false)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
@@ -738,7 +760,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     if (tarea._tipo === 'proyecto') { const p = proyectos.find(p => p.id === tarea.proyecto_id); return p ? p.nombre : 'Proyecto' }
     if (tarea._tipo === 'soporte') { const c = categoriasSoporte.find(c => c.id === tarea.categoria_id); return c ? c.nombre : 'Soporte' }
     if (tarea._tipo === 'direccion') return '🏢 Dirección'
-    if (tarea.tarea_padre_id) { const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id) || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id); return padre ? `↳ ${padre.nombre}` : '↳ Subtarea' }
+    if (tarea.tarea_padre_id && tarea.tarea_padre_tipo !== 'planner') { const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id) || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id); return padre ? `↳ ${padre.nombre}` : '↳ Subtarea' }
     return '📝 Tarea libre'
   }
   function getDescripcionTarea(tarea) {
