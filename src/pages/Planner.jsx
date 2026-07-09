@@ -646,19 +646,20 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       const creadorId = t.creado_por || t.usuario_id
       // Si el usuario actual sigue en la lista, actualizar su fila
       if (asignadosNuevos.includes(String(t.usuario_id))) {
-        await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, '', '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
+        await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, '', '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || t.id, tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
       } else {
         // El usuario actual se quitó a sí mismo — eliminar su fila
         await marcarEliminado('tareas_planner', t.id, accessToken)
       }
       // Gestionar filas de otros usuarios asignados
-      const otrasFilas = tareasPlanner.filter(tp => tp.tarea_padre_id === t.id && String(tp.usuario_id) !== String(t.usuario_id))
+      const grupoId = t.tarea_grupo_id || t.id
+      const otrasFilas = tareasPlanner.filter(tp => String(tp.usuario_id) !== String(t.usuario_id) && (tp.tarea_grupo_id === grupoId || tp.nombre === t.nombre) && tp.tarea_padre_tipo !== 'proyecto' && tp.tarea_padre_tipo !== 'soporte' && tp.tarea_padre_tipo !== 'direccion')
       for (const uid of asignadosNuevos) {
         if (uid === String(t.usuario_id)) continue
         const existe = otrasFilas.find(tp => String(tp.usuario_id) === String(uid))
         if (!existe) {
           // Añadir nueva fila para este usuario (sin tarea_padre_id para que no aparezca como subtarea)
-          await escribirFila('tareas_planner', [Date.now().toString() + uid, uid, '', '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
+          await escribirFila('tareas_planner', [Date.now().toString() + uid, uid, '', '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || t.id, tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
         } else {
           // Actualizar fila existente
           await actualizarFila('tareas_planner', existe.id, [existe.id, uid, '', '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || '', tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
