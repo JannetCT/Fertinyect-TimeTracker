@@ -653,7 +653,13 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       }
       // Gestionar filas de otros usuarios asignados
       const grupoId = t.tarea_grupo_id || t.id
-      const otrasFilas = tareasPlanner.filter(tp => String(tp.usuario_id) !== String(t.usuario_id) && (tp.tarea_grupo_id === grupoId || tp.nombre === t.nombre) && tp.tarea_padre_tipo !== 'proyecto' && tp.tarea_padre_tipo !== 'soporte' && tp.tarea_padre_tipo !== 'direccion')
+      const todasPlannerFrescas = await leerHoja('tareas_planner', accessToken)
+      const otrasFilas = todasPlannerFrescas.filter(tp => 
+        String(tp.usuario_id) !== String(t.usuario_id) && 
+        tp.id !== 'eliminado' && tp.usuario_id !== 'eliminado' &&
+        !['proyecto', 'soporte', 'direccion'].includes(tp.tarea_padre_tipo) &&
+        (tp.tarea_grupo_id === grupoId || tp.tarea_grupo_id === t.id || tp.id === grupoId)
+      )
       for (const uid of asignadosNuevos) {
         if (uid === String(t.usuario_id)) continue
         const existe = otrasFilas.find(tp => String(tp.usuario_id) === String(uid))
