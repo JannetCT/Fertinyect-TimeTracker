@@ -318,7 +318,10 @@ export default function Direccion() {
   }
 
   async function crearTareaConFechaPersonal(hoja, fila, asignados, nombre, fechasExactas, tipo) {
-    await escribirFila(hoja, fila, accessToken)
+    const filaConCreador = [...fila]
+    while (filaConCreador.length < 18) filaConCreador.push('')
+    filaConCreador[18] = String(usuario.id)
+    await escribirFila(hoja, filaConCreador, accessToken)
     if (fechasExactas && asignados.length > 0) {
       const tareaId = fila[0]
       for (const uid of asignados) {

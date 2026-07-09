@@ -675,7 +675,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       : formTarea.tarea_padre_tipo || ''
     for (const uid of asignados) {
       const id = Date.now().toString() + uid
-      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', tipoParaPlanner, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, '', String(usuario.id)], accessToken)
+      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', tipoParaPlanner, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, '', uid, String(usuario.id)], accessToken)
     }
     setModalNuevaTarea(false)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })

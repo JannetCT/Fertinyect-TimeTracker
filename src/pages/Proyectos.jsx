@@ -528,6 +528,7 @@ export default function Proyectos() {
   }
 
   function toggleColapso(estadoId) { setEstadosColapsados(prev => ({ ...prev, [estadoId]: !prev[estadoId] })) }
+  const estaExpandido = (id) => estadosColapsados[id] === true
   function estadosDeProyecto(pId) { return estados.filter(e => e.proyecto_id === pId).sort((a, b) => Number(a.orden) - Number(b.orden)) }
   function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
@@ -798,7 +799,7 @@ export default function Proyectos() {
             <div key={estado.id} style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estadosColapsados[estado.id] ? '0' : '16px', cursor: 'pointer' }} onClick={() => toggleColapso(estado.id)}>
                 <h3 style={{ margin: 0, fontSize: '16px', color: '#373A36', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#00953B', fontSize: '12px' }}>{estadosColapsados[estado.id] ? '▶' : '▼'}</span>
+                  <span style={{ color: '#00953B', fontSize: '12px' }}>{estaExpandido(estado.id) ? '▼' : '▶'}</span>
                   <span style={{ color: '#00953B', marginRight: '4px' }}>{estado.orden}.</span>{estado.nombre}
                 </h3>
                 <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
@@ -806,12 +807,12 @@ export default function Proyectos() {
                   <BtnAccion tipo="añadir" onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Acción</BtnAccion>
                 </div>
               </div>
-              {!estadosColapsados[estado.id] && <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {estaExpandido(estado.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {accionesDeEstado(estado.id).map(accion => (
                   <div key={accion.id} style={{ background: '#f8f9fa', borderRadius: '8px', padding: '14px', borderLeft: `3px solid ${vistaProyecto.color}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }} onClick={() => toggleColapso('accion_' + accion.id)}>
                       <div>
-                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px' }}>{accion.nombre}</p>
+                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '11px', color: '#6b7280' }}>{estaExpandido('accion_' + accion.id) ? '▼' : '▶'}</span>{accion.nombre}</p>
                         {accion.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{accion.descripcion}</p>}
                         {(accion.fecha_inicio || accion.fecha_fin) && (
                           <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6b7280' }}>
@@ -822,13 +823,13 @@ export default function Proyectos() {
                           </p>
                         )}
                       </div>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                         <BtnAccion tipo="editar" onClick={() => setEditAccion({ ...accion })}>✏️</BtnAccion>
                         <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'accion', item: accion })}>🗑</BtnAccion>
                         <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo</BtnAccion>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {estaExpandido('accion_' + accion.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {ensayosDeAccion(accion.id).map(ensayo => (
                         <div key={ensayo.id} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -849,7 +850,7 @@ export default function Proyectos() {
                         </div>
                       ))}
                       {ensayosDeAccion(accion.id).length === 0 && <p style={{ margin: 0, fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin ensayos ni informes aún</p>}
-                    </div>
+                    </div>}
                   </div>
                 ))}
                 {accionesDeEstado(estado.id).length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#aaa', fontStyle: 'italic' }}>Sin acciones aún</p>}
