@@ -256,6 +256,8 @@ export default function Direccion() {
   const [editItem, setEditItem] = useState(null)
   const [confirmEliminar, setConfirmEliminar] = useState(null)
   const [modalCompletar, setModalCompletar] = useState(null)
+  const [busqueda, setBusqueda] = useState('')
+  const [mostrarBuscador, setMostrarBuscador] = useState(false)
 
   const [form, setForm] = useState({ nombre: '', descripcion: '' })
   const [formTarea, setFormTarea] = useState({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
@@ -573,11 +575,15 @@ export default function Direccion() {
     <div className="proyectos-container">
       <div className="proyectos-header">
         <h1>🏢 Dirección</h1>
-        <button onClick={() => setModalCategoria(true)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva categoría</button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {mostrarBuscador && <input autoFocus placeholder="Buscar en dirección..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '13px', width: '200px' }} />}
+          <button onClick={() => { setMostrarBuscador(p => !p); if (mostrarBuscador) setBusqueda('') }} style={{ background: mostrarBuscador ? '#f5f3ff' : '#f3f4f6', color: mostrarBuscador ? '#7c3aed' : '#6b7280', border: `1px solid ${mostrarBuscador ? '#7c3aed' : '#e5e7eb'}`, borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '16px' }}>🔍</button>
+          <button onClick={() => setModalCategoria(true)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva categoría</button>
+        </div>
       </div>
       <div className="proyectos-lista">
         {categorias.length === 0 && <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}><p style={{ fontSize: '48px' }}>🏢</p><p>No hay categorías aún.</p></div>}
-        {[...categorias].sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')).map(cat => (
+        {[...categorias].sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')).filter(c => !busqueda || c.nombre?.toLowerCase().includes(busqueda.toLowerCase())).map(cat => (
           <div key={cat.id} className="proyecto-card" style={{ borderLeftColor: '#7c3aed', cursor: 'pointer' }} onClick={() => setVistaCategoria(cat)}>
             <div className="proyecto-header">
               <div>

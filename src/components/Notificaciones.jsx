@@ -41,7 +41,9 @@ export default function Notificaciones() {
   const { usuario, accessToken } = useAuth()
   const [abierto, setAbierto] = useState(false)
   const [alertas, setAlertas] = useState([])
+  const [tareasNuevas, setTareasNuevas] = useState([])
   const [cargando, setCargando] = useState(false)
+  const [vistaActiva, setVistaActiva] = useState('alertas') // 'alertas' | 'nuevas'
   const panelRef = useRef(null)
   const navigate = useNavigate()
 
@@ -280,6 +282,24 @@ export default function Notificaciones() {
       }
 
       setAlertas(nuevasAlertas)
+
+      // ── TAREAS NUEVAS (asignadas recientemente) ───────────────────
+      const hace7dias = new Date()
+      hace7dias.setDate(hace7dias.getDate() - 7)
+      const hace7diasStr = hace7dias.toISOString().split('T')[0]
+      const misId = String(usuario.id)
+      const nuevas = []
+      for (const t of [...tareas, ...tareasSoporte]) {
+        if (t.estado === 'completada' || t.estado === 'completado') continue
+        const asignados = t.asignados ? t.asignados.split(',').map(s => s.trim()) : []
+        if (!asignados.includes(misId)) continue
+        if (!t.creado_por || t.creado_por === misId) continue
+        const fechaCreacion = (t.fecha_creacion || '').split('T')[0]
+        if (fechaCreacion >= hace7diasStr) {
+          nuevas.push({ id: t.id, nombre: t.nombre, creadoPor: t.creado_por, fecha: fechaCreacion })
+        }
+      }
+      setTareasNuevas(nuevas)
     } catch (err) {
       console.error('Error cargando notificaciones:', err)
     } finally {
@@ -297,25 +317,21 @@ export default function Notificaciones() {
   const totalUrgentes = vencidas.length
 
   return (
-    <div ref={panelRef} style={{ position: 'relative' }}>
-      <button
-        onClick={() => setAbierto(!abierto)}
-        title="Notificaciones"
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px',
-          position: 'relative', padding: '4px', lineHeight: 1,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
+    <div ref={panelRef} style={{ position: 'relative', display: 'flex', gap: '4px', alignItems: 'center' }}>
+      <button onClick={() => { setVistaActiva('nuevas'); setAbierto(!abierto) }} title="Tareas nuevas asignadas"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', position: 'relative', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        📬
+        {tareasNuevas.length > 0 && (
+          <span style={{ position: 'absolute', top: '-2px', right: '-4px', background: '#7c3aed', color: 'white', borderRadius: '50%', fontSize: '10px', fontWeight: '700', minWidth: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '0 3px' }}>
+            {tareasNuevas.length}
+          </span>
+        )}
+      </button>
+      <button onClick={() => { setVistaActiva('alertas'); setAbierto(!abierto) }} title="Notificaciones"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', position: 'relative', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         🔔
         {totalUrgentes > 0 && (
-          <span style={{
-            position: 'absolute', top: '-2px', right: '-4px',
-            background: '#dc2626', color: 'white', borderRadius: '50%',
-            fontSize: '10px', fontWeight: '700', minWidth: '16px', height: '16px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            lineHeight: 1, padding: '0 3px',
-          }}>
+          <span style={{ position: 'absolute', top: '-2px', right: '-4px', background: '#dc2626', color: 'white', borderRadius: '50%', fontSize: '10px', fontWeight: '700', minWidth: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '0 3px' }}>
             {totalUrgentes}
           </span>
         )}
@@ -327,21 +343,38 @@ export default function Notificaciones() {
           background: '#111827', borderLeft: '1px solid #1f2937', zIndex: 1000,
           display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.4)',
         }}>
-          <div style={{
-            padding: '20px', borderBottom: '1px solid #1f2937',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <div>
-              <h3 style={{ margin: 0, color: '#f9fafb', fontSize: '16px', fontWeight: '700' }}>Notificaciones</h3>
-              <p style={{ margin: '2px 0 0', color: '#6b7280', fontSize: '12px' }}>
-                {alertas.length === 0 ? 'Todo al día ✓' : `${alertas.length} alertas activas`}
-              </p>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #1f2937' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <h3 style={{ margin: 0, color: '#f9fafb', fontSize: '16px', fontWeight: '700' }}>
+                {vistaActiva === 'alertas' ? 'Notificaciones' : 'Tareas nuevas'}
+              </h3>
+              <button onClick={() => setAbierto(false)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '18px', cursor: 'pointer' }}>✕</button>
             </div>
-            <button onClick={() => setAbierto(false)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '18px', cursor: 'pointer' }}>✕</button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setVistaActiva('alertas')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: vistaActiva === 'alertas' ? '#374151' : 'none', color: vistaActiva === 'alertas' ? '#f9fafb' : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>🔔 Alertas {alertas.length > 0 && `(${alertas.length})`}</button>
+              <button onClick={() => setVistaActiva('nuevas')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: vistaActiva === 'nuevas' ? '#374151' : 'none', color: vistaActiva === 'nuevas' ? '#f9fafb' : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>📬 Nuevas {tareasNuevas.length > 0 && `(${tareasNuevas.length})`}</button>
+            </div>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-            {cargando ? (
+            {vistaActiva === 'nuevas' ? (
+              tareasNuevas.length === 0 ? (
+                <div style={{ textAlign: 'center', marginTop: '60px' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>📬</div>
+                  <p style={{ color: '#6b7280', fontSize: '14px' }}>No hay tareas nuevas esta semana</p>
+                </div>
+              ) : (
+                <div>
+                  <p style={{ color: '#9ca3af', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Últimos 7 días</p>
+                  {tareasNuevas.map(t => (
+                    <div key={t.id} style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid #7c3aed', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
+                      <p style={{ margin: 0, color: '#f9fafb', fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
+                      <p style={{ margin: '2px 0 0', color: '#9ca3af', fontSize: '11px' }}>Asignada el {t.fecha}</p>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : cargando ? (
               <p style={{ color: '#6b7280', textAlign: 'center', marginTop: '40px' }}>Cargando...</p>
             ) : alertas.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: '60px' }}>

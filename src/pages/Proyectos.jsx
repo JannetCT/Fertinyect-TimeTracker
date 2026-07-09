@@ -271,7 +271,10 @@ export default function Proyectos() {
   const [tareasPlanner, setTareasPlanner] = useState([])
   const [usuarios, setUsuarios] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [busqueda, setBusqueda] = useState('')
+  const [mostrarBuscador, setMostrarBuscador] = useState(false)
   const [vistaProyecto, setVistaProyecto] = useState(null)
+  const [estadosColapsados, setEstadosColapsados] = useState({})
   const [vistaEnsayo, setVistaEnsayo] = useState(null)
 
   const [modalProyecto, setModalProyecto] = useState(false)
@@ -438,7 +441,8 @@ export default function Proyectos() {
       id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
       nuevaTarea.nombre, asignadosStr, diaCalculado2, fechasExactas,
       diaRec, nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(),
-      '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g'
+      '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g',
+      '', '', String(usuario.id)
     ], accessToken)
     if (fechasExactas && nuevaTarea.asignados.length > 0) {
       for (const uid of nuevaTarea.asignados) {
@@ -523,6 +527,7 @@ export default function Proyectos() {
     return u ? (u.nombre ? u.nombre.split(' ')[0] : id) : id
   }
 
+  function toggleColapso(estadoId) { setEstadosColapsados(prev => ({ ...prev, [estadoId]: !prev[estadoId] })) }
   function estadosDeProyecto(pId) { return estados.filter(e => e.proyecto_id === pId).sort((a, b) => Number(a.orden) - Number(b.orden)) }
   function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
@@ -791,16 +796,17 @@ export default function Proyectos() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {estadosProyecto.map(estado => (
             <div key={estado.id} style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', color: '#373A36' }}>
-                  <span style={{ color: '#00953B', marginRight: '8px' }}>{estado.orden}.</span>{estado.nombre}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estadosColapsados[estado.id] ? '0' : '16px', cursor: 'pointer' }} onClick={() => toggleColapso(estado.id)}>
+                <h3 style={{ margin: 0, fontSize: '16px', color: '#373A36', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#00953B', fontSize: '12px' }}>{estadosColapsados[estado.id] ? '▶' : '▼'}</span>
+                  <span style={{ color: '#00953B', marginRight: '4px' }}>{estado.orden}.</span>{estado.nombre}
                 </h3>
-                <div style={{ display: 'flex', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                   <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'estado', item: estado })}>🗑</BtnAccion>
                   <BtnAccion tipo="añadir" onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Acción</BtnAccion>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {!estadosColapsados[estado.id] && <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {accionesDeEstado(estado.id).map(accion => (
                   <div key={accion.id} style={{ background: '#f8f9fa', borderRadius: '8px', padding: '14px', borderLeft: `3px solid ${vistaProyecto.color}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -847,7 +853,7 @@ export default function Proyectos() {
                   </div>
                 ))}
                 {accionesDeEstado(estado.id).length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#aaa', fontStyle: 'italic' }}>Sin acciones aún</p>}
-              </div>
+              </div>}
             </div>
           ))}
           <button onClick={() => setModalEstado({ proyecto_id: vistaProyecto.id })} style={{ background: 'white', border: '2px dashed #00953B', borderRadius: '12px', padding: '16px', cursor: 'pointer', color: '#00953B', fontWeight: '600', fontSize: '14px', width: '100%' }}>
@@ -913,11 +919,15 @@ export default function Proyectos() {
     <div className="proyectos-container">
       <div className="proyectos-header">
         <h1>📁 Proyectos</h1>
-        <button onClick={() => setModalProyecto(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nuevo proyecto</button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {mostrarBuscador && <input autoFocus placeholder="Buscar proyecto..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '13px', width: '200px' }} />}
+          <button onClick={() => { setMostrarBuscador(p => !p); if (mostrarBuscador) setBusqueda('') }} style={{ background: mostrarBuscador ? '#f0fdf4' : '#f3f4f6', color: mostrarBuscador ? '#00953B' : '#6b7280', border: `1px solid ${mostrarBuscador ? '#00953B' : '#e5e7eb'}`, borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '16px' }}>🔍</button>
+          <button onClick={() => setModalProyecto(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nuevo proyecto</button>
+        </div>
       </div>
       <div className="proyectos-lista">
         {proyectosActivos.length === 0 && <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}><p style={{ fontSize: '48px' }}>📁</p><p>No hay proyectos. ¡Crea el primero!</p></div>}
-        {proyectosActivos.map(proyecto => (
+        {proyectosActivos.filter(p => !busqueda || p.nombre?.toLowerCase().includes(busqueda.toLowerCase())).map(proyecto => (
           <div key={proyecto.id} className="proyecto-card" style={{ borderLeftColor: proyecto.color || '#6B7280', cursor: 'pointer' }} onClick={() => setVistaProyecto(proyecto)}>
             <div className="proyecto-header">
               <div>

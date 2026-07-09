@@ -516,6 +516,8 @@ function Planner() {
   const [cargando, setCargando] = useState(true)
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
   const [filtroEtiqueta, setFiltroEtiqueta] = useState('')
+  const [busqueda, setBusqueda] = useState('')
+  const [mostrarBuscador, setMostrarBuscador] = useState(false)
   const [modalEditarTarea, setModalEditarTarea] = useState(null)
   const [vistaTarea, setVistaTarea] = useState(null)
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
@@ -673,7 +675,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       : formTarea.tarea_padre_tipo || ''
     for (const uid of asignados) {
       const id = Date.now().toString() + uid
-      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', tipoParaPlanner, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado], accessToken)
+      await escribirFila('tareas_planner', [id, uid, formTarea.tarea_padre_id || '', tipoParaPlanner, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, '', String(usuario.id)], accessToken)
     }
     setModalNuevaTarea(false)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
@@ -718,6 +720,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     return todasLasTareas().filter(t => {
       if (t.estado === 'completada' && !mostrarCompletadas) return false
       if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
+      if (busqueda && !t.nombre?.toLowerCase().includes(busqueda.toLowerCase())) return false
       return tareaEnFecha(t, fechaStr)
     })
   }
@@ -725,6 +728,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     return todasLasTareas().filter(t => {
       if (t.estado === 'completada' && !mostrarCompletadas) return false
       if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
+      if (busqueda && !t.nombre?.toLowerCase().includes(busqueda.toLowerCase())) return false
       return !t.fecha_exacta || t.fecha_exacta === ''
     })
   }
@@ -882,6 +886,12 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: esMobile ? 'flex-start' : 'flex-end' }}>
+            {mostrarBuscador && (
+              <input autoFocus placeholder="Buscar tarea..." value={busqueda} onChange={e => setBusqueda(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '13px', width: '180px' }} />
+            )}
+            <button onClick={() => { setMostrarBuscador(p => !p); if (mostrarBuscador) setBusqueda('') }}
+              style={{ background: mostrarBuscador ? '#f0fdf4' : '#f3f4f6', color: mostrarBuscador ? '#00953B' : '#6b7280', border: `1px solid ${mostrarBuscador ? '#00953B' : '#e5e7eb'}`, borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', fontWeight: '600', fontSize: '16px' }}>🔍</button>
             <button onClick={() => setMostrarCompletadas(prev => !prev)} style={{ background: mostrarCompletadas ? '#f0fdf4' : '#f3f4f6', color: mostrarCompletadas ? '#00953B' : '#6b7280', border: '1px solid ' + (mostrarCompletadas ? '#00953B' : '#e5e7eb'), borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{mostrarCompletadas ? '✅ Ocultar' : '☑️ Completadas'}</button>
             <button onClick={() => setModalNuevoEvento(true)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Evento</button>
             <button onClick={() => { setFormTarea(prev => ({ ...prev, asignadoA: String(usuario.id) })); setModalNuevaTarea(true) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Tarea</button>
@@ -1275,7 +1285,7 @@ function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar,
       </div>
       <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
         <EtiquetasBadge etiqueta={tarea.etiqueta} />
-        {tarea.fecha_limite && <span style={{ fontSize: '10px', color: vencida ? '#dc2626' : '#6b7280', background: vencida ? '#fee2e2' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>{vencida ? '⚠️' : '📅'} {tarea.fecha_limite}</span>}
+        {tarea.fecha_limite && <span style={{ fontSize: '10px', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px', fontWeight: vencida || proxima ? '700' : '400' }}>{vencida ? '⚠️ Vencida' : proxima ? '🕐 Vence pronto' : '📅'} {!vencida && !proxima && tarea.fecha_limite}</span>}
         {minEstimados > 0 && !esCompletada && <span style={{ fontSize: '10px', color: '#6b7280', background: '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>⏳ {formatMinutos(minEstimados)}</span>}
         {checklistCount && checklistCount.total > 0 && (
           <span style={{ fontSize: '10px', color: checklistCount.completados === checklistCount.total ? '#166534' : '#6b7280', background: checklistCount.completados === checklistCount.total ? '#dcfce7' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px', fontWeight: '600' }}>
