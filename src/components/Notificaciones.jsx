@@ -289,11 +289,17 @@ export default function Notificaciones() {
       const hace7diasStr = hace7dias.toISOString().split('T')[0]
       const misId = String(usuario.id)
       const nuevas = []
-      for (const t of [...tareas, ...tareasSoporte]) {
+      const tareasDireccionN = await leerHoja('tareas_direccion', accessToken)
+      const todasParaNuevas = [...tareas, ...tareasSoporte, ...tareasDireccionN, ...tareasPlanner]
+      for (const t of todasParaNuevas) {
         if (t.estado === 'completada' || t.estado === 'completado') continue
-        const asignados = t.asignados ? t.asignados.split(',').map(s => s.trim()) : []
-        if (!asignados.includes(misId)) continue
-        if (!t.creado_por || t.creado_por === misId) continue
+        // Para tareas_planner verificar usuario_id, para el resto verificar asignados
+        const esPlanner = !t.asignados && t.usuario_id
+        const esAsignado = esPlanner
+          ? String(t.usuario_id) === misId
+          : (t.asignados ? t.asignados.split(',').map(s => s.trim()).includes(misId) : false)
+        if (!esAsignado) continue
+        if (!t.creado_por || String(t.creado_por) === misId) continue
         const fechaCreacion = (t.fecha_creacion || '').split('T')[0]
         if (fechaCreacion >= hace7diasStr) {
           nuevas.push({ id: t.id, nombre: t.nombre, creadoPor: t.creado_por, fecha: fechaCreacion })
@@ -366,12 +372,21 @@ export default function Notificaciones() {
               ) : (
                 <div>
                   <p style={{ color: '#9ca3af', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Últimos 7 días</p>
-                  {tareasNuevas.map(t => (
-                    <div key={t.id} style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid #7c3aed', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
-                      <p style={{ margin: 0, color: '#f9fafb', fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
-                      <p style={{ margin: '2px 0 0', color: '#9ca3af', fontSize: '11px' }}>Asignada el {t.fecha}</p>
-                    </div>
-                  ))}
+                  {tareasNuevas.map(t => {
+                    const nombres = { '1': 'Lorenzo', '2': 'Ahlam', '3': 'Jannet' }
+                    const colores = { '1': '#00953B', '2': '#3b82f6', '3': '#f59e0b' }
+                    const color = colores[String(t.creadoPor)] || '#6b7280'
+                    const nombre = nombres[String(t.creadoPor)] || `Usuario ${t.creadoPor}`
+                    return (
+                      <div key={t.id} style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid #7c3aed', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
+                        <p style={{ margin: 0, color: '#f9fafb', fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                          <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: '700', flexShrink: 0 }}>{nombre[0]}</span>
+                          <p style={{ margin: 0, color: '#9ca3af', fontSize: '11px' }}>Asignada por <span style={{ color }}>{nombre}</span> · {t.fecha}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )
             ) : cargando ? (

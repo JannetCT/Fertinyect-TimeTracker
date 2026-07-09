@@ -857,6 +857,18 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
           </div>
         </div>
         <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+          {vistaTarea.creado_por && String(vistaTarea.creado_por) !== String(usuario.id) && (() => {
+            const nombres = { '1': 'Lorenzo', '2': 'Ahlam', '3': 'Jannet' }
+            const colores = { '1': '#00953B', '2': '#3b82f6', '3': '#f59e0b' }
+            const color = colores[String(vistaTarea.creado_por)] || '#6b7280'
+            const nombre = nombres[String(vistaTarea.creado_por)] || `Usuario ${vistaTarea.creado_por}`
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', background: '#f9fafb', borderRadius: '8px', padding: '8px 12px' }}>
+                <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: 'white', fontWeight: '700', flexShrink: 0 }}>{nombre[0]}</span>
+                <span style={{ fontSize: '13px', color: '#555' }}>Creada por <strong style={{ color }}>{nombre}</strong></span>
+              </div>
+            )
+          })()}
           {descripcion && <div style={{ marginBottom: '16px' }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Descripción:</label><p style={{ margin: 0, fontSize: '14px', color: '#373A36', background: '#f9fafb', padding: '12px', borderRadius: '8px' }}>{descripcion}</p></div>}
           {vistaTarea.tiempo_estimado && parseInt(vistaTarea.tiempo_estimado) > 0 && <div style={{ marginBottom: '16px', background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534' }}>⏳ Tiempo estimado: <strong>{formatMinutos(parseInt(vistaTarea.tiempo_estimado))}</strong></div>}
           <SeccionChecklist tareaId={refId} tipoTarea={refTipo} accessToken={accessToken} />
