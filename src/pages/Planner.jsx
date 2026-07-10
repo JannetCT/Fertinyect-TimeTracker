@@ -1022,7 +1022,11 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
             if (overId.startsWith('col_')) {
               const destino = overId.replace('col_', '')
               const fechaActual = (tarea.fecha_exacta || '').split(',')[0]?.trim()
-              if (destino === 'por_asignar') {
+              if (tarea._tipo === 'evento') {
+                if (destino !== 'por_asignar' && destino !== fechaActual) {
+                  actualizarFila('eventos', tarea.id, [tarea.id, tarea.usuario_id || '', tarea.titulo, tarea.descripcion || '', destino, tarea.hora_inicio || '', tarea.hora_fin || '', tarea.tipo || 'reunion', tarea.fecha_creacion || new Date().toISOString(), tarea.estado || '', tarea.origen_id || '', tarea.origen_tipo || ''], accessToken).then(() => { refrescar('eventos'); cargarDatos() })
+                }
+              } else if (destino === 'por_asignar') {
                 if (fechaActual) moverTareaDia(tarea, '')
               } else if (destino !== fechaActual) {
                 moverTareaDia(tarea, destino)
@@ -1056,8 +1060,10 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                   <div className="column-tasks">
                     {eventosDelDia.map(ev => {
                       const completado = ev.estado === 'completado'
+                      const evComoTarea = { ...ev, _tipo: 'evento', fecha_exacta: ev.fecha_exacta }
                       return (
-                        <div key={ev.id} style={{ background: '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', opacity: completado ? 0.7 : 1 }}>
+                        <DraggableTarea key={ev.id} tarea={evComoTarea}>
+                        <div style={{ background: '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', opacity: completado ? 0.7 : 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div onClick={() => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId] })} style={{ cursor: 'pointer', flex: 1 }}>
                               <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed', textDecoration: completado ? 'line-through' : 'none' }}>🗓 {ev.titulo}</p>
@@ -1070,6 +1076,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                             </div>
                           </div>
                         </div>
+                        </DraggableTarea>
                       )
                     })}
                     {tareasDelDia.map(tarea => <DraggableTarea key={tarea.id} tarea={tarea}>{renderTarjeta(tarea, fecha)}</DraggableTarea>)}
@@ -1401,13 +1408,10 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
 
 function DraggableTarea({ tarea, children }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: tarea.id + '_' + (tarea._tipo || 'planner'), data: { tarea } })
-  const style = { transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined, opacity: isDragging ? 0.4 : 1 }
+  const style = { transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined, opacity: isDragging ? 0.5 : 1, cursor: isDragging ? 'grabbing' : 'grab' }
   return (
-    <div ref={setNodeRef} style={style}>
-      <div style={{ position: 'relative' }}>
-        <div {...listeners} {...attributes} style={{ position: 'absolute', top: '2px', left: '2px', cursor: 'grab', color: '#9ca3af', fontSize: '16px', zIndex: 20, padding: '2px 4px', lineHeight: 1, userSelect: 'none', background: 'rgba(255,255,255,0.8)', borderRadius: '4px' }} title="Arrastrar para mover">⠿</div>
-        {children}
-      </div>
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      {children}
     </div>
   )
 }
