@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard'
 import Configuracion from './pages/Configuracion'
 import CalendarioEquipo from './pages/CalendarioEquipo'
 import MovilCampo from './pages/MovilCampo'
+import Actas from './pages/Actas'
 import Layout from './components/Layout'
 import './App.css'
 
@@ -61,6 +62,7 @@ function AppRoutes() {
                   <Route path="/graficas" element={<Graficas />} />
                   <Route path="/calendario-equipo" element={<CalendarioEquipo />} />
                   <Route path="/movil-campo" element={<MovilCampo />} />
+                  <Route path="/actas" element={<Actas />} />
                   {usuario.rol === 'admin' && (
                     <Route path="/dashboard" element={<Dashboard />} />
                   )}

@@ -257,6 +257,40 @@ function ModalCompletarTarea({ tarea, onConfirmar, onCancelar }) {
   )
 }
 
+function ModalEvento({ titulo, contexto, origenId, origenTipo, usuario, accessToken, onClose, onSave }) {
+  const [form, setForm] = useState({ titulo: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', descripcion: '' })
+  async function crear() {
+    if (!form.titulo || !form.fecha_exacta) return
+    const id = Date.now().toString()
+    await onSave([id, String(usuario.id), form.titulo, form.descripcion || '', form.fecha_exacta, form.hora_inicio || '', form.hora_fin || '', form.tipo, new Date().toISOString(), '', origenId || '', origenTipo || ''])
+    onClose()
+  }
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h2 style={{ marginBottom: '8px' }}>Nuevo evento</h2>
+        {contexto && <p style={{ fontSize: '13px', color: '#7c3aed', marginBottom: '16px', background: '#f5f3ff', padding: '8px 12px', borderRadius: '8px' }}>📂 {contexto}</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input placeholder="Título *" value={form.titulo} onChange={e => setForm({...form, titulo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+          <select value={form.tipo} onChange={e => setForm({...form, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+            <option value="reunion">Reunión</option><option value="formacion">Formación</option><option value="evento">Evento</option><option value="otro">Otro</option>
+          </select>
+          <div><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha *</label><input type="date" value={form.fecha_exacta} onChange={e => setForm({...form, fecha_exacta: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio</label><input type="time" value={form.hora_inicio} onChange={e => setForm({...form, hora_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+            <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin</label><input type="time" value={form.hora_fin} onChange={e => setForm({...form, hora_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+          </div>
+          <textarea placeholder="Descripción (opcional)" value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '70px', resize: 'none' }} />
+        </div>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={crear} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear evento</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Proyectos() {
   const { accessToken, usuario } = useAuth()
   const { refrescar } = useDatos()
@@ -281,6 +315,9 @@ export default function Proyectos() {
   const [modalAccion, setModalAccion] = useState(null)
   const [modalEnsayo, setModalEnsayo] = useState(null)
   const [modalTarea, setModalTarea] = useState(null)
+  const [modalTareaAccion, setModalTareaAccion] = useState(null)
+  const [modalEventoProyecto, setModalEventoProyecto] = useState(null)
+  const [modalTareaEstado, setModalTareaEstado] = useState(null)
   const [modalEstado, setModalEstado] = useState(null)
 
   const [editProyecto, setEditProyecto] = useState(null)
@@ -767,6 +804,7 @@ export default function Proyectos() {
             </div>
           </Modal>
         )}
+        {modalEventoProyecto && <ModalEvento titulo='Nuevo evento' contexto={modalEventoProyecto.contexto} origenId={modalEventoProyecto.origenId} origenTipo={modalEventoProyecto.origenTipo} usuario={usuario} accessToken={accessToken} onClose={() => setModalEventoProyecto(null)} onSave={async (fila) => { await escribirFila('eventos', fila, accessToken); cargarDatos() }} />}
         {modalesCompartidos}
       </div>
     )
@@ -805,6 +843,7 @@ export default function Proyectos() {
                 <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                   <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'estado', item: estado })}>🗑</BtnAccion>
                   <BtnAccion tipo="añadir" onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Acción</BtnAccion>
+                  <BtnAccion tipo="añadir" onClick={() => setModalTareaEstado({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Tarea</BtnAccion>
                 </div>
               </div>
               {estaExpandido(estado.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -827,6 +866,7 @@ export default function Proyectos() {
                         <BtnAccion tipo="editar" onClick={() => setEditAccion({ ...accion })}>✏️</BtnAccion>
                         <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'accion', item: accion })}>🗑</BtnAccion>
                         <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo</BtnAccion>
+                        <BtnAccion tipo="añadir" onClick={() => setModalTareaAccion({ accion_id: accion.id, proyecto_id: vistaProyecto.id, estado_id: accion.estado_id })}>+ Tarea</BtnAccion>
                       </div>
                     </div>
                     {estaExpandido('accion_' + accion.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -862,6 +902,34 @@ export default function Proyectos() {
           </button>
         </div>
 
+        {modalTareaEstado && (
+          <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
+            if (!nuevaTarea.nombre) return
+            const id = Date.now().toString()
+            const asignadosStr = nuevaTarea.asignados.join(',')
+            escribirFila('tareas', [id, '', '', modalTareaEstado.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(() => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); cargarDatos() })
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <SelectorPersonas usuarios={usuarios} seleccionados={nuevaTarea.asignados} onChange={ids => setNuevaTarea({ ...nuevaTarea, asignados: ids })} />
+              <div><label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label><input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+            </div>
+          </Modal>
+        )}
+        {modalTareaAccion && (
+          <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
+            if (!nuevaTarea.nombre) return
+            const id = Date.now().toString()
+            const asignadosStr = nuevaTarea.asignados.join(',')
+            escribirFila('tareas', [id, '', modalTareaAccion.accion_id, modalTareaAccion.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(() => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); cargarDatos() })
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <SelectorPersonas usuarios={usuarios} seleccionados={nuevaTarea.asignados} onChange={ids => setNuevaTarea({ ...nuevaTarea, asignados: ids })} />
+              <div><label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label><input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+            </div>
+          </Modal>
+        )}
         {modalEstado && (
           <Modal titulo="Añadir estado adicional" onClose={() => setModalEstado(null)} onSave={crearEstado}>
             <input placeholder="Nombre del estado *" value={nuevoEstado.nombre} onChange={e => setNuevoEstado({ nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />

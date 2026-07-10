@@ -234,6 +234,40 @@ function ModalCompletarTarea({ tarea, onConfirmar, onCancelar }) {
   )
 }
 
+function ModalEvento({ titulo, contexto, origenId, origenTipo, usuario, accessToken, onClose, onSave }) {
+  const [form, setForm] = useState({ titulo: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', descripcion: '' })
+  async function crear() {
+    if (!form.titulo || !form.fecha_exacta) return
+    const id = Date.now().toString()
+    await onSave([id, String(usuario.id), form.titulo, form.descripcion || '', form.fecha_exacta, form.hora_inicio || '', form.hora_fin || '', form.tipo, new Date().toISOString(), '', origenId || '', origenTipo || ''])
+    onClose()
+  }
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <h2 style={{ marginBottom: '8px' }}>Nuevo evento</h2>
+        {contexto && <p style={{ fontSize: '13px', color: '#7c3aed', marginBottom: '16px', background: '#f5f3ff', padding: '8px 12px', borderRadius: '8px' }}>📂 {contexto}</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input placeholder="Título *" value={form.titulo} onChange={e => setForm({...form, titulo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+          <select value={form.tipo} onChange={e => setForm({...form, tipo: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}>
+            <option value="reunion">Reunión</option><option value="formacion">Formación</option><option value="evento">Evento</option><option value="otro">Otro</option>
+          </select>
+          <div><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha *</label><input type="date" value={form.fecha_exacta} onChange={e => setForm({...form, fecha_exacta: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio</label><input type="time" value={form.hora_inicio} onChange={e => setForm({...form, hora_inicio: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+            <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin</label><input type="time" value={form.hora_fin} onChange={e => setForm({...form, hora_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+          </div>
+          <textarea placeholder="Descripción (opcional)" value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '70px', resize: 'none' }} />
+        </div>
+        <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={crear} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear evento</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Soporte() {
   const { accessToken, usuario } = useAuth()
   const { obtenerHoja, refrescar } = useDatos()
@@ -260,6 +294,7 @@ export default function Soporte() {
   const [editItem, setEditItem] = useState(null)
   const [confirmEliminar, setConfirmEliminar] = useState(null)
   const [modalCompletar, setModalCompletar] = useState(null)
+  const [modalEvento, setModalEvento] = useState(null)
   const [busqueda, setBusqueda] = useState('')
   const [mostrarBuscador, setMostrarBuscador] = useState(false)
 

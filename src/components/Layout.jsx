@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/calendario-equipo', icon: '🗓', label: 'Calendario' },
   { to: '/graficas', icon: '📈', label: 'Gráficas' },
   { to: '/movil-campo', icon: '🌿', label: 'Campo' },
+  { to: '/actas', icon: '📋', label: 'Actas' },
 ]
 
 const NAV_ADMIN = { to: '/dashboard', icon: '🎯', label: 'Dashboard' }
@@ -24,6 +25,7 @@ const MOBILE_NAV = [
   { to: '/soporte', icon: '🛠️', label: 'Soporte' },
   { to: '/calendario-equipo', icon: '🗓', label: 'Calendario' },
   { to: '/movil-campo', icon: '🌿', label: 'Campo' },
+  { to: '/actas', icon: '📋', label: 'Actas' },
 ]
 
 function Layout({ usuario, children }) {

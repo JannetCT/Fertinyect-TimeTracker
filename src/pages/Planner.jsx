@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useAuth } from '../contexts/AuthContext'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
 import { useDatos } from '../contexts/DatosContext'
@@ -398,7 +400,7 @@ function ModalCompletarTarea({ tarea, onConfirmar, onCancelar }) {
   )
 }
 
-function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDetalle, onEditarTarea, onCompletarCron, onEditarEvento, onCompletarEvento, getChecklistCount }) {
+function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDetalle, onEditarTarea, onCompletarCron, onEditarEvento, onCompletarEvento, getChecklistCount, onDblClickHora }) {
   const horaActualRef = useRef(null)
   const [ahora, setAhora] = useState(new Date())
   useEffect(() => { setAhora(new Date()); const t = setInterval(() => setAhora(new Date()), 60000); return () => clearInterval(t) }, [])
@@ -433,7 +435,7 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
       <div style={{ overflowY: 'auto', flex: 1, position: 'relative' }}>
         <div style={{ position: 'relative', minHeight: `${(HORA_FIN - HORA_INICIO + 1) * ALTURA_HORA}px` }}>
           {horas.map(h => (
-            <div key={h} style={{ position: 'absolute', top: `${(h - HORA_INICIO) * ALTURA_HORA}px`, left: 0, right: 0, height: `${ALTURA_HORA}px`, borderTop: h === HORA_INICIO ? 'none' : '1px solid #f0f0f0', display: 'flex' }}>
+            <div key={h} onDoubleClick={() => onDblClickHora && onDblClickHora(fecha, `${h.toString().padStart(2,'0')}:00`)} style={{ position: 'absolute', top: `${(h - HORA_INICIO) * ALTURA_HORA}px`, left: 0, right: 0, height: `${ALTURA_HORA}px`, borderTop: h === HORA_INICIO ? 'none' : '1px solid #f0f0f0', display: 'flex', cursor: 'crosshair' }}>
               <div style={{ width: '52px', flexShrink: 0, paddingRight: '8px', paddingTop: '4px', textAlign: 'right' }}>
                 <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{h.toString().padStart(2,'0')}:00</span>
               </div>
@@ -523,9 +525,12 @@ function Planner() {
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
   const [modalNuevoEvento, setModalNuevoEvento] = useState(false)
   const [modalEditarEvento, setModalEditarEvento] = useState(null)
-  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
+  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
   const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [], _tipoLigar: '', _origenId: '', _origenTipo: '', _opcionProyectoId: '', _opcionSoporteId: '', _opcionDireccionId: '' })
   const [modalCompletar, setModalCompletar] = useState(null)
+  const [modalPostit, setModalPostit] = useState(false)
+  const [dblClickInfo, setDblClickInfo] = useState(null)
+  const [mostrarMenuDblClick, setMostrarMenuDblClick] = useState(false)
 
   useEffect(() => { if (accessToken && usuario) cargarDatos() }, [accessToken, usuario])
   async function cargarDatos() {
@@ -557,6 +562,45 @@ function Planner() {
   }
 
   function getChecklistCount(tareaId, tipoTarea) { return checklistCounts[`${tareaId}_${tipoTarea}`] || { total: 0, completados: 0 } }
+
+  async function generarCodigo(prefijo, hojas) {
+    try {
+      const año = new Date().getFullYear().toString().slice(2)
+      let maxNum = 0
+      for (const hoja of hojas) {
+        const filas = await leerHoja(hoja, accessToken)
+        filas.forEach(f => {
+          const codigo = f.codigo || f.tarea_grupo_id || ''
+          const match = codigo.match(new RegExp(`^${prefijo}${año}-(\d+)$`))
+          if (match) maxNum = Math.max(maxNum, parseInt(match[1]))
+        })
+      }
+      return `${prefijo}${año}-${String(maxNum + 1).padStart(3, '0')}`
+    } catch { return `${prefijo}${new Date().getFullYear().toString().slice(2)}-001` }
+  }
+
+  async function moverTareaDia(tarea, nuevaFecha) {
+    const nuevoDia = getDiaSemana(nuevaFecha) || 'por_asignar'
+    if (tarea._tipo === 'planner') {
+      const fechasActuales = (tarea.fecha_exacta || '').split(',').map(f => f.trim()).filter(Boolean)
+      const nuevasFechas = fechasActuales.length > 1
+        ? fechasActuales.map((f, i) => i === 0 ? nuevaFecha : f).join(',')
+        : nuevaFecha
+      await actualizarFila('tareas_planner', tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, nuevoDia, tarea.fecha_limite || '', nuevasFechas, tarea.estado, tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', tarea.asignados || '', tarea.creado_por || ''], accessToken)
+    } else {
+      await guardarFechaPersonalEnPlanner(tarea.id, tarea._tipo, nuevaFecha, usuario, accessToken, tarea.nombre)
+    }
+    await refrescar('tareas_planner')
+    cargarDatos()
+  }
+
+  async function clonarTarea(tarea) {
+    const id = Date.now().toString() + String(usuario.id)
+    const nombre = `${tarea.nombre} (copia)`
+    await escribirFila('tareas_planner', [id, String(usuario.id), '', '', nombre, 'por_asignar', tarea.fecha_limite || '', '', 'pendiente', new Date().toISOString(), tarea.etiqueta || '', tarea.fecha_limite || '', tarea.descripcion || '', '', tarea.tiempo_estimado || '', '', String(usuario.id), String(usuario.id)], accessToken)
+    await refrescar('tareas_planner')
+    cargarDatos()
+  }
 
   async function completarTareaConHoras(tarea, horaInicio, horaFin, duracionSegundos, diaCompletado) {
     const fechaStr = diaCompletado || tarea.fecha_exacta?.split(',')[0]?.trim() || getISODate(new Date())
@@ -695,6 +739,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     const diaCalculado = getDiaSemana(primeraFecha) || 'por_asignar'
     const misId = String(usuario.id)
     const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
+    const codigo = await generarCodigo('PL', ['tareas_planner'])
     const tiempoEstimado = ((formTarea._horas || 0) * 60 + (formTarea._minutos || 0)).toString()
     const tipoParaPlanner = ['proyecto','soporte','direccion'].includes(formTarea.tarea_padre_tipo)
       ? 'planner_' + formTarea.tarea_padre_tipo
@@ -704,13 +749,24 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       const tienePadrePlanner = tipoParaPlanner && tipoParaPlanner.includes('planner')
       const padreIdParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : (formTarea.tarea_padre_id || '')
       const tipoParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : tipoParaPlanner
-      await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, '', uid, String(usuario.id)], accessToken)
+      await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, `[${codigo}] ${formTarea.nombre}`, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, '', uid, String(usuario.id)], accessToken)
     }
     setModalNuevaTarea(false)
-    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
+    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
     await refrescar('tareas_planner')
     cargarDatos()
   }
+  async function crearPostit(form) {
+    if (!form.nombre) return
+    const id = Date.now().toString() + String(usuario.id)
+    const fechas = form.fechas_exactas || ''
+    const primeraFecha = fechas.split(',')[0]?.trim() || ''
+    const dia = primeraFecha ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(primeraFecha + 'T12:00:00').getDay()]) : 'por_asignar'
+    await escribirFila('tareas_planner', [id, String(usuario.id), '', '', form.nombre, dia, '', fechas, 'pendiente', new Date().toISOString(), form.etiqueta || '', '', form.descripcion || '', 'postit', '', '', String(usuario.id), String(usuario.id)], accessToken)
+    await refrescar('tareas_planner')
+    cargarDatos()
+  }
+
   async function crearEvento() {
     if (!formEvento.titulo || !formEvento.fecha_exacta) return
     const id = Date.now().toString()
@@ -860,6 +916,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       <TarjetaTarea key={tarea.id + tarea._tipo} tarea={tarea} contexto={getContexto(tarea)} checklistCount={clCount}
         onVerDetalle={() => setVistaTarea(tarea)}
         onEditar={() => { const tipoLigar = tarea.tarea_padre_tipo ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''; const te = parseTiempoEstimado(tarea); const asignadosArr = tarea.asignados ? (Array.isArray(tarea.asignados) ? tarea.asignados : tarea.asignados.split(',').filter(Boolean)) : [tarea.usuario_id || '']; const fechaPersonal = ['proyecto','soporte','direccion'].includes(tarea._tipo) ? (tareasPlanner.find(tp => tp.tarea_padre_id === tarea.id && String(tp.usuario_id) === String(usuario.id))?.fecha_exacta || '') : (tarea.fecha_exacta || ''); setModalEditarTarea({ ...tarea, descripcion: getDescripcionTarea(tarea), fechas_exactas: fechaPersonal, _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos, asignados: asignadosArr }) }}
+        onClonar={() => clonarTarea(tarea)}
         onCompletar={(dia) => setModalCompletar({ tarea, dia: dia || fechaDia })}
       />
     )
@@ -934,6 +991,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
             <button onClick={() => { setMostrarBuscador(p => !p); if (mostrarBuscador) setBusqueda('') }}
               style={{ background: mostrarBuscador ? '#f0fdf4' : '#f3f4f6', color: mostrarBuscador ? '#00953B' : '#6b7280', border: `1px solid ${mostrarBuscador ? '#00953B' : '#e5e7eb'}`, borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', fontWeight: '600', fontSize: '16px' }}>🔍</button>
             <button onClick={() => setMostrarCompletadas(prev => !prev)} style={{ background: mostrarCompletadas ? '#f0fdf4' : '#f3f4f6', color: mostrarCompletadas ? '#00953B' : '#6b7280', border: '1px solid ' + (mostrarCompletadas ? '#00953B' : '#e5e7eb'), borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{mostrarCompletadas ? '✅ Ocultar' : '☑️ Completadas'}</button>
+            <button onClick={() => setModalPostit(true)} title="Post-it rápido" style={{ background: '#fbbf24', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', fontWeight: '700', fontSize: '16px' }}>📝</button>
             <button onClick={() => setModalNuevoEvento(true)} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Evento</button>
             <button onClick={() => { setFormTarea(prev => ({ ...prev, asignadoA: String(usuario.id) })); setModalNuevaTarea(true) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>+ Tarea</button>
           </div>
@@ -957,6 +1015,17 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       )}
 
       {vista === 'semana' && (
+        <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))}
+          onDragEnd={({ active, over }) => {
+            if (!over || !active.data.current?.tarea) return
+            const tarea = active.data.current.tarea
+            const overId = over.id
+            if (overId.startsWith('col_')) {
+              const nuevaFecha = overId.replace('col_', '')
+              const fechaActual = (tarea.fecha_exacta || '').split(',')[0]?.trim()
+              if (nuevaFecha !== fechaActual) moverTareaDia(tarea, nuevaFecha)
+            }
+          }}>
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
             <button onClick={() => setSemanaBase(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d })} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '18px' }}>←</button>
@@ -1020,6 +1089,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
             </div>
           </div>
         </>
+        </DndContext>
       )}
 
       {vista === 'mes' && (
@@ -1085,6 +1155,10 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                 onVerDetalle={t => setVistaTarea(t)}
                 onEditarTarea={tarea => { const tipoLigar = tarea.tarea_padre_tipo ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''; const te = parseTiempoEstimado(tarea); setModalEditarTarea({ ...tarea, descripcion: getDescripcionTarea(tarea), fechas_exactas: tarea.fecha_exacta || '', _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos }) }}
                 onCompletarCron={(tarea, dia) => setModalCompletar({ tarea, dia })}
+                onDblClickHora={(fecha, hora) => {
+                  setDblClickInfo({ fecha, hora })
+                  setMostrarMenuDblClick(true)
+                }}
                 onEditarEvento={ev => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId] })}
                 onCompletarEvento={completarEvento} getChecklistCount={getChecklistCount}
               />
@@ -1159,10 +1233,11 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Ligar a:</label>
                   <select value={formTarea._tipoLigar || ''} onChange={e => setFormTarea({...formTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
-                    <option value="">Selecciona tipo...</option><option value="proyecto">De Proyectos I+D</option><option value="soporte">De Soporte</option>
+                    <option value="">Selecciona tipo...</option><option value="proyecto">De Proyectos I+D</option><option value="soporte">De Soporte</option><option value="direccion">De Dirección</option>
                   </select>
                   {formTarea._tipoLigar === 'proyecto' && <select value={formTarea._opcionProyectoId || ''} onChange={e => { const opcion = opcionesProyecto().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento de proyecto...</option>{opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
                   {formTarea._tipoLigar === 'soporte' && <select value={formTarea._opcionSoporteId || ''} onChange={e => { const opcion = opcionesSoporte().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento de soporte...</option>{opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
+                  {formTarea._tipoLigar === 'direccion' && <select value={formTarea._opcionDireccionId || ''} onChange={e => { setFormTarea({...formTarea, tarea_padre_id: e.target.value, tarea_padre_tipo: 'direccion', _opcionDireccionId: e.target.value}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona categoría...</option>{categoriasDireccion.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select>}
                 </div>
               )}
               <InputFechasMultiples label="Días asignados (opcional):" value={formTarea.fechas_exactas || ''} onChange={val => setFormTarea({...formTarea, fechas_exactas: val})} />
@@ -1181,6 +1256,16 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         </div>
       )}
 
+      {modalPostit && <ModalPostit onClose={() => setModalPostit(false)} onSave={(form) => crearPostit(form)} />}
+      {mostrarMenuDblClick && dblClickInfo && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 500 }} onClick={() => setMostrarMenuDblClick(false)}>
+          <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%,-50%)', background: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', display: 'flex', gap: '12px' }} onClick={e => e.stopPropagation()}>
+            <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#6b7280', width: '100%', textAlign: 'center' }}>📅 {dblClickInfo.fecha} · ⏰ {dblClickInfo.hora}</p>
+            <button onClick={() => { setMostrarMenuDblClick(false); setFormTarea(prev => ({ ...prev, fechas_exactas: dblClickInfo.fecha, _horas: parseInt(dblClickInfo.hora), _minutos: 0 })); setModalNuevaTarea(true) }} style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: 'none', background: '#f0fdf4', color: '#00953B', cursor: 'pointer', fontWeight: '700', fontSize: '14px' }}>✅ + Tarea</button>
+            <button onClick={() => { setMostrarMenuDblClick(false); setFormEvento(prev => ({ ...prev, fecha_exacta: dblClickInfo.fecha, hora_inicio: dblClickInfo.hora })); setModalNuevoEvento(true) }} style={{ flex: 1, padding: '12px 16px', borderRadius: '10px', border: 'none', background: '#f5f3ff', color: '#7c3aed', cursor: 'pointer', fontWeight: '700', fontSize: '14px' }}>🗓 + Evento</button>
+          </div>
+        </div>
+      )}
       {modalCompletar && <ModalCompletarWrapper modalCompletar={modalCompletar} setModalCompletar={setModalCompletar} completarTareaConHoras={completarTareaConHoras} />}
 
       {modalNuevoEvento && (
@@ -1267,10 +1352,11 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
             <div>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Enlazar a (opcional):</label>
               <select value={modalEditarTarea._tipoLigar || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionProyectoId: '', _opcionSoporteId: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
-                <option value="">Sin enlazar</option><option value="proyecto">De Proyectos I+D</option><option value="soporte">De Soporte</option>
+                <option value="">Sin enlazar</option><option value="proyecto">De Proyectos I+D</option><option value="soporte">De Soporte</option><option value="direccion">De Dirección</option>
               </select>
               {modalEditarTarea._tipoLigar === 'proyecto' && <select value={modalEditarTarea._opcionProyectoId || ''} onChange={e => { const opcion = opcionesProyecto().find(o => o.id === e.target.value); if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento...</option>{opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
               {modalEditarTarea._tipoLigar === 'soporte' && <select value={modalEditarTarea._opcionSoporteId || ''} onChange={e => { const opcion = opcionesSoporte().find(o => o.id === e.target.value); if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento...</option>{opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
+              {modalEditarTarea._tipoLigar === 'direccion' && <select value={modalEditarTarea._opcionDireccionId || ''} onChange={e => { setModalEditarTarea({...modalEditarTarea, tarea_padre_id: e.target.value, tarea_padre_tipo: 'direccion', _opcionDireccionId: e.target.value}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona categoría...</option>{categoriasDireccion.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select>}
             </div>
           )}
           <InputFechasMultiples label="Días asignados:" value={modalEditarTarea.fechas_exactas || modalEditarTarea.fecha_exacta || ''} onChange={val => setModalEditarTarea({...modalEditarTarea, fechas_exactas: val})} />
@@ -1300,19 +1386,32 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
   )
 }
 
-function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar, onCompletar }) {
+function DraggableTarea({ tarea, children }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: tarea.id + '_' + (tarea._tipo || 'planner'), data: { tarea } })
+  const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 999 : 'auto', position: 'relative' } : {}
+  return <div ref={setNodeRef} style={style} {...listeners} {...attributes}>{children}</div>
+}
+
+function DroppableColumna({ diaFecha, children }) {
+  const { setNodeRef, isOver } = useDroppable({ id: 'col_' + diaFecha })
+  return <div ref={setNodeRef} style={{ flex: 1, minHeight: '100px', background: isOver ? 'rgba(0,149,59,0.05)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s' }}>{children}</div>
+}
+
+function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar, onClonar, onCompletar }) {
   const esCompletada = tarea.estado === 'completada'
+  const esPostit = tarea.tarea_grupo_id === 'postit'
   const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
   const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
   const minEstimados = parseInt(tarea.tiempo_estimado) || 0
   return (
-    <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{ borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`, background: esCompletada ? '#f9fafb' : 'white' }}>
+    <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{ borderLeft: `4px solid ${esPostit ? '#fbbf24' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`, background: esPostit ? '#fef9c3' : esCompletada ? '#f9fafb' : 'white' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
           <p onClick={onVerDetalle} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', margin: 0 }}>{tarea.nombre}</p>
         </div>
         <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
           <button onClick={e => { e.stopPropagation(); onEditar() }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}>✏️</button>
+          <button onClick={e => { e.stopPropagation(); onClonar && onClonar() }} title="Clonar tarea" style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}>⧉</button>
           {!esCompletada && (
             <button onClick={e => { e.stopPropagation(); onCompletar() }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>✅</button>
           )}
@@ -1333,6 +1432,49 @@ function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar,
             ☑️ {checklistCount.completados}/{checklistCount.total}
           </span>
         )}
+      </div>
+    </div>
+  )
+}
+
+function ModalPostit({ onClose, onSave }) {
+  const [form, setForm] = useState({ nombre: '', fechas_exactas: '', etiqueta: '' })
+  const [inputFecha, setInputFecha] = useState('')
+  const fechas = form.fechas_exactas ? form.fechas_exactas.split(',').filter(Boolean) : []
+  function agregarFecha() { if (!inputFecha || fechas.includes(inputFecha)) return; setForm({...form, fechas_exactas: [...fechas, inputFecha].sort().join(',')}); setInputFecha('') }
+  function quitarFecha(f) { setForm({...form, fechas_exactas: fechas.filter(x => x !== f).join(',')}) }
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: '#fef9c3', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '380px', boxShadow: '4px 4px 20px rgba(0,0,0,0.2)', border: '2px solid #fbbf24' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <span style={{ fontSize: '20px' }}>📝</span>
+          <h3 style={{ margin: 0, fontSize: '16px', color: '#92400e' }}>Nota rápida</h3>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input placeholder="¿Qué tienes en mente? *" value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})}
+            autoFocus style={{ padding: '10px', borderRadius: '8px', border: '1px solid #fbbf24', fontSize: '14px', background: '#fffbeb' }} />
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: '600', color: '#92400e', display: 'block', marginBottom: '6px' }}>Fecha (opcional):</label>
+            {fechas.length > 0 && <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '6px' }}>{fechas.map(f => <span key={f} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#fbbf24', borderRadius: '20px', padding: '2px 8px', fontSize: '11px', color: 'white', fontWeight: '600' }}>📅 {f} <button onClick={() => quitarFecha(f)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'white', fontSize: '12px', padding: 0, lineHeight: 1 }}>✕</button></span>)}</div>}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input type="date" value={inputFecha} onChange={e => setInputFecha(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #fbbf24', fontSize: '13px', background: '#fffbeb' }} />
+              <button onClick={agregarFecha} style={{ padding: '8px 12px', borderRadius: '8px', background: '#fbbf24', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '700' }}>+</button>
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: '600', color: '#92400e', display: 'block', marginBottom: '6px' }}>Prioridad:</label>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[['urgente','🔴'],['importante','🟡'],['delegar','🔵']].map(([key,emoji]) => {
+                const activa = (form.etiqueta||'').includes(key)
+                return <button key={key} onClick={() => { const lista = (form.etiqueta||'').split(',').filter(Boolean); const nuevo = activa ? lista.filter(e=>e!==key) : [...lista,key]; setForm({...form, etiqueta: nuevo.join(',')}) }} style={{ padding: '4px 10px', borderRadius: '20px', border: `2px solid ${activa ? '#92400e' : '#fbbf24'}`, background: activa ? '#fbbf24' : '#fffbeb', color: '#92400e', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>{emoji} {key}</button>
+              })}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #fbbf24', background: '#fffbeb', cursor: 'pointer', color: '#92400e' }}>Cancelar</button>
+          <button onClick={() => { onSave(form); onClose() }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#fbbf24', color: 'white', cursor: 'pointer', fontWeight: '700' }}>✓ Guardar</button>
+        </div>
       </div>
     </div>
   )
