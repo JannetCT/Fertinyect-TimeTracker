@@ -502,6 +502,7 @@ export default function Soporte() {
             <Btn tipo="editar" onClick={() => { setEditItem({...vistaSubcarpeta, _tipo: 'subcarpeta'}); setForm({ nombre: vistaSubcarpeta.nombre, descripcion: vistaSubcarpeta.descripcion || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'subcarpetas_soporte', item: vistaSubcarpeta })}>🗑 Eliminar</Btn>
             <button onClick={() => { setFormTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ subcarpeta_id: vistaSubcarpeta.id, proyecto_soporte_id: vistaProyecto?.id, categoria_id: vistaProyecto?.categoria_id }) }} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
+            <button onClick={() => setModalEvento({ origenId: vistaSubcarpeta.id, origenTipo: 'soporte_subcarpeta', contexto: vistaSubcarpeta.nombre })} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Evento</button>
           </div>
         </div>
         <TareasList tareas={tareasAqui} usuarios={usuarios} getNombre={getNombre} setEditItem={setEditItem} setForm={setForm} setConfirmEliminar={setConfirmEliminar} onVerDetalle={t => setVistaTarea(t)} />
@@ -541,6 +542,7 @@ export default function Soporte() {
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'proyectos_soporte', item: vistaProyecto })}>🗑 Eliminar</Btn>
             <Btn tipo="añadir" onClick={() => setModalSubcarpeta({ proyecto_soporte_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id })}>+ Subcarpeta</Btn>
             <button onClick={() => setModalTarea({ proyecto_soporte_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id })} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
+            <button onClick={() => setModalEvento({ origenId: vistaProyecto.id, origenTipo: 'soporte_proyecto', contexto: vistaProyecto.nombre })} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Evento</button>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -598,6 +600,7 @@ export default function Soporte() {
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'categorias_soporte', item: vistaCategoria })}>🗑 Eliminar</Btn>
             <Btn tipo="añadir" onClick={() => setModalProyecto({ categoria_id: vistaCategoria.id })}>+ Proyecto</Btn>
             <button onClick={() => { setFormTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ categoria_id: vistaCategoria.id }) }} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
+            <button onClick={() => setModalEvento({ origenId: vistaCategoria.id, origenTipo: 'soporte_categoria', contexto: vistaCategoria.nombre })} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Evento</button>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

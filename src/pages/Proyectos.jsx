@@ -756,6 +756,7 @@ export default function Proyectos() {
             <BtnAccion tipo="editar" onClick={() => setEditEnsayo({ ...vistaEnsayo })}>✏️ Editar</BtnAccion>
             <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: vistaEnsayo })}>🗑 Eliminar</BtnAccion>
             <button onClick={() => { setNuevaTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id }) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
+            <button onClick={() => setModalEventoProyecto({ origenId: vistaEnsayo.id, origenTipo: 'ensayo', contexto: vistaEnsayo.nombre })} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Evento</button>
           </div>
         </div>
 
@@ -843,7 +844,7 @@ export default function Proyectos() {
                 <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                   <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'estado', item: estado })}>🗑</BtnAccion>
                   <BtnAccion tipo="añadir" onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Acción</BtnAccion>
-                  <BtnAccion tipo="añadir" onClick={() => setModalTareaEstado({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Tarea</BtnAccion>
+                  <BtnAccion tipo="editar" onClick={() => setModalTareaEstado({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>📋 + Tarea</BtnAccion>
                 </div>
               </div>
               {estaExpandido(estado.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -866,7 +867,7 @@ export default function Proyectos() {
                         <BtnAccion tipo="editar" onClick={() => setEditAccion({ ...accion })}>✏️</BtnAccion>
                         <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'accion', item: accion })}>🗑</BtnAccion>
                         <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo</BtnAccion>
-                        <BtnAccion tipo="añadir" onClick={() => setModalTareaAccion({ accion_id: accion.id, proyecto_id: vistaProyecto.id, estado_id: accion.estado_id })}>+ Tarea</BtnAccion>
+                        <BtnAccion tipo="editar" onClick={() => setModalTareaAccion({ accion_id: accion.id, proyecto_id: vistaProyecto.id, estado_id: accion.estado_id })}>📋 + Tarea</BtnAccion>
                       </div>
                     </div>
                     {estaExpandido('accion_' + accion.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -907,7 +908,7 @@ export default function Proyectos() {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
             const asignadosStr = nuevaTarea.asignados.join(',')
-            escribirFila('tareas', [id, '', '', modalTareaEstado.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(() => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); cargarDatos() })
+            escribirFila('tareas', [id, '', '', modalTareaEstado.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(async () => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); await refrescar('tareas'); cargarDatos() })
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
@@ -921,7 +922,7 @@ export default function Proyectos() {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
             const asignadosStr = nuevaTarea.asignados.join(',')
-            escribirFila('tareas', [id, '', modalTareaAccion.accion_id, modalTareaAccion.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(() => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); cargarDatos() })
+            escribirFila('tareas', [id, '', modalTareaAccion.accion_id, modalTareaAccion.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(async () => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); await refrescar('tareas'); cargarDatos() })
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />

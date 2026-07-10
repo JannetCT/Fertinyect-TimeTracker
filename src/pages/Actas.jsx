@@ -170,10 +170,11 @@ export default function Actas() {
           <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Actas guardadas</h3>
           {actas.length === 0 && <p style={{ color: '#9ca3af', fontSize: '14px' }}>Aún no hay actas</p>}
           {actas.map(acta => (
-            <div key={acta.id} style={{ background: 'white', borderRadius: '10px', padding: '14px 16px', marginBottom: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #00953B', cursor: 'pointer' }}
+            <div key={acta.id} style={{ background: 'white', borderRadius: '10px', padding: '14px 16px', marginBottom: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #00953B', cursor: 'pointer', position: 'relative' }}
               onClick={() => abrirActa(acta)}
               onMouseOver={e => e.currentTarget.style.background = '#f0fdf4'}
               onMouseOut={e => e.currentTarget.style.background = 'white'}>
+              <button onClick={async e => { e.stopPropagation(); if (confirm('¿Eliminar esta acta?')) { const todas = await leerHoja('actas', accessToken); const fila = todas.find(a => a.id === acta.id); if (fila) { await actualizarFila('actas', acta.id, ['eliminado', ...Object.values(fila).slice(1)], accessToken); cargarDatos() } } }} style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px', opacity: 0.5, padding: '2px' }} onMouseOver={e => e.target.style.opacity='1'} onMouseOut={e => e.target.style.opacity='0.5'}>🗑</button>
               <p style={{ margin: '0 0 4px', fontWeight: '600', fontSize: '14px' }}>{acta.fecha} — {eventos.find(e => e.id === acta.evento_id)?.titulo || 'Reunión'}</p>
               <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>{acta.participantes}</p>
             </div>

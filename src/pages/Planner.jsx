@@ -526,7 +526,7 @@ function Planner() {
   const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
   const [modalNuevoEvento, setModalNuevoEvento] = useState(false)
   const [modalEditarEvento, setModalEditarEvento] = useState(null)
-  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
+  const [formTarea, setFormTarea] = useState({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0, hora_inicio: '' })
   const [formEvento, setFormEvento] = useState({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [], _tipoLigar: '', _origenId: '', _origenTipo: '', _opcionProyectoId: '', _opcionSoporteId: '', _opcionDireccionId: '' })
   const [modalCompletar, setModalCompletar] = useState(null)
   const [modalPostit, setModalPostit] = useState(false)
@@ -564,20 +564,10 @@ function Planner() {
 
   function getChecklistCount(tareaId, tipoTarea) { return checklistCounts[`${tareaId}_${tipoTarea}`] || { total: 0, completados: 0 } }
 
-  async function generarCodigo(prefijo, hojas) {
-    try {
-      const año = new Date().getFullYear().toString().slice(2)
-      let maxNum = 0
-      for (const hoja of hojas) {
-        const filas = await leerHoja(hoja, accessToken)
-        filas.forEach(f => {
-          const codigo = f.codigo || f.tarea_grupo_id || ''
-          const match = codigo.match(new RegExp(`^${prefijo}${año}-(\d+)$`))
-          if (match) maxNum = Math.max(maxNum, parseInt(match[1]))
-        })
-      }
-      return `${prefijo}${año}-${String(maxNum + 1).padStart(3, '0')}`
-    } catch { return `${prefijo}${new Date().getFullYear().toString().slice(2)}-001` }
+  function generarCodigo(prefijo) {
+    const año = new Date().getFullYear().toString().slice(2)
+    const num = String(Date.now()).slice(-4)
+    return `${prefijo}${año}-${num}`
   }
 
   async function moverTareaDia(tarea, nuevaFecha) {
@@ -598,7 +588,8 @@ function Planner() {
   async function clonarTarea(tarea) {
     const id = Date.now().toString() + String(usuario.id)
     const nombre = `${tarea.nombre} (copia)`
-    await escribirFila('tareas_planner', [id, String(usuario.id), '', '', nombre, 'por_asignar', tarea.fecha_limite || '', '', 'pendiente', new Date().toISOString(), tarea.etiqueta || '', tarea.fecha_limite || '', tarea.descripcion || '', '', tarea.tiempo_estimado || '', '', String(usuario.id), String(usuario.id)], accessToken)
+    const grupoIdClon = tarea.tarea_grupo_id === 'postit' ? 'postit' : ''
+    await escribirFila('tareas_planner', [id, String(usuario.id), '', '', nombre, 'por_asignar', tarea.fecha_limite || '', '', 'pendiente', new Date().toISOString(), tarea.etiqueta || '', tarea.fecha_limite || '', tarea.descripcion || '', grupoIdClon, tarea.tiempo_estimado || '', '', String(usuario.id), String(usuario.id)], accessToken)
     await refrescar('tareas_planner')
     cargarDatos()
   }
@@ -740,7 +731,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     const diaCalculado = getDiaSemana(primeraFecha) || 'por_asignar'
     const misId = String(usuario.id)
     const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
-    const codigo = await generarCodigo('PL', ['tareas_planner'])
+    const codigo = generarCodigo('PL')
     const tiempoEstimado = ((formTarea._horas || 0) * 60 + (formTarea._minutos || 0)).toString()
     const tipoParaPlanner = ['proyecto','soporte','direccion'].includes(formTarea.tarea_padre_tipo)
       ? 'planner_' + formTarea.tarea_padre_tipo
@@ -753,7 +744,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, `[${codigo}] ${formTarea.nombre}`, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, '', uid, String(usuario.id)], accessToken)
     }
     setModalNuevaTarea(false)
-    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 })
+    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0, hora_inicio: '' })
     await refrescar('tareas_planner')
     cargarDatos()
   }
@@ -1389,8 +1380,13 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
 
 function DraggableTarea({ tarea, children }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: tarea.id + '_' + (tarea._tipo || 'planner'), data: { tarea } })
-  const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 999 : 'auto', position: 'relative' } : {}
-  return <div ref={setNodeRef} style={style} {...listeners} {...attributes}>{children}</div>
+  const style = { transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined, opacity: isDragging ? 0.4 : 1, position: 'relative' }
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div {...listeners} {...attributes} style={{ position: 'absolute', top: '4px', right: '4px', cursor: 'grab', color: '#d1d5db', fontSize: '14px', zIndex: 10, padding: '2px', lineHeight: 1, userSelect: 'none' }} title="Arrastrar">⠿</div>
+      {children}
+    </div>
+  )
 }
 
 function DroppableColumna({ diaFecha, children }) {

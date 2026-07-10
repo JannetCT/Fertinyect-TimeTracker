@@ -503,6 +503,7 @@ export default function Direccion() {
             <Btn tipo="añadir" onClick={() => setModalSubcarpeta({ proyecto_direccion_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id })}>+ Subcarpeta</Btn>
             <button onClick={() => { setFormTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ proyecto_direccion_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id }) }}
               style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
+            <button onClick={() => setModalEvento({ origenId: vistaProyecto.id, origenTipo: 'direccion_proyecto', contexto: vistaProyecto.nombre })} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', opacity: 0.8 }}>+ Evento</button>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -566,6 +567,7 @@ export default function Direccion() {
             <Btn tipo="añadir" onClick={() => setModalProyecto({ categoria_id: vistaCategoria.id })}>+ Proyecto</Btn>
             <button onClick={() => { setFormTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ categoria_id: vistaCategoria.id }) }}
               style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
+            <button onClick={() => setModalEvento({ origenId: vistaCategoria.id, origenTipo: 'direccion_categoria', contexto: vistaCategoria.nombre })} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', opacity: 0.8 }}>+ Evento</button>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
