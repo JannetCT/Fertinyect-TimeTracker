@@ -741,7 +741,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       const tienePadrePlanner = tipoParaPlanner && tipoParaPlanner.includes('planner')
       const padreIdParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : (formTarea.tarea_padre_id || '')
       const tipoParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : tipoParaPlanner
-      await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, `[${codigo}] ${formTarea.nombre}`, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, '', uid, String(usuario.id)], accessToken)
+      await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, `[${codigo}] ${formTarea.nombre}`, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, formTarea.hora_inicio || '', uid, String(usuario.id)], accessToken)
     }
     setModalNuevaTarea(false)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0, hora_inicio: '' })
@@ -955,7 +955,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         {modalEditarTarea && (
           <ModalEditarTareaComponent modalEditarTarea={modalEditarTarea} setModalEditarTarea={setModalEditarTarea}
             guardarEditarTarea={async () => { await guardarEditarTarea(); setVistaTarea({...vistaTarea, descripcion: modalEditarTarea.descripcion}) }}
-            eliminarTarea={eliminarTarea} opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte}
+            eliminarTarea={eliminarTarea} opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte} categoriasDireccion={categoriasDireccion}
             usuario={usuario} usuarios={usuarios} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
           />
         )}
@@ -1162,7 +1162,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       {modalEditarTarea && !vistaTarea && (
         <ModalEditarTareaComponent modalEditarTarea={modalEditarTarea} setModalEditarTarea={setModalEditarTarea}
           guardarEditarTarea={guardarEditarTarea} eliminarTarea={eliminarTarea}
-          opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte}
+          opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte} categoriasDireccion={categoriasDireccion}
           usuario={usuario} usuarios={usuarios} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
         />
       )}
@@ -1235,6 +1235,13 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
               <InputFechasMultiples label="Días asignados (opcional):" value={formTarea.fechas_exactas || ''} onChange={val => setFormTarea({...formTarea, fechas_exactas: val})} />
               <InputFechaPlanner label="Fecha límite (opcional):" value={formTarea.fecha_limite} onChange={val => setFormTarea({...formTarea, fecha_limite: val})} />
               <SelectorTiempoEstimado horas={formTarea._horas || 0} minutos={formTarea._minutos || 0} onChangeHoras={h => setFormTarea({...formTarea, _horas: h})} onChangeMinutos={m => setFormTarea({...formTarea, _minutos: m})} />
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora inicio (opcional):</label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input type="time" value={formTarea.hora_inicio || ''} onChange={e => setFormTarea({...formTarea, hora_inicio: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+                  {formTarea.hora_inicio && <button onClick={() => setFormTarea({...formTarea, hora_inicio: ''})} style={{ padding: '10px 12px', borderRadius: '8px', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700' }}>✕</button>}
+                </div>
+              </div>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
                 <BotonesPrioridad etiqueta={formTarea.etiqueta} onChange={val => setFormTarea({...formTarea, etiqueta: val})} />
@@ -1315,7 +1322,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   )
 }
 
-function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guardarEditarTarea, eliminarTarea, opcionesProyecto, opcionesSoporte, usuario, usuarios, accessToken, getRefId, getRefTipo }) {
+function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guardarEditarTarea, eliminarTarea, opcionesProyecto, opcionesSoporte, categoriasDireccion, usuario, usuarios, accessToken, getRefId, getRefTipo }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
