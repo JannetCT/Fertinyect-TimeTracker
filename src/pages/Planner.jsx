@@ -1098,7 +1098,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                 <h3>📥 Por asignar</h3>
                 <span className="task-count">{tareasBacklog().length}</span>
               </div>
-              <div className="column-tasks">{tareasBacklog().map(tarea => renderTarjeta(tarea))}</div>
+              <DroppableColumna diaFecha="por_asignar"><div className="column-tasks">{tareasBacklog().map(tarea => <DraggableTarea key={tarea.id} tarea={tarea}>{renderTarjeta(tarea)}</DraggableTarea>)}</div></DroppableColumna>
             </div>
           </div>
         </>
