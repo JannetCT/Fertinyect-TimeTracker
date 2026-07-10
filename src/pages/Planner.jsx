@@ -571,10 +571,11 @@ function Planner() {
   }
 
   async function moverTareaDia(tarea, nuevaFecha) {
-    const nuevoDia = getDiaSemana(nuevaFecha) || 'por_asignar'
+    const nuevoDia = nuevaFecha ? (getDiaSemana(nuevaFecha) || 'por_asignar') : 'por_asignar'
+    const nuevasFechasStr = nuevaFecha || ''
     if (tarea._tipo === 'planner') {
       const fechasActuales = (tarea.fecha_exacta || '').split(',').map(f => f.trim()).filter(Boolean)
-      const nuevasFechas = fechasActuales.length > 1
+      const nuevasFechas = !nuevaFecha ? '' : fechasActuales.length > 1
         ? fechasActuales.map((f, i) => i === 0 ? nuevaFecha : f).join(',')
         : nuevaFecha
       await actualizarFila('tareas_planner', tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, nuevoDia, tarea.fecha_limite || '', nuevasFechas, tarea.estado, tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', tarea.asignados || '', tarea.creado_por || ''], accessToken)
@@ -1019,9 +1020,13 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
             const tarea = active.data.current.tarea
             const overId = over.id
             if (overId.startsWith('col_')) {
-              const nuevaFecha = overId.replace('col_', '')
+              const destino = overId.replace('col_', '')
               const fechaActual = (tarea.fecha_exacta || '').split(',')[0]?.trim()
-              if (nuevaFecha !== fechaActual) moverTareaDia(tarea, nuevaFecha)
+              if (destino === 'por_asignar') {
+                if (fechaActual) moverTareaDia(tarea, '')
+              } else if (destino !== fechaActual) {
+                moverTareaDia(tarea, destino)
+              }
             }
           }}>
         <>
