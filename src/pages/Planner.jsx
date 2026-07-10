@@ -1047,6 +1047,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                     </div>
                     <span className="task-count" style={{ background: esHoy ? 'rgba(255,255,255,0.3)' : undefined, color: esHoy ? 'white' : undefined }}>{tareasDelDia.length + eventosDelDia.length}</span>
                   </div>
+                  <DroppableColumna diaFecha={fecha}>
                   <div className="column-tasks">
                     {eventosDelDia.map(ev => {
                       const completado = ev.estado === 'completado'
@@ -1066,8 +1067,9 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                         </div>
                       )
                     })}
-                    {tareasDelDia.map(tarea => renderTarjeta(tarea, fecha))}
+                    {tareasDelDia.map(tarea => <DraggableTarea key={tarea.id} tarea={tarea}>{renderTarjeta(tarea, fecha)}</DraggableTarea>)}
                   </div>
+                  </DroppableColumna>
                   {minEstimados > 0 && (
                     <div style={{ padding: '6px 8px', borderTop: '1px solid #f3f4f6', marginTop: '4px' }}>
                       <span style={{ fontSize: '11px', color: sobrecargado ? '#dc2626' : '#6b7280', fontWeight: sobrecargado ? '700' : '400' }}>

@@ -981,6 +981,7 @@ export default function Proyectos() {
           </Modal>
         )}
 
+        {modalEventoProyecto && <ModalEvento titulo='Nuevo evento' contexto={modalEventoProyecto.contexto} origenId={modalEventoProyecto.origenId} origenTipo={modalEventoProyecto.origenTipo} usuario={usuario} accessToken={accessToken} onClose={() => setModalEventoProyecto(null)} onSave={async (fila) => { await escribirFila('eventos', fila, accessToken); cargarDatos() }} />}
         {modalesCompartidos}
       </div>
     )

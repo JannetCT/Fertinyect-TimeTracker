@@ -517,6 +517,7 @@ export default function Soporte() {
         {editItem && editItem._tipo === 'subcarpeta' && <Modal titulo="Editar subcarpeta" onClose={() => setEditItem(null)} onSave={() => guardarEdit('subcarpetas_soporte', [editItem.id, editItem.proyecto_soporte_id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEditTareaConFecha} usuario={usuario} accessToken={accessToken} tareasPlanner={tareasPlanner} />}
         {modalCompletar && <ModalCompletarTarea tarea={modalCompletar} onCancelar={() => setModalCompletar(null)} onConfirmar={(hi, hf, dur) => completarTareaConHoras(modalCompletar, hi, hf, dur)} />}
+        {modalEvento && <ModalEvento titulo='Nuevo evento' contexto={modalEvento.contexto} origenId={modalEvento.origenId} origenTipo={modalEvento.origenTipo} usuario={usuario} accessToken={accessToken} onClose={() => setModalEvento(null)} onSave={async (fila) => { await escribirFila('eventos', fila, accessToken); cargarDatos() }} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
