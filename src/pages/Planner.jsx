@@ -585,6 +585,13 @@ function Planner() {
     cargarDatos()
   }
 
+  async function clonarEvento(evento) {
+    const id = Date.now().toString()
+    await escribirFila('eventos', [id, String(usuario.id), `${evento.titulo} (copia)`, evento.descripcion || '', evento.fecha_exacta || '', evento.hora_inicio || '', evento.hora_fin || '', evento.tipo || 'reunion', new Date().toISOString(), evento.estado || 'pendiente', evento.origen_id || '', evento.origen_tipo || ''], accessToken)
+    await refrescar('eventos')
+    cargarDatos()
+  }
+
   async function clonarTarea(tarea) {
     const id = Date.now().toString() + String(usuario.id)
     const nombre = `${tarea.nombre} (copia)`
@@ -731,7 +738,6 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     const diaCalculado = getDiaSemana(primeraFecha) || 'por_asignar'
     const misId = String(usuario.id)
     const asignados = formTarea.asignadoA ? formTarea.asignadoA.split(',').filter(Boolean) : [misId]
-    const codigo = generarCodigo('PL')
     const tiempoEstimado = ((formTarea._horas || 0) * 60 + (formTarea._minutos || 0)).toString()
     const tipoParaPlanner = ['proyecto','soporte','direccion'].includes(formTarea.tarea_padre_tipo)
       ? 'planner_' + formTarea.tarea_padre_tipo
@@ -741,7 +747,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       const tienePadrePlanner = tipoParaPlanner && tipoParaPlanner.includes('planner')
       const padreIdParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : (formTarea.tarea_padre_id || '')
       const tipoParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : tipoParaPlanner
-      await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, `[${codigo}] ${formTarea.nombre}`, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, formTarea.hora_inicio || '', uid, String(usuario.id)], accessToken)
+      await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, formTarea.hora_inicio || '', uid, String(usuario.id)], accessToken)
     }
     setModalNuevaTarea(false)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0, hora_inicio: '' })
@@ -909,7 +915,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         onVerDetalle={() => setVistaTarea(tarea)}
         onEditar={() => { const tipoLigar = tarea.tarea_padre_tipo ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''; const te = parseTiempoEstimado(tarea); const asignadosArr = tarea.asignados ? (Array.isArray(tarea.asignados) ? tarea.asignados : tarea.asignados.split(',').filter(Boolean)) : [tarea.usuario_id || '']; const fechaPersonal = ['proyecto','soporte','direccion'].includes(tarea._tipo) ? (tareasPlanner.find(tp => tp.tarea_padre_id === tarea.id && String(tp.usuario_id) === String(usuario.id))?.fecha_exacta || '') : (tarea.fecha_exacta || ''); setModalEditarTarea({ ...tarea, descripcion: getDescripcionTarea(tarea), fechas_exactas: fechaPersonal, _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos, asignados: asignadosArr }) }}
         onClonar={() => clonarTarea(tarea)}
-        onCompletar={(dia) => setModalCompletar({ tarea, dia: dia || fechaDia })}
+        onCompletar={(dia) => { if (tarea.tarea_grupo_id === 'postit') { completarTareaConHoras(tarea, '', '', 0, dia || fechaDia) } else { setModalCompletar({ tarea, dia: dia || fechaDia }) } }}
       />
     )
   }
@@ -1052,9 +1058,10 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                               {ev.hora_inicio && <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{ev.hora_inicio}{ev.hora_fin ? ` — ${ev.hora_fin}` : ''}</p>}
                               <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
                             </div>
-                            {!completado && ev.hora_inicio && ev.hora_fin && (
-                              <button onClick={e => { e.stopPropagation(); completarEvento(ev) }} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', marginLeft: '6px' }}>✅</button>
-                            )}
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                              <button onClick={e => { e.stopPropagation(); clonarEvento(ev) }} title="Clonar" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9ca3af', padding: '2px' }}>⧉</button>
+                              {!completado && <button onClick={e => { e.stopPropagation(); completarEvento(ev) }} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>✅</button>}
+                            </div>
                           </div>
                         </div>
                       )
@@ -1387,11 +1394,13 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
 
 function DraggableTarea({ tarea, children }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: tarea.id + '_' + (tarea._tipo || 'planner'), data: { tarea } })
-  const style = { transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined, opacity: isDragging ? 0.4 : 1, position: 'relative' }
+  const style = { transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined, opacity: isDragging ? 0.4 : 1 }
   return (
     <div ref={setNodeRef} style={style}>
-      <div {...listeners} {...attributes} style={{ position: 'absolute', top: '4px', right: '4px', cursor: 'grab', color: '#d1d5db', fontSize: '14px', zIndex: 10, padding: '2px', lineHeight: 1, userSelect: 'none' }} title="Arrastrar">⠿</div>
-      {children}
+      <div style={{ position: 'relative' }}>
+        <div {...listeners} {...attributes} style={{ position: 'absolute', top: '2px', left: '2px', cursor: 'grab', color: '#9ca3af', fontSize: '16px', zIndex: 20, padding: '2px 4px', lineHeight: 1, userSelect: 'none', background: 'rgba(255,255,255,0.8)', borderRadius: '4px' }} title="Arrastrar para mover">⠿</div>
+        {children}
+      </div>
     </div>
   )
 }

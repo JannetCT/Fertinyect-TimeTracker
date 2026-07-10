@@ -845,6 +845,7 @@ export default function Proyectos() {
                   <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'estado', item: estado })}>🗑</BtnAccion>
                   <BtnAccion tipo="añadir" onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Acción</BtnAccion>
                   <BtnAccion tipo="editar" onClick={() => setModalTareaEstado({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>📋 + Tarea</BtnAccion>
+                  <BtnAccion tipo="añadir" onClick={() => setModalEventoProyecto({ origenId: estado.id, origenTipo: 'estado', contexto: estado.nombre })}>+ Evento</BtnAccion>
                 </div>
               </div>
               {estaExpandido(estado.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -868,6 +869,7 @@ export default function Proyectos() {
                         <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'accion', item: accion })}>🗑</BtnAccion>
                         <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo</BtnAccion>
                         <BtnAccion tipo="editar" onClick={() => setModalTareaAccion({ accion_id: accion.id, proyecto_id: vistaProyecto.id, estado_id: accion.estado_id })}>📋 + Tarea</BtnAccion>
+                        <BtnAccion tipo="añadir" onClick={() => setModalEventoProyecto({ origenId: accion.id, origenTipo: 'accion', contexto: accion.nombre })}>+ Evento</BtnAccion>
                       </div>
                     </div>
                     {estaExpandido('accion_' + accion.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -908,7 +910,7 @@ export default function Proyectos() {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
             const asignadosStr = nuevaTarea.asignados.join(',')
-            escribirFila('tareas', [id, '', '', modalTareaEstado.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(async () => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); await refrescar('tareas'); cargarDatos() })
+            escribirFila('tareas', [id, '', '', modalTareaEstado.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(async () => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); await refrescar('tareas'); await refrescar('tareas_planner'); cargarDatos() })
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
@@ -922,7 +924,7 @@ export default function Proyectos() {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
             const asignadosStr = nuevaTarea.asignados.join(',')
-            escribirFila('tareas', [id, '', modalTareaAccion.accion_id, modalTareaAccion.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(async () => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); await refrescar('tareas'); cargarDatos() })
+            escribirFila('tareas', [id, '', modalTareaAccion.accion_id, modalTareaAccion.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(async () => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); await refrescar('tareas'); await refrescar('tareas_planner'); cargarDatos() })
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />

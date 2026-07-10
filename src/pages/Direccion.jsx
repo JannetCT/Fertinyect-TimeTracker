@@ -545,6 +545,7 @@ export default function Direccion() {
           }} />}
         {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken} guardarEdit={guardarEditTareaConFecha} tareasPlanner={tareasPlanner} />}
         {editItem && editItem._tipo === 'proyecto' && <Modal titulo="Editar proyecto" onClose={() => setEditItem(null)} onSave={() => guardarEdit('proyectos_direccion', [editItem.id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
+        {modalEvento && <ModalEvento titulo='Nuevo evento' contexto={modalEvento.contexto} origenId={modalEvento.origenId} origenTipo={modalEvento.origenTipo} usuario={usuario} accessToken={accessToken} onClose={() => setModalEvento(null)} onSave={async (fila) => { await escribirFila('eventos', fila, accessToken); cargarDatos() }} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
@@ -606,6 +607,7 @@ export default function Direccion() {
           }} />}
         {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} usuario={usuario} accessToken={accessToken} guardarEdit={guardarEditTareaConFecha} tareasPlanner={tareasPlanner} />}
         {editItem && editItem._tipo === 'categoria' && <Modal titulo="Editar categoría" onClose={() => setEditItem(null)} onSave={() => guardarEdit('categorias_direccion', [editItem.id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
+        {modalEvento && <ModalEvento titulo='Nuevo evento' contexto={modalEvento.contexto} origenId={modalEvento.origenId} origenTipo={modalEvento.origenTipo} usuario={usuario} accessToken={accessToken} onClose={() => setModalEvento(null)} onSave={async (fila) => { await escribirFila('eventos', fila, accessToken); cargarDatos() }} />}
         {confirmEliminar && <ConfirmEliminar nombre={confirmEliminar.item.nombre} onClose={() => setConfirmEliminar(null)} onConfirm={ejecutarEliminar} />}
       </div>
     )
