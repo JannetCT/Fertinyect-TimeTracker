@@ -517,6 +517,7 @@ function Planner() {
   const [checklistCounts, setChecklistCounts] = useState({})
   const [cargando, setCargando] = useState(true)
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const [filtroEtiqueta, setFiltroEtiqueta] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [mostrarBuscador, setMostrarBuscador] = useState(false)
@@ -1015,7 +1016,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       )}
 
       {vista === 'semana' && (
-        <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))}
+        <DndContext sensors={sensors}
           onDragEnd={({ active, over }) => {
             if (!over || !active.data.current?.tarea) return
             const tarea = active.data.current.tarea
