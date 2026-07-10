@@ -570,6 +570,8 @@ export default function Proyectos() {
   function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDeEnsayo(eId) { return tareas.filter(t => t.ensayo_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function tareasDirectasDeAccion(aId) { return tareas.filter(t => t.accion_id === aId && !t.ensayo_id && t.id !== 'eliminado' && t.accion_id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function tareasDirectasDeProyecto(pId) { return tareas.filter(t => t.proyecto_id === pId && !t.accion_id && !t.ensayo_id && t.id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function progresoProyecto(pId) {
     const t = tareas.filter(t => t.proyecto_id === pId)
     if (!t.length) return 0
@@ -834,6 +836,22 @@ export default function Proyectos() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {tareasDirectasDeProyecto(vistaProyecto.id).length > 0 && (
+            <div style={{ background: 'white', borderRadius: '12px', padding: '20px', marginBottom: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#373A36' }}>📋 Tareas directas del proyecto</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {tareasDirectasDeProyecto(vistaProyecto.id).map(t => (
+                  <div key={t.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '10px 14px', borderLeft: '3px solid #00953B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado} {t.fecha_limite ? `· 📅 ${t.fecha_limite}` : ''}</p>
+                    </div>
+                    <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {estadosProyecto.map(estado => (
             <div key={estado.id} style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estadosColapsados[estado.id] ? '0' : '16px', cursor: 'pointer' }} onClick={() => toggleColapso(estado.id)}>
@@ -892,7 +910,19 @@ export default function Proyectos() {
                           </div>
                         </div>
                       ))}
-                      {ensayosDeAccion(accion.id).length === 0 && <p style={{ margin: 0, fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin ensayos ni informes aún</p>}
+                      {tareasDirectasDeAccion(accion.id).map(t => (
+                        <div key={t.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '10px 14px', borderLeft: '3px solid #00953B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado} {t.fecha_limite ? `· 📅 ${t.fecha_limite}` : ''}</p>
+                          </div>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <BtnAccion tipo="editar" onClick={() => { setEditTarea(t); setNuevaTarea({ nombre: t.nombre, asignados: t.asignados ? t.asignados.split(',') : [], fecha_limite: t.fecha_limite || '', fechas_exactas: '', descripcion: t.descripcion || '' }) }}>✏️</BtnAccion>
+                            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                          </div>
+                        </div>
+                      ))}
+                      {ensayosDeAccion(accion.id).length === 0 && tareasDirectasDeAccion(accion.id).length === 0 && <p style={{ margin: 0, fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>Sin ensayos ni informes aún</p>}
                     </div>}
                   </div>
                 ))}
