@@ -519,6 +519,7 @@ function Planner() {
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const [filtroEtiqueta, setFiltroEtiqueta] = useState('')
+  const [filtroVencimiento, setFiltroVencimiento] = useState('') // 'vencida' | 'proxima' | ''
   const [busqueda, setBusqueda] = useState('')
   const [mostrarBuscador, setMostrarBuscador] = useState(false)
   const [modalEditarTarea, setModalEditarTarea] = useState(null)
@@ -597,7 +598,19 @@ function Planner() {
     const id = Date.now().toString() + String(usuario.id)
     const nombre = `${tarea.nombre} (copia)`
     const grupoIdClon = tarea.tarea_grupo_id === 'postit' ? 'postit' : ''
-    await escribirFila('tareas_planner', [id, String(usuario.id), '', '', nombre, 'por_asignar', tarea.fecha_limite || '', '', 'pendiente', new Date().toISOString(), tarea.etiqueta || '', tarea.fecha_limite || '', tarea.descripcion || '', grupoIdClon, tarea.tiempo_estimado || '', '', String(usuario.id), String(usuario.id)], accessToken)
+    const fechaClon = tarea.fecha_exacta || ''
+    const diaClon = fechaClon ? (getDiaSemana(fechaClon) || 'por_asignar') : 'por_asignar'
+    const padreClon = tarea.tarea_padre_id || ''
+    const tipoClon = tarea.tarea_padre_tipo || ''
+    await escribirFila('tareas_planner', [id, String(usuario.id), padreClon, tipoClon, nombre, diaClon, tarea.fecha_limite || '', fechaClon, 'pendiente', new Date().toISOString(), tarea.etiqueta || '', tarea.fecha_limite || '', tarea.descripcion || '', grupoIdClon, tarea.tiempo_estimado || '', '', String(usuario.id), String(usuario.id)], accessToken)
+    await refrescar('tareas_planner')
+    cargarDatos()
+  }
+
+  async function reactivarTarea(tarea) {
+    if (tarea._tipo === 'planner') {
+      await actualizarFila('tareas_planner', tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana || 'por_asignar', tarea.fecha_limite || '', tarea.fecha_exacta || '', 'pendiente', tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', tarea.asignados || '', tarea.creado_por || ''], accessToken)
+    }
     await refrescar('tareas_planner')
     cargarDatos()
   }
@@ -690,7 +703,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       const creadorId = t.creado_por || t.usuario_id
       // Si el usuario actual sigue en la lista, actualizar su fila
       if (asignadosNuevos.includes(String(t.usuario_id))) {
-        await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, '', '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || t.id, tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
+        await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || t.id, tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
       } else {
         // El usuario actual se quitó a sí mismo — eliminar su fila
         await marcarEliminado('tareas_planner', t.id, accessToken)
@@ -805,6 +818,8 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       if (t.estado === 'completada' && !mostrarCompletadas) return false
       if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
       if (busqueda && !t.nombre?.toLowerCase().includes(busqueda.toLowerCase())) return false
+      if (filtroVencimiento === 'vencida' && !(t.fecha_limite && new Date(t.fecha_limite) < new Date())) return false
+      if (filtroVencimiento === 'proxima' && !(t.fecha_limite && !( new Date(t.fecha_limite) < new Date()) && (new Date(t.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000)) return false
       return tareaEnFecha(t, fechaStr)
     })
   }
@@ -813,6 +828,8 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       if (t.estado === 'completada' && !mostrarCompletadas) return false
       if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
       if (busqueda && !t.nombre?.toLowerCase().includes(busqueda.toLowerCase())) return false
+      if (filtroVencimiento === 'vencida' && !(t.fecha_limite && new Date(t.fecha_limite) < new Date())) return false
+      if (filtroVencimiento === 'proxima' && !(t.fecha_limite && !(new Date(t.fecha_limite) < new Date()) && (new Date(t.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000)) return false
       return !t.fecha_exacta || t.fecha_exacta === ''
     })
   }
@@ -954,7 +971,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
               </div>
             )
           })()}
-          {descripcion && <div style={{ marginBottom: '16px' }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Descripción:</label><p style={{ margin: 0, fontSize: '14px', color: '#373A36', background: '#f9fafb', padding: '12px', borderRadius: '8px' }}>{descripcion}</p></div>}
+          {descripcion && <div style={{ marginBottom: '16px' }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Descripción:</label><p style={{ margin: 0, fontSize: '14px', color: '#373A36', background: '#f9fafb', padding: '12px', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>{descripcion}</p></div>}
           {vistaTarea.tiempo_estimado && parseInt(vistaTarea.tiempo_estimado) > 0 && <div style={{ marginBottom: '16px', background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534' }}>⏳ Tiempo estimado: <strong>{formatMinutos(parseInt(vistaTarea.tiempo_estimado))}</strong></div>}
           <SeccionChecklist tareaId={refId} tipoTarea={refTipo} accessToken={accessToken} />
           <SeccionActualizaciones tareaId={refId} tipoTarea={refTipo} usuario={usuario} accessToken={accessToken} />
@@ -1010,6 +1027,18 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
               </button>
             )
           })}
+          {(() => {
+            const vencidas = todasLasTareas().filter(t => t.estado !== 'completada' && t.fecha_limite && new Date(t.fecha_limite) < new Date()).length
+            const proximas = todasLasTareas().filter(t => t.estado !== 'completada' && t.fecha_limite && !(new Date(t.fecha_limite) < new Date()) && (new Date(t.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000).length
+            return (<>
+              <button onClick={() => setFiltroVencimiento(filtroVencimiento === 'vencida' ? '' : 'vencida')} style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: filtroVencimiento === 'vencida' ? '2px solid #dc2626' : '2px solid transparent', color: filtroVencimiento === 'vencida' ? '#dc2626' : '#6b7280', fontWeight: filtroVencimiento === 'vencida' ? '600' : '400', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '-1px' }}>
+                ⚠️ Vencidas <span style={{ background: filtroVencimiento === 'vencida' ? '#dc2626' : '#f3f4f6', color: filtroVencimiento === 'vencida' ? 'white' : '#6b7280', borderRadius: '20px', padding: '1px 7px', fontSize: '11px', fontWeight: '600' }}>{vencidas}</span>
+              </button>
+              <button onClick={() => setFiltroVencimiento(filtroVencimiento === 'proxima' ? '' : 'proxima')} style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: filtroVencimiento === 'proxima' ? '2px solid #92400e' : '2px solid transparent', color: filtroVencimiento === 'proxima' ? '#92400e' : '#6b7280', fontWeight: filtroVencimiento === 'proxima' ? '600' : '400', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '-1px' }}>
+                🕐 Próximas <span style={{ background: filtroVencimiento === 'proxima' ? '#92400e' : '#f3f4f6', color: filtroVencimiento === 'proxima' ? 'white' : '#6b7280', borderRadius: '20px', padding: '1px 7px', fontSize: '11px', fontWeight: '600' }}>{proximas}</span>
+              </button>
+            </>)
+          })()}
         </div>
       )}
 
@@ -1421,23 +1450,32 @@ function DroppableColumna({ diaFecha, children }) {
   return <div ref={setNodeRef} style={{ flex: 1, minHeight: '100px', background: isOver ? 'rgba(0,149,59,0.05)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s' }}>{children}</div>
 }
 
-function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar, onClonar, onCompletar }) {
+function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar, onClonar, onCompletar, onReactivar }) {
   const esCompletada = tarea.estado === 'completada'
   const esPostit = tarea.tarea_grupo_id === 'postit'
   const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
   const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
   const minEstimados = parseInt(tarea.tiempo_estimado) || 0
+  const [menuAbierto, setMenuAbierto] = React.useState(false)
   return (
-    <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{ borderLeft: `4px solid ${esPostit ? '#fbbf24' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`, background: esPostit ? '#fef9c3' : esCompletada ? '#f9fafb' : 'white' }}>
+    <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{ borderLeft: `4px solid ${esPostit ? '#fbbf24' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`, background: esPostit ? '#fef9c3' : esCompletada ? '#f9fafb' : 'white', position: 'relative' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
           <p onClick={onVerDetalle} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', margin: 0 }}>{tarea.nombre}</p>
         </div>
-        <div style={{ display: 'flex', gap: '4px', marginLeft: '8px' }}>
-          <button onClick={e => { e.stopPropagation(); onEditar() }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}>✏️</button>
-          <button onClick={e => { e.stopPropagation(); onClonar && onClonar() }} title="Clonar tarea" style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '11px' }}>⧉</button>
-          {!esCompletada && (
-            <button onClick={e => { e.stopPropagation(); onCompletar() }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '13px' }}>✅</button>
+        <div style={{ position: 'relative', flexShrink: 0, marginLeft: '8px' }}>
+          <button onClick={e => { e.stopPropagation(); setMenuAbierto(p => !p) }}
+            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', color: '#6b7280', lineHeight: 1.4 }}>···</button>
+          {menuAbierto && (
+            <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 100, minWidth: '140px', padding: '4px 0', marginTop: '4px' }}>
+              {!esCompletada && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>}
+              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
+              <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
+              {!esCompletada
+                ? <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
+                : <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar && onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
+              }
+            </div>
           )}
         </div>
       </div>

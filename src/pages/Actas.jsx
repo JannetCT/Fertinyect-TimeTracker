@@ -1,10 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { leerHoja, escribirFila, actualizarFila } from '../services/googleSheets'
-import html2canvas from 'html2canvas'
 
 const NOMBRES = { '1': 'Lorenzo', '2': 'Ahlam', '3': 'Jannet' }
-const COLORES = { '1': '#00953B', '2': '#3b82f6', '3': '#f59e0b' }
 
 export default function Actas() {
   const { usuario, accessToken } = useAuth()
@@ -13,8 +11,7 @@ export default function Actas() {
   const [actaActual, setActaActual] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
-  const [vista, setVista] = useState('lista') // 'lista' | 'editar' | 'ver'
-  const actaRef = useRef(null)
+  const [vista, setVista] = useState('lista')
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
@@ -25,31 +22,33 @@ export default function Actas() {
         leerHoja('actas', accessToken)
       ])
       const misId = String(usuario.id)
-      setEventos(ev.filter(e => e.usuario_id && e.usuario_id.split(',').includes(misId) && e.estado !== 'completado').sort((a,b) => b.fecha_exacta > a.fecha_exacta ? 1 : -1))
-      setActas(ac.sort((a,b) => b.fecha_creacion > a.fecha_creacion ? 1 : -1))
+      setEventos(ev.filter(e => e.id !== 'eliminado' && e.estado !== 'completado').sort((a,b) => (b.fecha_exacta||'') > (a.fecha_exacta||'') ? 1 : -1))
+      setActas(ac.filter(a => a.id !== 'eliminado').sort((a,b) => (b.fecha_creacion||'') > (a.fecha_creacion||'') ? 1 : -1))
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
 
-  async function crearActa(evento) {
+  function crearActa(evento) {
     const participantes = evento.usuario_id ? evento.usuario_id.split(',').map(id => NOMBRES[id.trim()] || id).join(', ') : ''
-    const nueva = {
+    setActaActual({
       id: Date.now().toString(),
       evento_id: evento.id,
       fecha: evento.fecha_exacta || new Date().toISOString().split('T')[0],
       participantes,
       agenda: '',
-      acuerdos: '',
+      acuerdos: JSON.stringify([{ id: Date.now().toString(), titulo: '', contenido: '' }]),
       fecha_creacion: new Date().toISOString(),
-      _evento: evento
-    }
-    setActaActual(nueva)
+      _evento: evento,
+      _nueva: true
+    })
     setVista('editar')
   }
 
-  async function abrirActa(acta) {
+  function abrirActa(acta) {
     const evento = eventos.find(e => e.id === acta.evento_id) || null
-    setActaActual({ ...acta, _evento: evento })
+    let secciones
+    try { secciones = JSON.parse(acta.acuerdos) } catch { secciones = [{ id: Date.now().toString(), titulo: acta.acuerdos || '', contenido: '' }] }
+    setActaActual({ ...acta, _evento: evento, _secciones: secciones })
     setVista('editar')
   }
 
@@ -57,7 +56,9 @@ export default function Actas() {
     if (!actaActual) return
     setGuardando(true)
     try {
-      const fila = [actaActual.id, actaActual.evento_id || '', actaActual.fecha, actaActual.participantes, actaActual.agenda || '', actaActual.acuerdos || '', actaActual.fecha_creacion || new Date().toISOString()]
+      const secciones = actaActual._secciones || [{ id: '1', titulo: '', contenido: actaActual.acuerdos || '' }]
+      const acuerdosStr = JSON.stringify(secciones)
+      const fila = [actaActual.id, actaActual.evento_id || '', actaActual.fecha, actaActual.participantes, actaActual.agenda || '', acuerdosStr, actaActual.fecha_creacion || new Date().toISOString()]
       const existe = actas.find(a => a.id === actaActual.id)
       if (existe) await actualizarFila('actas', actaActual.id, fila, accessToken)
       else await escribirFila('actas', fila, accessToken)
@@ -66,18 +67,84 @@ export default function Actas() {
     finally { setGuardando(false) }
   }
 
-  async function exportarPDF() {
-    if (!actaRef.current) return
-    const canvas = await html2canvas(actaRef.current, { scale: 2, backgroundColor: '#ffffff' })
-    const link = document.createElement('a')
-    link.download = `Acta-${actaActual.fecha}-${(actaActual._evento?.titulo || 'reunion').replace(/\s+/g,'-')}.png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+  function exportarPDF() {
+    if (!actaActual) return
+    const secciones = actaActual._secciones || []
+    const eventoTitulo = actaActual._evento?.titulo || 'Reunión'
+    const horaInicio = actaActual._evento?.hora_inicio || ''
+    const horaFin = actaActual._evento?.hora_fin || ''
+
+    const win = window.open('', '_blank')
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Acta - ${eventoTitulo}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #1a1a1a; max-width: 800px; margin: 0 auto; }
+          .header { border-bottom: 3px solid #00953B; padding-bottom: 16px; margin-bottom: 24px; }
+          .header h1 { margin: 0; font-size: 22px; color: #1a1a1a; }
+          .header h2 { margin: 6px 0 0; font-size: 16px; color: #00953B; font-weight: 400; }
+          .meta { display: flex; gap: 32px; margin-bottom: 28px; font-size: 14px; }
+          .meta span { color: #555; }
+          .meta strong { color: #1a1a1a; }
+          .agenda { margin-bottom: 28px; }
+          .agenda h3 { font-size: 15px; color: #00953B; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-bottom: 10px; }
+          .agenda p { font-size: 14px; line-height: 1.6; white-space: pre-wrap; margin: 0; }
+          .seccion { margin-bottom: 24px; border-left: 3px solid #00953B; padding-left: 14px; }
+          .seccion h4 { font-size: 14px; font-weight: 700; margin: 0 0 6px; color: #1a1a1a; }
+          .seccion p { font-size: 13px; line-height: 1.6; white-space: pre-wrap; margin: 0; color: #333; }
+          .footer { margin-top: 48px; border-top: 1px solid #ddd; padding-top: 12px; font-size: 11px; color: #888; text-align: center; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>ACTA DE REUNIÓN</h1>
+          <h2>${eventoTitulo}</h2>
+        </div>
+        <div class="meta">
+          <span><strong>Fecha:</strong> ${actaActual.fecha}</span>
+          ${horaInicio ? `<span><strong>Hora:</strong> ${horaInicio}${horaFin ? ` — ${horaFin}` : ''}</span>` : ''}
+          <span><strong>Participantes:</strong> ${actaActual.participantes}</span>
+        </div>
+        ${actaActual.agenda ? `<div class="agenda"><h3>AGENDA</h3><p>${actaActual.agenda}</p></div>` : ''}
+        <h3 style="font-size:15px; color:#00953B; border-bottom:1px solid #ddd; padding-bottom:6px; margin-bottom:16px;">ACUERDOS</h3>
+        ${secciones.map((s, i) => `
+          <div class="seccion">
+            ${s.titulo ? `<h4>${i+1}. ${s.titulo}</h4>` : `<h4>Punto ${i+1}</h4>`}
+            <p>${s.contenido || '—'}</p>
+          </div>
+        `).join('')}
+        <div class="footer">Documento generado por Fertinyect TimeTracker · ${new Date().toLocaleDateString('es-ES')}</div>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `)
+    win.document.close()
+  }
+
+  function updateSeccion(idx, campo, valor) {
+    const secciones = [...(actaActual._secciones || [])]
+    secciones[idx] = { ...secciones[idx], [campo]: valor }
+    setActaActual({ ...actaActual, _secciones: secciones })
+  }
+
+  function addSeccion() {
+    const secciones = [...(actaActual._secciones || []), { id: Date.now().toString(), titulo: '', contenido: '' }]
+    setActaActual({ ...actaActual, _secciones: secciones })
+  }
+
+  function removeSeccion(idx) {
+    const secciones = (actaActual._secciones || []).filter((_, i) => i !== idx)
+    setActaActual({ ...actaActual, _secciones: secciones.length > 0 ? secciones : [{ id: Date.now().toString(), titulo: '', contenido: '' }] })
   }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
   if (vista === 'editar' && actaActual) {
+    const secciones = actaActual._secciones || [{ id: '1', titulo: '', contenido: actaActual.acuerdos || '' }]
     return (
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
@@ -89,7 +156,6 @@ export default function Actas() {
           </div>
         </div>
 
-        {/* Área de edición */}
         <div style={{ background: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', gap: '16px' }}>
             <div style={{ flex: 1 }}>
@@ -98,43 +164,33 @@ export default function Actas() {
             </div>
             <div style={{ flex: 2 }}>
               <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Participantes:</label>
-              <input value={actaActual.participantes} onChange={e => setActaActual({...actaActual, participantes: e.target.value})} placeholder="Ej: Lorenzo, Ahlam, Jannet" style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+              <input value={actaActual.participantes} onChange={e => setActaActual({...actaActual, participantes: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
             </div>
           </div>
+
           <div>
             <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Agenda <span style={{ fontWeight: '400', color: '#9ca3af' }}>(opcional)</span>:</label>
-            <textarea value={actaActual.agenda} onChange={e => setActaActual({...actaActual, agenda: e.target.value})} placeholder="Puntos a tratar en la reunión..." rows={4} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', resize: 'vertical' }} />
+            <textarea value={actaActual.agenda} onChange={e => setActaActual({...actaActual, agenda: e.target.value})} placeholder="Puntos a tratar..." rows={3} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', resize: 'vertical' }} />
           </div>
-          <div>
-            <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Acuerdos:</label>
-            <textarea value={actaActual.acuerdos} onChange={e => setActaActual({...actaActual, acuerdos: e.target.value})} placeholder="Decisiones y compromisos alcanzados..." rows={8} style={{ padding: '10px', borderRadius: '8px', border: '2px solid #00953B', fontSize: '14px', width: '100%', resize: 'vertical' }} />
-          </div>
-        </div>
 
-        {/* Preview PDF (oculto visualmente pero usado para exportar) */}
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <div ref={actaRef} style={{ width: '794px', padding: '60px', background: 'white', fontFamily: 'Arial, sans-serif' }}>
-            <div style={{ borderBottom: '3px solid #00953B', paddingBottom: '20px', marginBottom: '30px' }}>
-              <h1 style={{ margin: 0, fontSize: '24px', color: '#373A36' }}>ACTA DE REUNIÓN</h1>
-              <h2 style={{ margin: '8px 0 0', fontSize: '18px', color: '#00953B', fontWeight: '400' }}>{actaActual._evento?.titulo || 'Reunión'}</h2>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#555' }}>Acuerdos:</label>
+              <button onClick={addSeccion} style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #00953B', background: '#f0fdf4', color: '#00953B', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>+ Añadir punto</button>
             </div>
-            <div style={{ display: 'flex', gap: '40px', marginBottom: '30px', fontSize: '14px' }}>
-              <div><strong>Fecha:</strong> {actaActual.fecha}</div>
-              {actaActual._evento?.hora_inicio && <div><strong>Hora:</strong> {actaActual._evento.hora_inicio}{actaActual._evento.hora_fin ? ` - ${actaActual._evento.hora_fin}` : ''}</div>}
-              <div><strong>Participantes:</strong> {actaActual.participantes}</div>
-            </div>
-            {actaActual.agenda && (
-              <div style={{ marginBottom: '30px' }}>
-                <h3 style={{ fontSize: '16px', color: '#00953B', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>AGENDA</h3>
-                <p style={{ fontSize: '14px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{actaActual.agenda}</p>
-              </div>
-            )}
-            <div>
-              <h3 style={{ fontSize: '16px', color: '#00953B', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>ACUERDOS</h3>
-              <p style={{ fontSize: '14px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{actaActual.acuerdos || '—'}</p>
-            </div>
-            <div style={{ marginTop: '60px', borderTop: '1px solid #e5e7eb', paddingTop: '20px', fontSize: '11px', color: '#9ca3af', textAlign: 'center' }}>
-              Documento generado por Fertinyect TimeTracker · {new Date().toLocaleDateString('es-ES')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {secciones.map((s, idx) => (
+                <div key={s.id} style={{ background: '#f9fafb', borderRadius: '10px', padding: '16px', border: '1px solid #e5e7eb', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: '#00953B' }}>Punto {idx + 1}</span>
+                    {secciones.length > 1 && <button onClick={() => removeSeccion(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px' }}>✕</button>}
+                  </div>
+                  <input placeholder="Nombre de la tarea o tema (ej: PY23-01 Xilemax CE)" value={s.titulo} onChange={e => updateSeccion(idx, 'titulo', e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', marginBottom: '8px', fontWeight: '600' }} />
+                  <textarea placeholder="Acuerdos de este punto..." value={s.contenido} onChange={e => updateSeccion(idx, 'contenido', e.target.value)}
+                    rows={3} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', resize: 'vertical' }} />
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -147,9 +203,7 @@ export default function Actas() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <h1 style={{ margin: 0 }}>📋 Actas de reunión</h1>
       </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        {/* Columna eventos activos */}
         <div>
           <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Reuniones activas</h3>
           {eventos.length === 0 && <p style={{ color: '#9ca3af', fontSize: '14px' }}>No hay reuniones pendientes</p>}
@@ -164,8 +218,6 @@ export default function Actas() {
             </div>
           ))}
         </div>
-
-        {/* Columna actas guardadas */}
         <div>
           <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Actas guardadas</h3>
           {actas.length === 0 && <p style={{ color: '#9ca3af', fontSize: '14px' }}>Aún no hay actas</p>}
@@ -174,7 +226,14 @@ export default function Actas() {
               onClick={() => abrirActa(acta)}
               onMouseOver={e => e.currentTarget.style.background = '#f0fdf4'}
               onMouseOut={e => e.currentTarget.style.background = 'white'}>
-              <button onClick={async e => { e.stopPropagation(); if (confirm('¿Eliminar esta acta?')) { const todas = await leerHoja('actas', accessToken); const fila = todas.find(a => a.id === acta.id); if (fila) { await actualizarFila('actas', acta.id, ['eliminado', ...Object.values(fila).slice(1)], accessToken); cargarDatos() } } }} style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px', opacity: 0.5, padding: '2px' }} onMouseOver={e => e.target.style.opacity='1'} onMouseOut={e => e.target.style.opacity='0.5'}>🗑</button>
+              <button onClick={async e => {
+                e.stopPropagation()
+                if (confirm('¿Eliminar esta acta?')) {
+                  await actualizarFila('actas', acta.id, ['eliminado', acta.evento_id||'', acta.fecha, acta.participantes, acta.agenda||'', acta.acuerdos||'', acta.fecha_creacion||''], accessToken)
+                  cargarDatos()
+                }
+              }} style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px', opacity: 0.4, padding: '2px' }}
+                onMouseOver={e => e.target.style.opacity='1'} onMouseOut={e => e.target.style.opacity='0.4'}>🗑</button>
               <p style={{ margin: '0 0 4px', fontWeight: '600', fontSize: '14px' }}>{acta.fecha} — {eventos.find(e => e.id === acta.evento_id)?.titulo || 'Reunión'}</p>
               <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>{acta.participantes}</p>
             </div>
