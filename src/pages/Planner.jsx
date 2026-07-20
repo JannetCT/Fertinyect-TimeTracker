@@ -1456,7 +1456,7 @@ function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar,
   const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && !esCompletada
   const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
   const minEstimados = parseInt(tarea.tiempo_estimado) || 0
-  const [menuAbierto, setMenuAbierto] = React.useState(false)
+  const [menuAbierto, setMenuAbierto] = useState(false)
   return (
     <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{ borderLeft: `4px solid ${esPostit ? '#fbbf24' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`, background: esPostit ? '#fef9c3' : esCompletada ? '#f9fafb' : 'white', position: 'relative' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
