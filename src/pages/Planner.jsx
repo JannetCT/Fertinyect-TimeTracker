@@ -610,7 +610,14 @@ function Planner() {
   async function reactivarTarea(tarea) {
     if (tarea._tipo === 'planner') {
       await actualizarFila('tareas_planner', tarea.id, [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana || 'por_asignar', tarea.fecha_limite || '', tarea.fecha_exacta || '', 'pendiente', tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', tarea.asignados || '', tarea.creado_por || ''], accessToken)
+    } else {
+      const todasPlanner = await leerHoja('tareas_planner', accessToken)
+      const filaPersonal = todasPlanner.find(tp => tp.tarea_padre_id === tarea.id && String(tp.usuario_id) === String(usuario.id) && tp.estado === 'completada')
+      if (filaPersonal) {
+        await actualizarFila('tareas_planner', filaPersonal.id, [filaPersonal.id, filaPersonal.usuario_id, filaPersonal.tarea_padre_id || '', filaPersonal.tarea_padre_tipo || '', filaPersonal.nombre, filaPersonal.dia_semana || 'por_asignar', filaPersonal.fecha_limite || '', filaPersonal.fecha_exacta || '', 'pendiente', filaPersonal.fecha_creacion, filaPersonal.etiqueta || '', filaPersonal.fecha_limite || '', filaPersonal.descripcion || '', filaPersonal.tarea_grupo_id || '', filaPersonal.tiempo_estimado || '', filaPersonal.hora_inicio || '', filaPersonal.asignados || '', filaPersonal.creado_por || ''], accessToken)
+      }
     }
+    if (!mostrarCompletadas) setMostrarCompletadas(true)
     await refrescar('tareas_planner')
     cargarDatos()
   }
@@ -1021,7 +1028,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
             const count = key === '' ? todasLasTareas().filter(t => t.estado !== 'completada').length : todasLasTareas().filter(t => t.estado !== 'completada' && t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(key)).length
             const activa = filtroEtiqueta === key
             return (
-              <button key={key} onClick={() => setFiltroEtiqueta(key)} style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: activa ? '2px solid #00953B' : '2px solid transparent', color: activa ? '#00953B' : '#6b7280', fontWeight: activa ? '600' : '400', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '-1px' }}>
+              <button key={key} onClick={() => { setFiltroEtiqueta(key); if (key === '') setFiltroVencimiento('') }} style={{ padding: '8px 16px', background: 'none', border: 'none', borderBottom: activa ? '2px solid #00953B' : '2px solid transparent', color: activa ? '#00953B' : '#6b7280', fontWeight: activa ? '600' : '400', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '-1px' }}>
                 {label}
                 <span style={{ background: activa ? '#00953B' : '#f3f4f6', color: activa ? 'white' : '#6b7280', borderRadius: '20px', padding: '1px 7px', fontSize: '11px', fontWeight: '600' }}>{count}</span>
               </button>
@@ -1100,8 +1107,14 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                               <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
                             </div>
                             <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                              <button onClick={e => { e.stopPropagation(); clonarEvento(ev) }} title="Clonar" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9ca3af', padding: '2px' }}>⧉</button>
-                              {!completado && <button onClick={e => { e.stopPropagation(); completarEvento(ev) }} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>✅</button>}
+                              {!completado && <button onClick={e => { e.stopPropagation(); clonarEvento(ev) }} title="Clonar" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9ca3af', padding: '2px' }}>⧉</button>}
+                              {!completado
+                                ? <button onClick={e => { e.stopPropagation(); completarEvento(ev) }} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>✅</button>
+                                : <>
+                                  <button onClick={e => { e.stopPropagation(); actualizarEstado(ev, 'evento', 'pendiente').then(() => { refrescar('eventos'); cargarDatos() }) }} style={{ background: 'none', border: '1px solid #f59e0b', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', color: '#f59e0b' }}>↩️</button>
+                                  <button onClick={e => { e.stopPropagation(); if(confirm('¿Eliminar evento?')) eliminarEvento(ev.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#dc2626', padding: '2px' }}>🗑</button>
+                                </>
+                              }
                             </div>
                           </div>
                         </div>
@@ -1469,12 +1482,14 @@ function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar,
           {menuAbierto && (
             <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 100, minWidth: '140px', padding: '4px 0', marginTop: '4px' }}>
               {!esCompletada && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>}
-              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
+              {!esCompletada && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>}
               <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
-              {!esCompletada
-                ? <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
-                : <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar && onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
-              }
+              {!esCompletada ? (<>
+                <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
+              </>) : (<>
+                <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar && onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
+                <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); if(confirm('¿Eliminar esta tarea?')) eliminarTarea(tarea) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#dc2626', textAlign: 'left' }}>🗑 Eliminar</button>
+              </>)}
             </div>
           )}
         </div>
