@@ -7,6 +7,7 @@ const NOMBRES = { '1': 'Lorenzo', '2': 'Ahlam', '3': 'Jannet' }
 export default function Actas() {
   const { usuario, accessToken } = useAuth()
   const [eventos, setEventos] = useState([])
+  const [todosEventos, setTodosEventos] = useState([])
   const [actas, setActas] = useState([])
   const [tareasActivas, setTareasActivas] = useState([])
   const [actaActual, setActaActual] = useState(null)
@@ -27,6 +28,8 @@ export default function Actas() {
       ])
       setEventos(ev.filter(e => e.id !== 'eliminado' && e.estado !== 'completado' && e.usuario_id && e.usuario_id.split(',').map(s => s.trim()).includes(String(usuario.id))).sort((a,b) => (b.fecha_exacta||'') > (a.fecha_exacta||'') ? 1 : -1))
       setActas(ac.filter(a => a.id !== 'eliminado').sort((a,b) => (b.fecha_creacion||'') > (a.fecha_creacion||'') ? 1 : -1))
+      // Guardar TODOS los eventos para buscar nombres en actas guardadas
+      setTodosEventos(ev.filter(e => e.id !== 'eliminado'))
       const activas = [
         ...t.filter(x => x.id !== 'eliminado' && x.estado !== 'completada' && x.estado !== 'completado').map(x => ({ id: x.id, nombre: x.nombre, origen: 'Proyectos' })),
         ...ts.filter(x => x.id !== 'eliminado' && x.estado !== 'completada' && x.estado !== 'completado').map(x => ({ id: x.id, nombre: x.nombre, origen: 'Soporte' })),
@@ -185,7 +188,7 @@ export default function Actas() {
               <button onClick={async e => { e.stopPropagation(); if(confirm('¿Eliminar esta acta?')) { await actualizarFila('actas', acta.id, ['eliminado', acta.evento_id||'', acta.fecha, acta.participantes, acta.agenda||'', acta.acuerdos||'', acta.fecha_creacion||''], accessToken); cargarDatos() } }}
                 style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px', opacity: 0.4 }}
                 onMouseOver={e=>e.target.style.opacity='1'} onMouseOut={e=>e.target.style.opacity='0.4'}>🗑</button>
-              <p style={{ margin: '0 0 4px', fontWeight: '600', fontSize: '14px' }}>{acta.fecha} — {eventos.find(e => e.id === acta.evento_id)?.titulo || 'Reunión'}</p>
+              <p style={{ margin: '0 0 4px', fontWeight: '600', fontSize: '14px' }}>{acta.fecha} — {todosEventos.find(e => e.id === acta.evento_id)?.titulo || eventos.find(e => e.id === acta.evento_id)?.titulo || 'Reunión'}</p>
               <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>{acta.participantes}</p>
             </div>
           ))}

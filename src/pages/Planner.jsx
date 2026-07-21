@@ -1290,9 +1290,9 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                   <select value={formTarea._tipoLigar || ''} onChange={e => setFormTarea({...formTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
                     <option value="">Selecciona tipo...</option><option value="proyecto">De Proyectos I+D</option><option value="soporte">De Soporte</option><option value="direccion">De Dirección</option>
                   </select>
-                  {formTarea._tipoLigar === 'proyecto' && <select value={formTarea._opcionProyectoId || ''} onChange={e => { const opcion = opcionesProyecto().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento de proyecto...</option>{opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
-                  {formTarea._tipoLigar === 'soporte' && <select value={formTarea._opcionSoporteId || ''} onChange={e => { const opcion = opcionesSoporte().find(o => o.id === e.target.value); if (opcion) setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento de soporte...</option>{opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
-                  {formTarea._tipoLigar === 'direccion' && <select value={formTarea._opcionDireccionId || ''} onChange={e => { setFormTarea({...formTarea, tarea_padre_id: e.target.value, tarea_padre_tipo: 'direccion', _opcionDireccionId: e.target.value}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona categoría...</option>{categoriasDireccion.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select>}
+                  {formTarea._tipoLigar === 'proyecto' && <SelectorColapsable opciones={opcionesProyecto()} valor={formTarea._opcionProyectoId || ''} onChange={opcion => setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})} placeholder='Selecciona elemento de proyecto...' />}
+                  {formTarea._tipoLigar === 'soporte' && <SelectorColapsable opciones={opcionesSoporte()} valor={formTarea._opcionSoporteId || ''} onChange={opcion => setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})} placeholder='Selecciona elemento de soporte...' />}
+                  {formTarea._tipoLigar === 'direccion' && <SelectorColapsable opciones={categoriasDireccion.map(c => ({ id: c.id, label: `🗂 ${c.nombre}`, tipo: 'direccion', realId: c.id }))} valor={formTarea._opcionDireccionId || ''} onChange={opcion => setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: 'direccion', _opcionDireccionId: opcion.id})} placeholder='Selecciona categoría...' />}
                 </div>
               )}
               <InputFechasMultiples label="Días asignados (opcional):" value={formTarea.fechas_exactas || ''} onChange={val => setFormTarea({...formTarea, fechas_exactas: val})} />
@@ -1416,9 +1416,9 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
               <select value={modalEditarTarea._tipoLigar || ''} onChange={e => setModalEditarTarea({...modalEditarTarea, _tipoLigar: e.target.value, tarea_padre_id: '', tarea_padre_tipo: '', _opcionProyectoId: '', _opcionSoporteId: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
                 <option value="">Sin enlazar</option><option value="proyecto">De Proyectos I+D</option><option value="soporte">De Soporte</option><option value="direccion">De Dirección</option>
               </select>
-              {modalEditarTarea._tipoLigar === 'proyecto' && <select value={modalEditarTarea._opcionProyectoId || ''} onChange={e => { const opcion = opcionesProyecto().find(o => o.id === e.target.value); if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento...</option>{opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
-              {modalEditarTarea._tipoLigar === 'soporte' && <select value={modalEditarTarea._opcionSoporteId || ''} onChange={e => { const opcion = opcionesSoporte().find(o => o.id === e.target.value); if (opcion) setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona elemento...</option>{opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}</select>}
-              {modalEditarTarea._tipoLigar === 'direccion' && <select value={modalEditarTarea._opcionDireccionId || ''} onChange={e => { setModalEditarTarea({...modalEditarTarea, tarea_padre_id: e.target.value, tarea_padre_tipo: 'direccion', _opcionDireccionId: e.target.value}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}><option value="">Selecciona categoría...</option>{categoriasDireccion.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select>}
+              {modalEditarTarea._tipoLigar === 'proyecto' && <SelectorColapsable opciones={opcionesProyecto()} valor={modalEditarTarea._opcionProyectoId || ''} onChange={opcion => setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})} placeholder='Selecciona elemento...' />}
+              {modalEditarTarea._tipoLigar === 'soporte' && <SelectorColapsable opciones={opcionesSoporte()} valor={modalEditarTarea._opcionSoporteId || ''} onChange={opcion => setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})} placeholder='Selecciona elemento...' />}
+              {modalEditarTarea._tipoLigar === 'direccion' && <SelectorColapsable opciones={categoriasDireccion.map(c => ({ id: c.id, label: `🗂 ${c.nombre}`, tipo: 'direccion', realId: c.id }))} valor={modalEditarTarea._opcionDireccionId || ''} onChange={opcion => setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: 'direccion', _opcionDireccionId: opcion.id})} placeholder='Selecciona categoría...' />}
             </div>
           )}
           <InputFechasMultiples label="Días asignados:" value={modalEditarTarea.fechas_exactas || modalEditarTarea.fecha_exacta || ''} onChange={val => setModalEditarTarea({...modalEditarTarea, fechas_exactas: val})} />
@@ -1443,6 +1443,84 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
           <button onClick={() => setModalEditarTarea(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
           <button onClick={guardarEditarTarea} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Guardar</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function SelectorColapsable({ opciones, valor, onChange, placeholder }) {
+  const [expandidos, setExpandidos] = useState({})
+  const [seleccionado, setSeleccionado] = useState(null)
+
+  // Detectar niveles por el número de espacios al inicio del label
+  function getNivel(label) {
+    const match = label.match(/^(\s*)/)
+    return match ? Math.floor(match[1].length / 2) : 0
+  }
+
+  // Construir árbol colapsable
+  function esContenedor(op) {
+    return !op.label.includes('✅')
+  }
+
+  function toggleExpandido(id) {
+    setExpandidos(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  function handleSelect(op) {
+    setSeleccionado(op)
+    onChange(op)
+  }
+
+  // Mostrar solo los items cuyo padre está expandido
+  const itemsVisibles = []
+  const pila = [] // stack de padres
+  for (let i = 0; i < opciones.length; i++) {
+    const op = opciones[i]
+    const nivel = getNivel(op.label)
+    // Ajustar pila al nivel actual
+    while (pila.length > nivel) pila.pop()
+    // Verificar si todos los padres están expandidos
+    const visible = pila.every(p => expandidos[p.id])
+    if (visible) itemsVisibles.push({ ...op, nivel })
+    // Si es contenedor, añadir a la pila
+    if (esContenedor(op)) pila.push(op)
+  }
+
+  const selLabel = seleccionado ? seleccionado.label.trim() : (valor ? (opciones.find(o => o.id === valor)?.label?.trim() || placeholder) : placeholder)
+
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <div style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', background: 'white', cursor: 'pointer', color: seleccionado || valor ? '#373A36' : '#9ca3af', maxHeight: '200px', overflowY: 'auto' }}>
+        {itemsVisibles.length === 0 && <div style={{ color: '#9ca3af', padding: '4px 0' }}>{placeholder}</div>}
+        {itemsVisibles.map(op => {
+          const esConten = esContenedor(op)
+          const expandido = expandidos[op.id]
+          const seleccionadoId = seleccionado?.id || valor
+          return (
+            <div key={op.id}
+              onClick={() => esConten ? toggleExpandido(op.id) : handleSelect(op)}
+              style={{
+                padding: '6px 8px',
+                paddingLeft: `${op.nivel * 16 + 8}px`,
+                cursor: 'pointer',
+                borderRadius: '6px',
+                background: seleccionadoId === op.id ? '#f0fdf4' : 'transparent',
+                color: seleccionadoId === op.id ? '#00953B' : '#373A36',
+                fontWeight: seleccionadoId === op.id ? '600' : '400',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              onMouseOver={e => { if (seleccionadoId !== op.id) e.currentTarget.style.background = '#f9fafb' }}
+              onMouseOut={e => { if (seleccionadoId !== op.id) e.currentTarget.style.background = 'transparent' }}
+            >
+              {esConten && <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>{expandido ? '▼' : '▶'}</span>}
+              <span>{op.label.trim()}</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
