@@ -1479,16 +1479,14 @@ function EventoCard({ ev, completado, onEditar, onClonar, onCompletar, onReactiv
           style={{ background: 'white', border: '1px solid #ddd8fe', borderRadius: '6px', padding: '2px 7px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', color: '#7c3aed', lineHeight: 1.4, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>···</button>
         {menuAbierto && (
           <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 200, minWidth: '140px', padding: '4px 0', marginTop: '4px' }}>
-            {!completado && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>}
-            {!completado && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>}
+            <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>
+            <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
             <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
             {!completado ? (
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
-            ) : (<>
-              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
-              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
+            ) : (
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEliminar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#dc2626', textAlign: 'left' }}>🗑 Eliminar</button>
-            </>)}
+            )}
           </div>
         )}
       </div>
@@ -1523,16 +1521,14 @@ function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar,
           style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', color: '#6b7280', lineHeight: 1.4, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>···</button>
         {menuAbierto && (
           <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 200, minWidth: '140px', padding: '4px 0', marginTop: '4px' }}>
-            {!esCompletada && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>}
-            {!esCompletada && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>}
+            <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>
+            <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
             <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
             {!esCompletada ? (
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
-            ) : (<>
-              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
-              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar && onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
+            ) : (
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); if(confirm('¿Eliminar esta tarea?')) eliminarTarea(tarea) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#dc2626', textAlign: 'left' }}>🗑 Eliminar</button>
-            </>)}
+            )}
           </div>
         )}
       </div>
