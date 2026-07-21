@@ -298,11 +298,11 @@ export default function Proyectos() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [proyectos, setProyectos] = useState([])
+  const [tareasPlanner, setTareasPlanner] = useState([])
   const [estados, setEstados] = useState([])
   const [acciones, setAcciones] = useState([])
   const [ensayos, setEnsayos] = useState([])
   const [tareas, setTareas] = useState([])
-  const [tareasPlanner, setTareasPlanner] = useState([])
   const [usuarios, setUsuarios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -331,7 +331,7 @@ export default function Proyectos() {
   const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: '' })
   const [nuevaAccion, setNuevaAccion] = useState({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
   const [nuevoEnsayo, setNuevoEnsayo] = useState({ nombre: '', tipo: 'ensayo', descripcion: '', fecha_inicio: '', fecha_fin: '' })
-  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' })
+  const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '', esFase: false, fecha_inicio: '' })
   const [nuevoEstado, setNuevoEstado] = useState({ nombre: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
@@ -358,13 +358,14 @@ export default function Proyectos() {
 
   async function cargarDatos() {
     try {
-      const [p, e, a, en, t, u] = await Promise.all([
+      const [p, e, a, en, t, u, tp] = await Promise.all([
         leerHoja('proyectos', accessToken),
         leerHoja('estados_proyecto', accessToken),
         leerHoja('acciones', accessToken),
         leerHoja('ensayos', accessToken),
         leerHoja('tareas', accessToken),
-        leerHoja('usuarios', accessToken)
+        leerHoja('usuarios', accessToken),
+        leerHoja('tareas_planner', accessToken)
       ])
       setProyectos(p)
       setEstados(e)
@@ -372,6 +373,7 @@ export default function Proyectos() {
       setEnsayos(en)
       setTareas(t)
       setUsuarios(u)
+      setTareasPlanner(tp.filter(t => t.id !== 'eliminado' && t.usuario_id !== 'eliminado'))
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
@@ -474,14 +476,16 @@ export default function Proyectos() {
     const fechasExactas = nuevaTarea.fechas_exactas || ''
     const primeraFecha2 = fechasExactas.split(',')[0]?.trim() || ''
     const diaCalculado2 = primeraFecha2 ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(primeraFecha2 + 'T12:00:00').getDay()]) : 'por_asignar'
+    const grupoId = nuevaTarea.esFase ? 'fase' : (Date.now().toString() + '_g')
+    const fechaExactaFinal = nuevaTarea.esFase ? (nuevaTarea.fecha_inicio || '') : fechasExactas
     await escribirFila('tareas', [
       id, modalTarea.ensayo_id, modalTarea.accion_id, modalTarea.proyecto_id,
-      nuevaTarea.nombre, asignadosStr, diaCalculado2, fechasExactas,
+      nuevaTarea.nombre, asignadosStr, diaCalculado2, fechaExactaFinal,
       diaRec, nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(),
-      '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g',
+      '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', grupoId,
       '', '', String(usuario.id)
     ], accessToken)
-    if (fechasExactas && nuevaTarea.asignados.length > 0) {
+    if (!nuevaTarea.esFase && fechasExactas && nuevaTarea.asignados.length > 0) {
       for (const uid of nuevaTarea.asignados) {
         await guardarFechaPersonalEnPlanner(id, 'proyecto', fechasExactas, { id: uid }, accessToken, nuevaTarea.nombre)
       }
@@ -757,7 +761,8 @@ export default function Proyectos() {
           <div style={{ display: 'flex', gap: '8px' }}>
             <BtnAccion tipo="editar" onClick={() => setEditEnsayo({ ...vistaEnsayo })}>✏️ Editar</BtnAccion>
             <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: vistaEnsayo })}>🗑 Eliminar</BtnAccion>
-            <button onClick={() => { setNuevaTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [] })); setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id }) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
+            <button onClick={() => { setNuevaTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [], esFase: false })); setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id }) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
+            <button onClick={() => { setNuevaTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [], esFase: true, fecha_inicio: '', fecha_limite: '' })); setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id }) }} style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>📅 + Fase</button>
             <button onClick={() => setModalEventoProyecto({ origenId: vistaEnsayo.id, origenTipo: 'ensayo', contexto: vistaEnsayo.nombre })} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Evento</button>
           </div>
         </div>
@@ -772,11 +777,16 @@ export default function Proyectos() {
               <div key={tarea.id} style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : '#00953B'}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ flex: 1 }}>
-                    <p onClick={() => setVistaTarea(tarea)} style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none', cursor: 'pointer' }}>{tarea.nombre}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      {tarea.tarea_grupo_id === 'fase' && <span style={{ background: '#dbeafe', color: '#1d4ed8', borderRadius: '4px', padding: '1px 7px', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>FASE</span>}
+                      <p onClick={() => setVistaTarea(tarea)} style={{ margin: 0, fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none', cursor: 'pointer' }}>{tarea.nombre}</p>
+                    </div>
                     <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#888' }}>📁 {vistaEnsayo.nombre}</p>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {asignados.map(id => <span key={id} style={{ background: '#f0fdf4', color: '#00953B', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
-                      {tarea.fecha_limite && <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>{vencida ? '⚠️ Vencida' : '📅'} {tarea.fecha_limite}</span>}
+                      {tarea.tarea_grupo_id === 'fase' && (() => { const miniTareas = tareasPlanner.filter(tp => tp.tarea_padre_id === tarea.id).length; return miniTareas > 0 ? <span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>🔗 {miniTareas} mini tareas</span> : null })()} 
+                      {tarea.tarea_grupo_id === 'fase' && tarea.fecha_exacta && tarea.fecha_limite && <span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>📅 {tarea.fecha_exacta} → {tarea.fecha_limite}</span>}
+                      {tarea.tarea_grupo_id !== 'fase' && tarea.fecha_limite && <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>{vencida ? '⚠️ Vencida' : '📅'} {tarea.fecha_limite}</span>}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
@@ -795,15 +805,33 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea" onClose={() => { setModalTarea(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={crearTarea}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534' }}>📁 Ensayo: <strong>{vistaEnsayo.nombre}</strong></div>
-              <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                <button onClick={() => setNuevaTarea({...nuevaTarea, esFase: false})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: `2px solid ${!nuevaTarea.esFase ? '#00953B' : '#e5e7eb'}`, background: !nuevaTarea.esFase ? '#f0fdf4' : 'white', color: !nuevaTarea.esFase ? '#00953B' : '#6b7280', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>✅ Tarea normal</button>
+                <button onClick={() => setNuevaTarea({...nuevaTarea, esFase: true})} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: `2px solid ${nuevaTarea.esFase ? '#2563eb' : '#e5e7eb'}`, background: nuevaTarea.esFase ? '#eff6ff' : 'white', color: nuevaTarea.esFase ? '#2563eb' : '#6b7280', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>📅 Fase</button>
+              </div>
+              <input placeholder={nuevaTarea.esFase ? 'Nombre de la fase *' : 'Nombre de la tarea *'} value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
               <textarea placeholder="Descripción (opcional)" value={nuevaTarea.descripcion || ''} onChange={e => setNuevaTarea({ ...nuevaTarea, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
               <SelectorPersonas usuarios={usuarios} seleccionados={nuevaTarea.asignados} onChange={ids => setNuevaTarea({ ...nuevaTarea, asignados: ids })} />
-              <InputFechasMultiples label="Días asignados en planner (opcional):" value={nuevaTarea.fechas_exactas || ''} onChange={val => setNuevaTarea({ ...nuevaTarea, fechas_exactas: val })} />
-
-              <div>
-                <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label>
-                <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
-              </div>
+              {nuevaTarea.esFase ? (
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha inicio:</label>
+                    <input type="date" value={nuevaTarea.fecha_inicio || ''} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_inicio: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha fin:</label>
+                    <input type="date" value={nuevaTarea.fecha_limite || ''} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <InputFechasMultiples label="Días asignados en planner (opcional):" value={nuevaTarea.fechas_exactas || ''} onChange={val => setNuevaTarea({ ...nuevaTarea, fechas_exactas: val })} />
+                  <div>
+                    <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label>
+                    <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                  </div>
+                </>
+              )}
             </div>
           </Modal>
         )}

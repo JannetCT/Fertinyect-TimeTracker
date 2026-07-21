@@ -820,7 +820,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       return tp?.fecha_exacta || ''
     }
     return [
-      ...tareas.map(t => ({ ...t, _tipo: 'proyecto', fecha_exacta: fechaPersonalDe(t.id), estado: completadasEnPlanner.has(t.id) ? 'completada' : t.estado })),
+      ...tareas.filter(t => t.tarea_grupo_id !== 'fase').map(t => ({ ...t, _tipo: 'proyecto', fecha_exacta: fechaPersonalDe(t.id), estado: completadasEnPlanner.has(t.id) ? 'completada' : t.estado })),
       ...tareasSoporte.map(t => ({ ...t, _tipo: 'soporte', fecha_exacta: fechaPersonalDe(t.id), estado: completadasEnPlanner.has(t.id) ? 'completada' : t.estado })),
       ...tareasDireccion.map(t => ({ ...t, _tipo: 'direccion', fecha_exacta: fechaPersonalDe(t.id), estado: completadasEnPlanner.has(t.id) ? 'completada' : t.estado })),
       ...tareasPlanner
