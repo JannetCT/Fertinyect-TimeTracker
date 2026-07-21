@@ -509,6 +509,8 @@ function Planner() {
   const [ensayos, setEnsayos] = useState([])
   const [categoriasSoporte, setCategoriasSoporte] = useState([])
   const [categoriasDireccion, setCategoriasDireccion] = useState([])
+  const [proyectosDireccion, setProyectosDireccion] = useState([])
+  const [subcarpetasDireccion, setSubcarpetasDireccion] = useState([])
   const [proyectosSoporte, setProyectosSoporte] = useState([])
   const [subcarpetasSoporte, setSubcarpetasSoporte] = useState([])
   const [todasTareasProyecto, setTodasTareasProyecto] = useState([])
@@ -553,7 +555,16 @@ function Planner() {
       setEventos(ev.filter(e => e.usuario_id && e.usuario_id.split(',').map(s => s.trim()).includes(misId)))
       setProyectos(p); setEstadosProyecto(ep); setAcciones(ac); setEnsayos(en)
       setCategoriasSoporte(cs); setProyectosSoporte(ps); setSubcarpetasSoporte(ss)
-      setCategoriasDireccion(await obtenerHoja('categorias_direccion'))
+      const [catDir, proyDir, subDir, tarDir] = await Promise.all([
+        obtenerHoja('categorias_direccion'),
+        obtenerHoja('proyectos_direccion'),
+        obtenerHoja('subcarpetas_direccion'),
+        obtenerHoja('tareas_direccion')
+      ])
+      setCategoriasDireccion(catDir)
+      setProyectosDireccion(proyDir)
+      setSubcarpetasDireccion(subDir)
+      setTareasDireccion(tarDir.filter(t => t.id !== 'eliminado'))
       setTodasTareasProyecto(t); setTodasTareasSoporte(ts)
       const counts = {}
       cl.forEach(item => { const key = `${item.tarea_id}_${item.tipo_tarea}`; if (!counts[key]) counts[key] = { total: 0, completados: 0 }; counts[key].total++; if (item.completado === 'true') counts[key].completados++ })
@@ -936,6 +947,23 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     return opciones
   }
   
+  function opcionesDireccion() {
+    const opciones = []
+    categoriasDireccion.forEach(cat => {
+      opciones.push({ id: `catd_${cat.id}`, label: `🗂 ${cat.nombre}`, tipo: 'direccion_categoria', realId: cat.id })
+      proyectosDireccion.filter(p => p.categoria_id === cat.id).forEach(proy => {
+        opciones.push({ id: `proyd_${proy.id}`, label: `  📁 ${proy.nombre}`, tipo: 'direccion_proyecto', realId: proy.id })
+        subcarpetasDireccion.filter(s => s.proyecto_direccion_id === proy.id).forEach(sub => {
+          opciones.push({ id: `subd_${sub.id}`, label: `    📂 ${sub.nombre}`, tipo: 'direccion_subcarpeta', realId: sub.id })
+          tareasDireccion.filter(t => t.subcarpeta_id === sub.id).forEach(tarea => { opciones.push({ id: `taread_${tarea.id}`, label: `      ✅ ${tarea.nombre}`, tipo: 'direccion', realId: tarea.id }) })
+        })
+        tareasDireccion.filter(t => t.proyecto_direccion_id === proy.id && !t.subcarpeta_id).forEach(tarea => { opciones.push({ id: `taread_${tarea.id}`, label: `    ✅ ${tarea.nombre}`, tipo: 'direccion', realId: tarea.id }) })
+      })
+      tareasDireccion.filter(t => t.categoria_id === cat.id && !t.proyecto_direccion_id).forEach(tarea => { opciones.push({ id: `taread_${tarea.id}`, label: `  ✅ ${tarea.nombre}`, tipo: 'direccion', realId: tarea.id }) })
+    })
+    return opciones
+  }
+
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando planner...</p></div>
 
   const esMobile = window.innerWidth < 768
@@ -998,7 +1026,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         {modalEditarTarea && (
           <ModalEditarTareaComponent modalEditarTarea={modalEditarTarea} setModalEditarTarea={setModalEditarTarea}
             guardarEditarTarea={async () => { await guardarEditarTarea(); setVistaTarea({...vistaTarea, descripcion: modalEditarTarea.descripcion}) }}
-            eliminarTarea={eliminarTarea} opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte} categoriasDireccion={categoriasDireccion}
+            eliminarTarea={eliminarTarea} opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte} opcionesDireccion={opcionesDireccion}
             usuario={usuario} usuarios={usuarios} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
           />
         )}
@@ -1225,7 +1253,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       {modalEditarTarea && !vistaTarea && (
         <ModalEditarTareaComponent modalEditarTarea={modalEditarTarea} setModalEditarTarea={setModalEditarTarea}
           guardarEditarTarea={guardarEditarTarea} eliminarTarea={eliminarTarea}
-          opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte} categoriasDireccion={categoriasDireccion}
+          opcionesProyecto={opcionesProyecto} opcionesSoporte={opcionesSoporte} opcionesDireccion={opcionesDireccion}
           usuario={usuario} usuarios={usuarios} accessToken={accessToken} getRefId={getRefId} getRefTipo={getRefTipo}
         />
       )}
@@ -1292,7 +1320,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                   </select>
                   {formTarea._tipoLigar === 'proyecto' && <SelectorColapsable opciones={opcionesProyecto()} valor={formTarea._opcionProyectoId || ''} onChange={opcion => setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})} placeholder='Selecciona elemento de proyecto...' />}
                   {formTarea._tipoLigar === 'soporte' && <SelectorColapsable opciones={opcionesSoporte()} valor={formTarea._opcionSoporteId || ''} onChange={opcion => setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})} placeholder='Selecciona elemento de soporte...' />}
-                  {formTarea._tipoLigar === 'direccion' && <SelectorColapsable opciones={categoriasDireccion.map(c => ({ id: c.id, label: `🗂 ${c.nombre}`, tipo: 'direccion', realId: c.id }))} valor={formTarea._opcionDireccionId || ''} onChange={opcion => setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: 'direccion', _opcionDireccionId: opcion.id})} placeholder='Selecciona categoría...' />}
+                  {formTarea._tipoLigar === 'direccion' && <SelectorColapsable opciones={opcionesDireccion()} valor={formTarea._opcionDireccionId || ''} onChange={opcion => setFormTarea({...formTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionDireccionId: opcion.id})} placeholder='Selecciona elemento de dirección...' />}
                 </div>
               )}
               <InputFechasMultiples label="Días asignados (opcional):" value={formTarea.fechas_exactas || ''} onChange={val => setFormTarea({...formTarea, fechas_exactas: val})} />
@@ -1385,7 +1413,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   )
 }
 
-function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guardarEditarTarea, eliminarTarea, opcionesProyecto, opcionesSoporte, categoriasDireccion, usuario, usuarios, accessToken, getRefId, getRefTipo }) {
+function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guardarEditarTarea, eliminarTarea, opcionesProyecto, opcionesSoporte, opcionesDireccion, usuario, usuarios, accessToken, getRefId, getRefTipo }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div style={{ background: 'white', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1418,7 +1446,7 @@ function ModalEditarTareaComponent({ modalEditarTarea, setModalEditarTarea, guar
               </select>
               {modalEditarTarea._tipoLigar === 'proyecto' && <SelectorColapsable opciones={opcionesProyecto()} valor={modalEditarTarea._opcionProyectoId || ''} onChange={opcion => setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionProyectoId: opcion.id})} placeholder='Selecciona elemento...' />}
               {modalEditarTarea._tipoLigar === 'soporte' && <SelectorColapsable opciones={opcionesSoporte()} valor={modalEditarTarea._opcionSoporteId || ''} onChange={opcion => setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionSoporteId: opcion.id})} placeholder='Selecciona elemento...' />}
-              {modalEditarTarea._tipoLigar === 'direccion' && <SelectorColapsable opciones={categoriasDireccion.map(c => ({ id: c.id, label: `🗂 ${c.nombre}`, tipo: 'direccion', realId: c.id }))} valor={modalEditarTarea._opcionDireccionId || ''} onChange={opcion => setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: 'direccion', _opcionDireccionId: opcion.id})} placeholder='Selecciona categoría...' />}
+              {modalEditarTarea._tipoLigar === 'direccion' && <SelectorColapsable opciones={opcionesDireccion()} valor={modalEditarTarea._opcionDireccionId || ''} onChange={opcion => setModalEditarTarea({...modalEditarTarea, tarea_padre_id: opcion.realId, tarea_padre_tipo: opcion.tipo, _opcionDireccionId: opcion.id})} placeholder='Selecciona elemento de dirección...' />}
             </div>
           )}
           <InputFechasMultiples label="Días asignados:" value={modalEditarTarea.fechas_exactas || modalEditarTarea.fecha_exacta || ''} onChange={val => setModalEditarTarea({...modalEditarTarea, fechas_exactas: val})} />
@@ -1452,18 +1480,17 @@ function SelectorColapsable({ opciones, valor, onChange, placeholder }) {
   const [expandidos, setExpandidos] = useState({})
   const [seleccionado, setSeleccionado] = useState(null)
 
-  // Detectar niveles por el número de espacios al inicio del label
   function getNivel(label) {
     const match = label.match(/^(\s*)/)
     return match ? Math.floor(match[1].length / 2) : 0
   }
 
-  // Construir árbol colapsable
   function esContenedor(op) {
     return !op.label.includes('✅')
   }
 
-  function toggleExpandido(id) {
+  function toggleExpandido(id, e) {
+    e.stopPropagation()
     setExpandidos(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
@@ -1472,56 +1499,58 @@ function SelectorColapsable({ opciones, valor, onChange, placeholder }) {
     onChange(op)
   }
 
-  // Mostrar solo los items cuyo padre está expandido
   const itemsVisibles = []
-  const pila = [] // stack de padres
+  const pila = []
   for (let i = 0; i < opciones.length; i++) {
     const op = opciones[i]
     const nivel = getNivel(op.label)
-    // Ajustar pila al nivel actual
     while (pila.length > nivel) pila.pop()
-    // Verificar si todos los padres están expandidos
     const visible = pila.every(p => expandidos[p.id])
     if (visible) itemsVisibles.push({ ...op, nivel })
-    // Si es contenedor, añadir a la pila
     if (esContenedor(op)) pila.push(op)
   }
 
-  const selLabel = seleccionado ? seleccionado.label.trim() : (valor ? (opciones.find(o => o.id === valor)?.label?.trim() || placeholder) : placeholder)
-
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
-      <div style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', background: 'white', cursor: 'pointer', color: seleccionado || valor ? '#373A36' : '#9ca3af', maxHeight: '200px', overflowY: 'auto' }}>
-        {itemsVisibles.length === 0 && <div style={{ color: '#9ca3af', padding: '4px 0' }}>{placeholder}</div>}
-        {itemsVisibles.map(op => {
-          const esConten = esContenedor(op)
-          const expandido = expandidos[op.id]
-          const seleccionadoId = seleccionado?.id || valor
-          return (
-            <div key={op.id}
-              onClick={() => esConten ? toggleExpandido(op.id) : handleSelect(op)}
-              style={{
-                padding: '6px 8px',
-                paddingLeft: `${op.nivel * 16 + 8}px`,
-                cursor: 'pointer',
-                borderRadius: '6px',
-                background: seleccionadoId === op.id ? '#f0fdf4' : 'transparent',
-                color: seleccionadoId === op.id ? '#00953B' : '#373A36',
-                fontWeight: seleccionadoId === op.id ? '600' : '400',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-              onMouseOver={e => { if (seleccionadoId !== op.id) e.currentTarget.style.background = '#f9fafb' }}
-              onMouseOut={e => { if (seleccionadoId !== op.id) e.currentTarget.style.background = 'transparent' }}
-            >
-              {esConten && <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>{expandido ? '▼' : '▶'}</span>}
-              <span>{op.label.trim()}</span>
-            </div>
-          )
-        })}
-      </div>
+    <div style={{ width: '100%', border: '1px solid #ddd', borderRadius: '8px', background: 'white', maxHeight: '200px', overflowY: 'auto' }}>
+      {itemsVisibles.length === 0 && <div style={{ color: '#9ca3af', padding: '10px', fontSize: '14px' }}>{placeholder}</div>}
+      {itemsVisibles.map(op => {
+        const esConten = esContenedor(op)
+        const expandido = expandidos[op.id]
+        const seleccionadoId = seleccionado?.id || valor
+        const activo = seleccionadoId === op.id
+        return (
+          <div key={op.id}
+            onClick={() => handleSelect(op)}
+            style={{
+              padding: '7px 8px',
+              paddingLeft: `${op.nivel * 16 + 8}px`,
+              cursor: 'pointer',
+              borderRadius: '4px',
+              background: activo ? '#f0fdf4' : 'transparent',
+              color: activo ? '#00953B' : '#373A36',
+              fontWeight: activo ? '600' : '400',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderBottom: '1px solid #f9fafb'
+            }}
+            onMouseOver={e => { if (!activo) e.currentTarget.style.background = '#f9fafb' }}
+            onMouseOut={e => { if (!activo) e.currentTarget.style.background = 'transparent' }}
+          >
+            {esConten && (
+              <span
+                onClick={e => toggleExpandido(op.id, e)}
+                style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0, padding: '2px 4px', borderRadius: '3px', cursor: 'pointer' }}
+                onMouseOver={e => { e.currentTarget.style.background = '#e5e7eb'; e.stopPropagation() }}
+                onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+              >{expandido ? '▼' : '▶'}</span>
+            )}
+            {!esConten && <span style={{ width: '16px', flexShrink: 0 }} />}
+            <span>{op.label.trim()}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
