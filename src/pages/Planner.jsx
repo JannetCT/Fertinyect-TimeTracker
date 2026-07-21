@@ -610,7 +610,8 @@ function Planner() {
   async function reactivarTarea(tarea) {
     const fila = [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana || 'por_asignar', tarea.fecha_limite || '', tarea.fecha_exacta || '', 'pendiente', tarea.fecha_creacion || new Date().toISOString(), tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', tarea.asignados || '', tarea.creado_por || '']
     await actualizarFila('tareas_planner', tarea.id, fila, accessToken)
-    if (!mostrarCompletadas) setMostrarCompletadas(true)
+    await new Promise(r => setTimeout(r, 800))
+    if (mostrarCompletadas) setMostrarCompletadas(false)
     await refrescar('tareas_planner')
     cargarDatos()
   }
@@ -1451,29 +1452,31 @@ function DroppableColumna({ diaFecha, children }) {
 function EventoCard({ ev, completado, onEditar, onClonar, onCompletar, onReactivar, onEliminar }) {
   const [menuAbierto, setMenuAbierto] = useState(false)
   return (
-    <div style={{ background: completado ? '#ede9fe' : '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', position: 'relative', opacity: completado ? 0.75 : 1 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div onClick={onEditar} style={{ cursor: 'pointer', flex: 1 }}>
+    <div style={{ position: 'relative', marginBottom: '6px' }}>
+      <div style={{ background: completado ? '#ede9fe' : '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', paddingRight: '36px', opacity: completado ? 0.8 : 1 }}>
+        <div onClick={onEditar} style={{ cursor: 'pointer' }}>
           <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed', textDecoration: completado ? 'line-through' : 'none' }}>🗓 {ev.titulo}</p>
           {ev.hora_inicio && <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{ev.hora_inicio}{ev.hora_fin ? ` — ${ev.hora_fin}` : ''}</p>}
           <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
         </div>
-        <div style={{ position: 'relative', flexShrink: 0, marginLeft: '6px' }}>
-          <button onClick={e => { e.stopPropagation(); setMenuAbierto(p => !p) }}
-            style={{ background: 'none', border: '1px solid #ddd8fe', borderRadius: '6px', padding: '2px 7px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', color: '#7c3aed', lineHeight: 1.4 }}>···</button>
-          {menuAbierto && (
-            <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 100, minWidth: '140px', padding: '4px 0', marginTop: '4px' }}>
-              {!completado && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>}
+      </div>
+      <div style={{ position: 'absolute', top: '6px', right: '6px', zIndex: 10 }}>
+        <button onClick={e => { e.stopPropagation(); setMenuAbierto(p => !p) }}
+          style={{ background: 'white', border: '1px solid #ddd8fe', borderRadius: '6px', padding: '2px 7px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', color: '#7c3aed', lineHeight: 1.4, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>···</button>
+        {menuAbierto && (
+          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 200, minWidth: '140px', padding: '4px 0', marginTop: '4px' }}>
+            {!completado && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>}
+            {!completado && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>}
+            <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
+            {!completado ? (
+              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
+            ) : (<>
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
-              <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
-              {!completado
-                ? <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
-                : <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
-              }
+              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEliminar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#dc2626', textAlign: 'left' }}>🗑 Eliminar</button>
-            </div>
-          )}
-        </div>
+            </>)}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1487,49 +1490,42 @@ function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar,
   const minEstimados = parseInt(tarea.tiempo_estimado) || 0
   const [menuAbierto, setMenuAbierto] = useState(false)
   return (
-    <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{ borderLeft: `4px solid ${esPostit ? '#fbbf24' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`, background: esPostit ? '#fef9c3' : esCompletada ? '#f9fafb' : 'white', position: 'relative' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: 1 }}>
-          <p onClick={onVerDetalle} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', margin: 0 }}>{tarea.nombre}</p>
+    <div style={{ position: 'relative' }}>
+      <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{ borderLeft: `4px solid ${esPostit ? '#fbbf24' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`, background: esPostit ? '#fef9c3' : esCompletada ? '#f9fafb' : 'white', paddingRight: '36px' }}>
+        <p onClick={onVerDetalle} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', margin: 0 }}>{tarea.nombre}</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
+          <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: tarea._tipo === 'soporte' ? '#eff6ff' : tarea._tipo === 'direccion' ? '#f5f3ff' : tarea._tipo === 'planner' ? '#f5f3ff' : '#f0fdf4', color: tarea._tipo === 'soporte' ? '#1d4ed8' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#7c3aed' : '#00953B', fontWeight: '600' }}>{contexto}</span>
+          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: esCompletada ? '#dcfce7' : '#f3f4f6', color: esCompletada ? '#166534' : '#6b7280', fontWeight: '600' }}>{esCompletada ? 'Completada' : 'Pendiente'}</span>
         </div>
-        <div style={{ position: 'relative', flexShrink: 0, marginLeft: '8px' }}>
-          <button onClick={e => { e.stopPropagation(); setMenuAbierto(p => !p) }}
-            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', color: '#6b7280', lineHeight: 1.4 }}>···</button>
-          {menuAbierto && (
-            <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 100, minWidth: '140px', padding: '4px 0', marginTop: '4px' }}>
-              {!esCompletada && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>}
-              {!esCompletada && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>}
-              <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
-              {!esCompletada ? (<>
-                <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
-              </>) : (<>
-                <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
-                <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar && onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
-                <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); if(confirm('¿Eliminar esta tarea?')) eliminarTarea(tarea) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#dc2626', textAlign: 'left' }}>🗑 Eliminar</button>
-              </>)}
-            </div>
-          )}
+        <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <EtiquetasBadge etiqueta={tarea.etiqueta} />
+          {tarea.fecha_limite && <span style={{ fontSize: '10px', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px', fontWeight: vencida || proxima ? '700' : '400' }}>{vencida ? '⚠️ Vencida' : proxima ? '🕐 Vence pronto' : '📅'} {!vencida && !proxima && tarea.fecha_limite}</span>}
+          {minEstimados > 0 && !esCompletada && <span style={{ fontSize: '10px', color: '#6b7280', background: '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>⏳ {formatMinutos(minEstimados)}</span>}
+          {checklistCount && checklistCount.total > 0 && <span style={{ fontSize: '10px', color: checklistCount.completados === checklistCount.total ? '#166534' : '#6b7280', background: checklistCount.completados === checklistCount.total ? '#dcfce7' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px', fontWeight: '600' }}>☑️ {checklistCount.completados}/{checklistCount.total}</span>}
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
-        <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: tarea._tipo === 'soporte' ? '#eff6ff' : tarea._tipo === 'direccion' ? '#f5f3ff' : tarea._tipo === 'planner' ? '#f5f3ff' : '#f0fdf4', color: tarea._tipo === 'soporte' ? '#1d4ed8' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#7c3aed' : '#00953B', fontWeight: '600' }}>{contexto}</span>
-        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: esCompletada ? '#dcfce7' : '#f3f4f6', color: esCompletada ? '#166534' : '#6b7280', fontWeight: '600' }}>
-          {esCompletada ? 'Completada' : 'Pendiente'}
-        </span>
-      </div>
-      <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <EtiquetasBadge etiqueta={tarea.etiqueta} />
-        {tarea.fecha_limite && <span style={{ fontSize: '10px', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px', fontWeight: vencida || proxima ? '700' : '400' }}>{vencida ? '⚠️ Vencida' : proxima ? '🕐 Vence pronto' : '📅'} {!vencida && !proxima && tarea.fecha_limite}</span>}
-        {minEstimados > 0 && !esCompletada && <span style={{ fontSize: '10px', color: '#6b7280', background: '#f3f4f6', padding: '1px 5px', borderRadius: '4px' }}>⏳ {formatMinutos(minEstimados)}</span>}
-        {checklistCount && checklistCount.total > 0 && (
-          <span style={{ fontSize: '10px', color: checklistCount.completados === checklistCount.total ? '#166534' : '#6b7280', background: checklistCount.completados === checklistCount.total ? '#dcfce7' : '#f3f4f6', padding: '1px 5px', borderRadius: '4px', fontWeight: '600' }}>
-            ☑️ {checklistCount.completados}/{checklistCount.total}
-          </span>
+      <div style={{ position: 'absolute', top: '6px', right: '6px', zIndex: 10 }}>
+        <button onClick={e => { e.stopPropagation(); setMenuAbierto(p => !p) }}
+          style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', color: '#6b7280', lineHeight: 1.4, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>···</button>
+        {menuAbierto && (
+          <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 200, minWidth: '140px', padding: '4px 0', marginTop: '4px' }}>
+            {!esCompletada && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>✏️ Editar</button>}
+            {!esCompletada && <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>}
+            <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
+            {!esCompletada ? (
+              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
+            ) : (<>
+              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar && onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
+              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar && onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
+              <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); if(confirm('¿Eliminar esta tarea?')) eliminarTarea(tarea) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#dc2626', textAlign: 'left' }}>🗑 Eliminar</button>
+            </>)}
+          </div>
         )}
       </div>
     </div>
   )
 }
+
 
 function ModalPostit({ onClose, onSave }) {
   const [form, setForm] = useState({ nombre: '', fechas_exactas: '', etiqueta: '' })
