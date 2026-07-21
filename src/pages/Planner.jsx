@@ -701,9 +701,13 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     else {
       const asignadosNuevos = Array.isArray(t.asignados) ? t.asignados : (t.asignados ? t.asignados.split(',').filter(Boolean) : [t.usuario_id])
       const creadorId = t.creado_por || t.usuario_id
+      // Aplicar prefijo planner_ para evitar que la tarea sea filtrada de todasLasTareas
+      const tipoPadreGuardar = ['proyecto','soporte','direccion'].includes(t.tarea_padre_tipo)
+        ? 'planner_' + t.tarea_padre_tipo
+        : t.tarea_padre_tipo || ''
       // Si el usuario actual sigue en la lista, actualizar su fila
       if (asignadosNuevos.includes(String(t.usuario_id))) {
-        await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', t.tarea_padre_tipo || '', t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || t.id, tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
+        await actualizarFila('tareas_planner', t.id, [t.id, t.usuario_id, t.tarea_padre_id || '', tipoPadreGuardar, t.nombre, diaCalculado, t.fecha_limite || '', fechasExactas, t.estado, t.fecha_creacion, t.etiqueta || '', t.fecha_limite_original || t.fecha_limite || '', t.descripcion || '', t.tarea_grupo_id || t.id, tiempoEstimado, t.hora_inicio || '', asignadosNuevos.join(','), creadorId], accessToken)
       } else {
         // El usuario actual se quitó a sí mismo — eliminar su fila
         await marcarEliminado('tareas_planner', t.id, accessToken)
@@ -1447,7 +1451,7 @@ function DroppableColumna({ diaFecha, children }) {
 function EventoCard({ ev, completado, onEditar, onClonar, onCompletar, onReactivar, onEliminar }) {
   const [menuAbierto, setMenuAbierto] = useState(false)
   return (
-    <div style={{ background: completado ? '#ede9fe' : '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', position: 'relative' }}>
+    <div style={{ background: completado ? '#ede9fe' : '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', marginBottom: '6px', position: 'relative', opacity: completado ? 0.75 : 1 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div onClick={onEditar} style={{ cursor: 'pointer', flex: 1 }}>
           <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed', textDecoration: completado ? 'line-through' : 'none' }}>🗓 {ev.titulo}</p>
@@ -1463,7 +1467,7 @@ function EventoCard({ ev, completado, onEditar, onClonar, onCompletar, onReactiv
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onClonar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#374151', textAlign: 'left' }}>⧉ Clonar</button>
               <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
               {!completado
-                ? <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#7c3aed', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
+                ? <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
                 : <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
               }
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onEliminar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#dc2626', textAlign: 'left' }}>🗑 Eliminar</button>
