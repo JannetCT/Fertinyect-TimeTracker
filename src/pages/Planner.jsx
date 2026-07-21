@@ -625,9 +625,9 @@ function Planner() {
     ]
     await actualizarFila('tareas_planner', tarea.id, fila, accessToken)
     await new Promise(r => setTimeout(r, 800))
-    if (mostrarCompletadas) setMostrarCompletadas(false)
     await refrescar('tareas_planner')
-    cargarDatos()
+    await cargarDatos()
+    if (mostrarCompletadas) setMostrarCompletadas(false)
   }
 
   async function completarTareaConHoras(tarea, horaInicio, horaFin, duracionSegundos, diaCompletado) {
