@@ -589,7 +589,7 @@ function Planner() {
 
   async function clonarEvento(evento) {
     const id = Date.now().toString()
-    await escribirFila('eventos', [id, String(usuario.id), `${evento.titulo} (copia)`, evento.descripcion || '', evento.fecha_exacta || '', evento.hora_inicio || '', evento.hora_fin || '', evento.tipo || 'reunion', new Date().toISOString(), evento.estado || 'pendiente', evento.origen_id || '', evento.origen_tipo || ''], accessToken)
+    await escribirFila('eventos', [id, String(usuario.id), `${evento.titulo} (copia)`, evento.descripcion || '', evento.fecha_exacta || '', evento.hora_inicio || '', evento.hora_fin || '', evento.tipo || 'reunion', new Date().toISOString(), 'pendiente', evento.origen_id || '', evento.origen_tipo || ''], accessToken)
     await refrescar('eventos')
     cargarDatos()
   }
@@ -608,7 +608,21 @@ function Planner() {
   }
 
   async function reactivarTarea(tarea) {
-    const fila = [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana || 'por_asignar', tarea.fecha_limite || '', tarea.fecha_exacta || '', 'pendiente', tarea.fecha_creacion || new Date().toISOString(), tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', tarea.asignados || '', tarea.creado_por || '']
+    // Leer fresco para encontrar la fila exacta
+    const todasFrescas = await leerHoja('tareas_planner', accessToken)
+    const filaActual = todasFrescas.find(tp => tp.id === tarea.id)
+    if (!filaActual) { console.error('Fila no encontrada:', tarea.id); return }
+    const fila = [
+      filaActual.id, filaActual.usuario_id, filaActual.tarea_padre_id || '',
+      filaActual.tarea_padre_tipo || '', filaActual.nombre,
+      filaActual.dia_semana || 'por_asignar', filaActual.fecha_limite || '',
+      filaActual.fecha_exacta || '', 'pendiente',
+      filaActual.fecha_creacion || new Date().toISOString(),
+      filaActual.etiqueta || '', filaActual.fecha_limite_original || filaActual.fecha_limite || '',
+      filaActual.descripcion || '', filaActual.tarea_grupo_id || '',
+      filaActual.tiempo_estimado || '', filaActual.hora_inicio || '',
+      filaActual.asignados || '', filaActual.creado_por || ''
+    ]
     await actualizarFila('tareas_planner', tarea.id, fila, accessToken)
     await new Promise(r => setTimeout(r, 800))
     if (mostrarCompletadas) setMostrarCompletadas(false)
@@ -1452,7 +1466,7 @@ function DroppableColumna({ diaFecha, children }) {
 function EventoCard({ ev, completado, onEditar, onClonar, onCompletar, onReactivar, onEliminar }) {
   const [menuAbierto, setMenuAbierto] = useState(false)
   return (
-    <div style={{ position: 'relative', marginBottom: '6px' }}>
+    <div style={{ position: 'relative', marginBottom: '6px', zIndex: menuAbierto ? 50 : 'auto' }}>
       <div style={{ background: completado ? '#ede9fe' : '#f5f3ff', borderLeft: `4px solid ${completado ? '#a78bfa' : '#7c3aed'}`, borderRadius: '8px', padding: '8px 10px', paddingRight: '36px', opacity: completado ? 0.8 : 1 }}>
         <div onClick={onEditar} style={{ cursor: 'pointer' }}>
           <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed', textDecoration: completado ? 'line-through' : 'none' }}>🗓 {ev.titulo}</p>
@@ -1490,7 +1504,7 @@ function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar,
   const minEstimados = parseInt(tarea.tiempo_estimado) || 0
   const [menuAbierto, setMenuAbierto] = useState(false)
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', zIndex: menuAbierto ? 50 : 'auto' }}>
       <div className={`tarea-card ${esCompletada ? 'completada' : ''}`} style={{ borderLeft: `4px solid ${esPostit ? '#fbbf24' : vencida ? '#dc2626' : proxima ? '#f59e0b' : tarea._tipo === 'soporte' ? '#3b82f6' : tarea._tipo === 'direccion' ? '#7c3aed' : tarea._tipo === 'planner' ? '#8b5cf6' : '#00953B'}`, background: esPostit ? '#fef9c3' : esCompletada ? '#f9fafb' : 'white', paddingRight: '36px' }}>
         <p onClick={onVerDetalle} className={`tarea-nombre ${esCompletada ? 'tachado' : ''}`} style={{ cursor: 'pointer', margin: 0 }}>{tarea.nombre}</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
