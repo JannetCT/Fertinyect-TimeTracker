@@ -57,7 +57,7 @@ export default function Actas() {
   }
 
   function abrirActa(acta) {
-    const evento = eventos.find(e => e.id === acta.evento_id) || null
+    const evento = todosEventos.find(e => e.id === acta.evento_id) || eventos.find(e => e.id === acta.evento_id) || null
     let secciones
     try { secciones = JSON.parse(acta.acuerdos) } catch { secciones = [{ id: Date.now().toString(), titulo: acta.acuerdos || '', contenido: '' }] }
     setActaActual({ ...acta, _evento: evento, _secciones: secciones })
