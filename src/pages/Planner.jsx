@@ -511,6 +511,7 @@ function Planner() {
   const [categoriasDireccion, setCategoriasDireccion] = useState([])
   const [proyectosDireccion, setProyectosDireccion] = useState([])
   const [subcarpetasDireccion, setSubcarpetasDireccion] = useState([])
+  const [todasTareasDireccion, setTodasTareasDireccion] = useState([])
   const [proyectosSoporte, setProyectosSoporte] = useState([])
   const [subcarpetasSoporte, setSubcarpetasSoporte] = useState([])
   const [todasTareasProyecto, setTodasTareasProyecto] = useState([])
@@ -564,7 +565,7 @@ function Planner() {
       setCategoriasDireccion(catDir)
       setProyectosDireccion(proyDir)
       setSubcarpetasDireccion(subDir)
-      setTareasDireccion(tarDir.filter(t => t.id !== 'eliminado'))
+      setTodasTareasDireccion(tarDir.filter(t => t.id !== 'eliminado'))
       setTodasTareasProyecto(t); setTodasTareasSoporte(ts)
       const counts = {}
       cl.forEach(item => { const key = `${item.tarea_id}_${item.tipo_tarea}`; if (!counts[key]) counts[key] = { total: 0, completados: 0 }; counts[key].total++; if (item.completado === 'true') counts[key].completados++ })
@@ -955,11 +956,11 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         opciones.push({ id: `proyd_${proy.id}`, label: `  📁 ${proy.nombre}`, tipo: 'direccion_proyecto', realId: proy.id })
         subcarpetasDireccion.filter(s => s.proyecto_direccion_id === proy.id).forEach(sub => {
           opciones.push({ id: `subd_${sub.id}`, label: `    📂 ${sub.nombre}`, tipo: 'direccion_subcarpeta', realId: sub.id })
-          tareasDireccion.filter(t => t.subcarpeta_id === sub.id).forEach(tarea => { opciones.push({ id: `taread_${tarea.id}`, label: `      ✅ ${tarea.nombre}`, tipo: 'direccion', realId: tarea.id }) })
+          todasTareasDireccion.filter(t => t.subcarpeta_id === sub.id).forEach(tarea => { opciones.push({ id: `taread_${tarea.id}`, label: `      ✅ ${tarea.nombre}`, tipo: 'direccion', realId: tarea.id }) })
         })
-        tareasDireccion.filter(t => t.proyecto_direccion_id === proy.id && !t.subcarpeta_id).forEach(tarea => { opciones.push({ id: `taread_${tarea.id}`, label: `    ✅ ${tarea.nombre}`, tipo: 'direccion', realId: tarea.id }) })
+        todasTareasDireccion.filter(t => t.proyecto_direccion_id === proy.id && !t.subcarpeta_id).forEach(tarea => { opciones.push({ id: `taread_${tarea.id}`, label: `    ✅ ${tarea.nombre}`, tipo: 'direccion', realId: tarea.id }) })
       })
-      tareasDireccion.filter(t => t.categoria_id === cat.id && !t.proyecto_direccion_id).forEach(tarea => { opciones.push({ id: `taread_${tarea.id}`, label: `  ✅ ${tarea.nombre}`, tipo: 'direccion', realId: tarea.id }) })
+      todasTareasDireccion.filter(t => t.categoria_id === cat.id && !t.proyecto_direccion_id).forEach(tarea => { opciones.push({ id: `taread_${tarea.id}`, label: `  ✅ ${tarea.nombre}`, tipo: 'direccion', realId: tarea.id }) })
     })
     return opciones
   }
