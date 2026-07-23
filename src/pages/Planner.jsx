@@ -481,7 +481,10 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
             const refTipo = tarea._tipo === 'planner' ? getRefTipo(tarea) : tarea._tipo
             const clCount = getChecklistCount(refId, refTipo)
             return (
-              <div key={tarea.id} style={{ position: 'absolute', left: '60px', right: '8px', top: `${tarea._top}px`, height: `${Math.max(tarea._height, 40)}px`, background: col.bg, border: `2px solid ${col.border}`, borderRadius: '8px', padding: '5px 8px', overflow: 'hidden', zIndex: 4 }}>
+              <div key={tarea.id}
+                draggable
+                onDragStart={e => { e.dataTransfer.setData('tareaId', JSON.stringify(tarea)); e.dataTransfer.effectAllowed = 'move' }}
+                style={{ position: 'absolute', left: '60px', right: '8px', top: `${tarea._top}px`, height: `${Math.max(tarea._height, 40)}px`, background: col.bg, border: `2px solid ${col.border}`, borderRadius: '8px', padding: '5px 8px', overflow: 'hidden', zIndex: 4, cursor: 'grab' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <p onClick={() => onVerDetalle(tarea)} style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: col.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}>{tarea.nombre}</p>
                   <div style={{ display: 'flex', gap: '2px', marginLeft: '4px', flexShrink: 0 }}>
