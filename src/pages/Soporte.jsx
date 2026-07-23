@@ -507,7 +507,7 @@ export default function Soporte() {
           if (s.nombre?.toLowerCase().includes(ql)) res.push({ icono: '📂', nombre: s.nombre, ruta: `${cat.nombre} → ${p.nombre}`, tipo: 'Subcarpeta', accion: () => { setVistaCategoria(cat); setVistaProyecto(p); setVistaSubcarpeta(s) } })
         })
       })
-      tareasSoporte.filter(t => t.categoria_id === cat.id && t.id !== 'eliminado').forEach(t => {
+      tareas.filter(t => t.categoria_id === cat.id && t.id !== 'eliminado').forEach(t => {
         if (t.nombre?.toLowerCase().includes(ql)) {
           const p = proyectosSoporte.find(p => p.id === t.proyecto_soporte_id)
           res.push({ icono: '✅', nombre: t.nombre, ruta: p ? `${cat.nombre} → ${p.nombre}` : cat.nombre, tipo: 'Tarea', accion: () => { if (p) { setVistaCategoria(cat); setVistaProyecto(p) } else setVistaCategoria(cat) } })
