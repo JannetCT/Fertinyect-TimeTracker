@@ -400,7 +400,7 @@ function ModalCompletarTarea({ tarea, onConfirmar, onCancelar }) {
   )
 }
 
-function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDetalle, onEditarTarea, onCompletarCron, onEditarEvento, onCompletarEvento, getChecklistCount, onDblClickHora }) {
+function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDetalle, onEditarTarea, onCompletarCron, onEditarEvento, onCompletarEvento, getChecklistCount, onDblClickHora, onMoverHora }) {
   const horaActualRef = useRef(null)
   const [ahora, setAhora] = useState(new Date())
   useEffect(() => { setAhora(new Date()); const t = setInterval(() => setAhora(new Date()), 60000); return () => clearInterval(t) }, [])
@@ -421,8 +421,12 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
             {tareasTodoDia.map(t => {
               const col = getColorTipo(t._tipo)
                   return (
-                <div key={t.id} onClick={() => onVerDetalle(t)} style={{ background: col.bg, border: `2px solid ${col.border}`, borderRadius: '8px', padding: '4px 10px', cursor: 'pointer', maxWidth: '220px' }}>
-                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: col.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.nombre}</p>
+                <div key={t.id}
+                  draggable
+                  onDragStart={e => { e.dataTransfer.setData('tareaId', JSON.stringify(t)); e.dataTransfer.effectAllowed = 'move' }}
+                  onClick={() => onVerDetalle(t)}
+                  style={{ background: col.bg, border: `2px solid ${col.border}`, borderRadius: '8px', padding: '4px 10px', cursor: 'grab', maxWidth: '220px' }}>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: col.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>⠿ {t.nombre}</p>
                   <div style={{ display: 'flex', gap: '4px', marginTop: '3px' }}>
                     <button onClick={e => { e.stopPropagation(); onCompletarCron(t, fecha) }} style={{ background: col.border, color: 'white', border: 'none', borderRadius: '4px', padding: '1px 6px', cursor: 'pointer', fontSize: '10px' }}>✅</button>
                   </div>
@@ -435,7 +439,12 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
       <div style={{ overflowY: 'auto', flex: 1, position: 'relative' }}>
         <div style={{ position: 'relative', minHeight: `${(HORA_FIN - HORA_INICIO + 1) * ALTURA_HORA}px` }}>
           {horas.map(h => (
-            <div key={h} onDoubleClick={() => onDblClickHora && onDblClickHora(fecha, `${h.toString().padStart(2,'0')}:00`)} style={{ position: 'absolute', top: `${(h - HORA_INICIO) * ALTURA_HORA}px`, left: 0, right: 0, height: `${ALTURA_HORA}px`, borderTop: h === HORA_INICIO ? 'none' : '1px solid #f0f0f0', display: 'flex', cursor: 'crosshair' }}>
+            <div key={h}
+              onDoubleClick={() => onDblClickHora && onDblClickHora(fecha, `${h.toString().padStart(2,'0')}:00`)}
+              onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,149,59,0.08)' }}
+              onDragLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              onDrop={e => { e.preventDefault(); e.currentTarget.style.background = 'transparent'; try { const tarea = JSON.parse(e.dataTransfer.getData('tareaId')); if (tarea && onMoverHora) onMoverHora(tarea, `${h.toString().padStart(2,'0')}:00`) } catch(err){} }}
+              style={{ position: 'absolute', top: `${(h - HORA_INICIO) * ALTURA_HORA}px`, left: 0, right: 0, height: `${ALTURA_HORA}px`, borderTop: h === HORA_INICIO ? 'none' : '1px solid #f0f0f0', display: 'flex', cursor: 'crosshair' }}>
               <div style={{ width: '52px', flexShrink: 0, paddingRight: '8px', paddingTop: '4px', textAlign: 'right' }}>
                 <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{h.toString().padStart(2,'0')}:00</span>
               </div>
@@ -581,6 +590,15 @@ function Planner() {
     const año = new Date().getFullYear().toString().slice(2)
     const num = String(Date.now()).slice(-4)
     return `${prefijo}${año}-${num}`
+  }
+
+  async function moverTareaHora(tarea, nuevaHora) {
+    if (tarea._tipo === 'planner') {
+      const fila = [tarea.id, tarea.usuario_id, tarea.tarea_padre_id || '', tarea.tarea_padre_tipo || '', tarea.nombre, tarea.dia_semana || 'por_asignar', tarea.fecha_limite || '', tarea.fecha_exacta || '', tarea.estado, tarea.fecha_creacion || new Date().toISOString(), tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || '', tarea.tiempo_estimado || '', nuevaHora, tarea.asignados || '', tarea.creado_por || '']
+      await actualizarFila('tareas_planner', tarea.id, fila, accessToken)
+      await refrescar('tareas_planner')
+      cargarDatos()
+    }
   }
 
   async function moverTareaDia(tarea, nuevaFecha) {
@@ -883,11 +901,15 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   function parseTiempoEstimado(tarea) { const min = parseInt(tarea.tiempo_estimado) || 0; return { horas: Math.floor(min / 60), minutos: min % 60 } }
   function getDiasDelMes() {
     const año = mesBase.getFullYear(), mes = mesBase.getMonth()
-    const primerDia = new Date(año, mes, 1), ultimoDia = new Date(año, mes + 1, 0)
+    const primerDia = new Date(año, mes, 1, 12, 0, 0), ultimoDia = new Date(año, mes + 1, 0, 12, 0, 0)
     const dias = [], inicioSemana = new Date(primerDia)
     const diaSemana = primerDia.getDay()
     inicioSemana.setDate(primerDia.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1))
-    for (let d = new Date(inicioSemana); d <= ultimoDia || dias.length % 7 !== 0; d.setDate(d.getDate() + 1)) dias.push({ fecha: getISODate(new Date(d)), mes: new Date(d).getMonth() === mes })
+    inicioSemana.setHours(12, 0, 0, 0)
+    for (let d = new Date(inicioSemana); d <= ultimoDia || dias.length % 7 !== 0; d.setDate(d.getDate() + 1)) {
+      d.setHours(12, 0, 0, 0)
+      dias.push({ fecha: getISODate(new Date(d)), mes: new Date(d).getMonth() === mes })
+    }
     return dias
   }
   function calcularPosicionesDia(fechaStr) {
@@ -1245,6 +1267,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                 }}
                 onEditarEvento={ev => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId] })}
                 onCompletarEvento={completarEvento} getChecklistCount={getChecklistCount}
+                onMoverHora={(tarea, hora) => moverTareaHora(tarea, hora)}
               />
             </div>
           </div>
