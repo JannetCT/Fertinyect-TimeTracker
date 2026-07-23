@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
@@ -291,9 +291,83 @@ function ModalEvento({ titulo, contexto, origenId, origenTipo, usuario, accessTo
   )
 }
 
+
+function BuscadorGlobal({ resultados, busqueda, setBusqueda, onSeleccionar, color = '#00953B', placeholder = 'Buscar...' }) {
+  const [abierto, setAbierto] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function cerrar(e) { if (ref.current && !ref.current.contains(e.target)) setAbierto(false) }
+    document.addEventListener('mousedown', cerrar)
+    return () => document.removeEventListener('mousedown', cerrar)
+  }, [])
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <input
+          placeholder={placeholder}
+          value={busqueda}
+          onChange={e => { setBusqueda(e.target.value); setAbierto(true) }}
+          onFocus={() => busqueda && setAbierto(true)}
+          style={{ padding: '8px 12px', borderRadius: '8px', border: `1px solid ${busqueda ? color : '#e5e7eb'}`, fontSize: '13px', width: '220px', outline: 'none' }}
+        />
+        {busqueda && <button onClick={() => { setBusqueda(''); setAbierto(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '16px', padding: '0 4px' }}>✕</button>}
+      </div>
+      {abierto && busqueda.length >= 2 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 500, maxHeight: '320px', overflowY: 'auto', minWidth: '320px' }}>
+          {resultados.length === 0 ? (
+            <div style={{ padding: '16px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>Sin resultados para "{busqueda}"</div>
+          ) : (
+            <>
+              <div style={{ padding: '8px 12px 4px', fontSize: '11px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{resultados.length} resultado{resultados.length !== 1 ? 's' : ''}</div>
+              {resultados.map((r, i) => (
+                <div key={i} onClick={() => { onSeleccionar(r); setAbierto(false); setBusqueda('') }}
+                  style={{ padding: '10px 14px', cursor: 'pointer', borderTop: '1px solid #f3f4f6' }}
+                  onMouseOver={e => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseOut={e => e.currentTarget.style.background = 'white'}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '16px', flexShrink: 0 }}>{r.icono}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#373A36', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.nombre}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.ruta}</p>
+                    </div>
+                    <span style={{ fontSize: '11px', background: '#f3f4f6', color: '#6b7280', borderRadius: '4px', padding: '2px 6px', flexShrink: 0, fontWeight: '600' }}>{r.tipo}</span>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 export default function Proyectos() {
   const { accessToken, usuario } = useAuth()
   const { refrescar } = useDatos()
+
+  function buscarEnTodo(q) {
+    if (!q || q.length < 2) return []
+    const ql = q.toLowerCase()
+    const res = []
+    proyectos.filter(p => p.id !== 'eliminado').forEach(p => {
+      if (p.nombre?.toLowerCase().includes(ql)) res.push({ icono: '📁', nombre: p.nombre, ruta: 'Proyecto', tipo: 'Proyecto', accion: () => setVistaProyecto(p) })
+      estados.filter(e => e.proyecto_id === p.id).forEach(e => {
+        if (e.nombre?.toLowerCase().includes(ql)) res.push({ icono: '📋', nombre: e.nombre, ruta: p.nombre, tipo: 'Estado', accion: () => { setVistaProyecto(p) } })
+        acciones.filter(a => a.estado_id === e.id).forEach(a => {
+          if (a.nombre?.toLowerCase().includes(ql)) res.push({ icono: '⚡', nombre: a.nombre, ruta: `${p.nombre} → ${e.nombre}`, tipo: 'Acción', accion: () => setVistaProyecto(p) })
+          ensayos.filter(en => en.accion_id === a.id).forEach(en => {
+            if (en.nombre?.toLowerCase().includes(ql)) res.push({ icono: '🧪', nombre: en.nombre, ruta: `${p.nombre} → ${a.nombre}`, tipo: 'Ensayo', accion: () => setVistaEnsayo(en) })
+          })
+        })
+      })
+      tareas.filter(t => t.proyecto_id === p.id && t.id !== 'eliminado').forEach(t => {
+        if (t.nombre?.toLowerCase().includes(ql)) res.push({ icono: '✅', nombre: t.nombre, ruta: p.nombre, tipo: 'Tarea', accion: () => setVistaProyecto(p) })
+      })
+    })
+    return res.slice(0, 20)
+  }
   const [modalCompletar, setModalCompletar] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -307,6 +381,7 @@ export default function Proyectos() {
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [mostrarBuscador, setMostrarBuscador] = useState(false)
+  const [resultadosBusqueda, setResultadosBusqueda] = useState([])
   const [vistaProyecto, setVistaProyecto] = useState(null)
   const [estadosColapsados, setEstadosColapsados] = useState({})
   const [vistaEnsayo, setVistaEnsayo] = useState(null)
@@ -1051,8 +1126,14 @@ export default function Proyectos() {
       <div className="proyectos-header">
         <h1>📁 Proyectos</h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {mostrarBuscador && <input autoFocus placeholder="Buscar proyecto..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '13px', width: '200px' }} />}
-          <button onClick={() => { setMostrarBuscador(p => !p); if (mostrarBuscador) setBusqueda('') }} style={{ background: mostrarBuscador ? '#f0fdf4' : '#f3f4f6', color: mostrarBuscador ? '#00953B' : '#6b7280', border: `1px solid ${mostrarBuscador ? '#00953B' : '#e5e7eb'}`, borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '16px' }}>🔍</button>
+          <BuscadorGlobal
+            resultados={buscarEnTodo(busqueda)}
+            busqueda={busqueda}
+            setBusqueda={setBusqueda}
+            onSeleccionar={r => r.accion && r.accion()}
+            color="#00953B"
+            placeholder="Buscar en proyectos..."
+          />
           <button onClick={() => setModalProyecto(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nuevo proyecto</button>
         </div>
       </div>
