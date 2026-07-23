@@ -503,7 +503,7 @@ export default function Soporte() {
       if (cat.nombre?.toLowerCase().includes(ql)) res.push({ icono: '🗂', nombre: cat.nombre, ruta: 'Soporte', tipo: 'Categoría', accion: () => setVistaCategoria(cat) })
       proyectosSoporte.filter(p => p.categoria_id === cat.id).forEach(p => {
         if (p.nombre?.toLowerCase().includes(ql)) res.push({ icono: '📁', nombre: p.nombre, ruta: cat.nombre, tipo: 'Proyecto', accion: () => { setVistaCategoria(cat); setVistaProyecto(p) } })
-        subcarpetasSoporte.filter(s => s.proyecto_soporte_id === p.id).forEach(s => {
+        subcarpetas.filter(s => s.proyecto_soporte_id === p.id).forEach(s => {
           if (s.nombre?.toLowerCase().includes(ql)) res.push({ icono: '📂', nombre: s.nombre, ruta: `${cat.nombre} → ${p.nombre}`, tipo: 'Subcarpeta', accion: () => { setVistaCategoria(cat); setVistaProyecto(p); setVistaSubcarpeta(s) } })
         })
       })
