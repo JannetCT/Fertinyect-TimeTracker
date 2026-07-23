@@ -1032,7 +1032,16 @@ export default function Proyectos() {
                     </div>}
                   </div>
                 ))}
-                {accionesDeEstado(estado.id).length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#aaa', fontStyle: 'italic' }}>Sin acciones aún</p>}
+                {tareasDeEstado(estado.id).map(t => (
+                  <div key={t.id} style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', borderLeft: '3px solid #00953B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
+                    </div>
+                    <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                  </div>
+                ))}
+                {accionesDeEstado(estado.id).length === 0 && tareasDeEstado(estado.id).length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#aaa', fontStyle: 'italic' }}>Sin acciones aún</p>}
               </div>}
             </div>
           ))}
