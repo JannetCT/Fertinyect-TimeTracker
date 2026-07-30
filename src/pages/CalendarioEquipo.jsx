@@ -348,7 +348,14 @@ export default function CalendarioEquipo() {
               <div key={fecha} style={{ minHeight: '200px', padding: '8px', borderRight: i < 6 ? '1px solid #f3f4f6' : 'none', background: esHoyDia ? '#fafff9' : 'white' }}>
                 {items.length === 0
                   ? <p style={{ fontSize: '11px', color: '#d1d5db', textAlign: 'center', marginTop: '20px' }}>—</p>
-                  : items.map((item, j) => <ChipPersona key={j} {...item} />)
+                  : <>
+                    {items.slice(0, 5).map((item, j) => <ChipPersona key={j} {...item} />)}
+                    {items.length > 5 && (
+                      <div onClick={() => setDiaDetalle({ fecha, items })} style={{ fontSize: '10px', color: '#6b7280', padding: '3px 5px', cursor: 'pointer', fontWeight: '600', marginTop: '2px' }}>
+                        +{items.length - 5} más
+                      </div>
+                    )}
+                  </>
                 }
               </div>
             )
