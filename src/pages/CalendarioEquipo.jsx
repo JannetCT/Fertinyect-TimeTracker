@@ -143,7 +143,6 @@ export default function CalendarioEquipo() {
     // Tareas proyecto
     tareas.forEach(t => {
       if (t.fecha_exacta !== fechaStr) return
-      if (t.estado === 'completada') return
       const asignados = (t.asignados || '').split(',').map(s => s.trim()).filter(Boolean)
       asignados.forEach(userId => {
         const email = getEmailUsuario(userId)
@@ -156,7 +155,6 @@ export default function CalendarioEquipo() {
     // Tareas soporte
     tareasSoporte.forEach(t => {
       if (t.fecha_exacta !== fechaStr) return
-      if (t.estado === 'completada') return
       const asignados = (t.asignados || '').split(',').map(s => s.trim()).filter(Boolean)
       asignados.forEach(userId => {
         const email = getEmailUsuario(userId)
@@ -169,7 +167,6 @@ export default function CalendarioEquipo() {
     // Tareas planner
     tareasPlanner.forEach(t => {
       if (t.fecha_exacta !== fechaStr) return
-      if (t.estado === 'completada') return
       const email = getEmailUsuario(t.usuario_id)
       if (filtroPersona !== 'todos' && email !== filtroPersona) return
       const cu = getColorUsuario(email)
