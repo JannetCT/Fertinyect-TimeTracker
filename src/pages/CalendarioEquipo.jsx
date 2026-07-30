@@ -285,8 +285,8 @@ export default function CalendarioEquipo() {
         const esHoyDia = fecha === hoy
         return (
           <div key={fecha} onClick={() => setDiaDetalle({ fecha, items })}
-            style={{ minHeight: esMobile ? '52px' : '100px', padding: esMobile ? '4px 2px' : '6px', borderRight: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', background: esHoyDia ? '#f0fdf4' : esMes ? 'white' : '#fafafa', opacity: esMes ? 1 : 0.4, cursor: 'pointer' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+            style={{ minHeight: esMobile ? '52px' : '100px', padding: esMobile ? '4px 2px' : '6px', borderRight: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', background: esHoyDia ? '#f0fdf4' : esMes ? 'white' : '#fafafa', opacity: esMes ? 1 : 0.4, cursor: 'pointer', overflow: 'hidden', minWidth: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', width: '100%', overflow: 'hidden' }}>
               <span style={{ fontSize: esMobile ? '12px' : '13px', fontWeight: esHoyDia ? '700' : '400', color: esHoyDia ? '#00953B' : '#373A36' }}>
                 {new Date(fecha + 'T12:00:00').getDate()}
               </span>
