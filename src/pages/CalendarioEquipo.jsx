@@ -53,9 +53,9 @@ function getLunesDeSemana(fecha) {
 
 function ChipPersona({ nombre, color, bg, texto }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: bg, borderLeft: `3px solid ${color}`, borderRadius: '4px', padding: '2px 5px', marginBottom: '2px', minWidth: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: bg, borderLeft: `3px solid ${color}`, borderRadius: '4px', padding: '2px 5px', marginBottom: '2px', minWidth: 0, overflow: 'hidden', width: '100%' }}>
       <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }} />
-      <span style={{ fontSize: '10px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{texto}</span>
+      <span style={{ fontSize: '10px', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{texto}</span>
     </div>
   )
 }
@@ -345,7 +345,7 @@ export default function CalendarioEquipo() {
             const items = getItemsDeDia(fecha)
             const esHoyDia = fecha === hoy
             return (
-              <div key={fecha} style={{ minHeight: '200px', padding: '8px', borderRight: i < 6 ? '1px solid #f3f4f6' : 'none', background: esHoyDia ? '#fafff9' : 'white' }}>
+              <div key={fecha} style={{ minHeight: '200px', padding: '8px', borderRight: i < 6 ? '1px solid #f3f4f6' : 'none', background: esHoyDia ? '#fafff9' : 'white', overflow: 'hidden', minWidth: 0 }}>
                 {items.length === 0
                   ? <p style={{ fontSize: '11px', color: '#d1d5db', textAlign: 'center', marginTop: '20px' }}>—</p>
                   : <>
