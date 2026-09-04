@@ -683,12 +683,30 @@ function Planner() {
         await actualizarEstado(tarea, 'planner', 'completada')
       }
     } else {
-      await escribirFila('tareas_planner', [
-        Date.now().toString(), String(usuario.id), tarea.id, tarea._tipo,
-        tarea.nombre, tarea.dia_semana || 'por_asignar', tarea.fecha_limite || '',
-        tarea.fecha_exacta || '', 'completada', new Date().toISOString(),
-        tarea.etiqueta || '', '', '', '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', String(usuario.id)
-      ], accessToken)
+      // Multi-día (tareas de Proyectos/Soporte/Dirección puestas en varios días):
+      // quitar solo el día completado de la fila personal, igual que las tareas nativas del planner
+      const fechas = (tarea.fecha_exacta || '').split(',').map(f => f.trim()).filter(Boolean)
+      const fechasRestantes = fechas.filter(f => f !== fechaStr)
+      const filaPersonal = tareasPlanner.find(tp => tp.tarea_padre_id === tarea.id && String(tp.usuario_id) === String(usuario.id))
+      if (fechasRestantes.length > 0 && filaPersonal) {
+        // Quedan más días — solo quitar este día, NO marcar como completada
+        await actualizarFila('tareas_planner', filaPersonal.id, [
+          filaPersonal.id, filaPersonal.usuario_id, tarea.id, tarea._tipo,
+          tarea.nombre, filaPersonal.dia_semana || 'por_asignar', filaPersonal.fecha_limite || '',
+          fechasRestantes.join(','), filaPersonal.estado || 'pendiente', filaPersonal.fecha_creacion,
+          filaPersonal.etiqueta || '', filaPersonal.fecha_limite_original || filaPersonal.fecha_limite || '',
+          filaPersonal.descripcion || '', filaPersonal.tarea_grupo_id || '', filaPersonal.tiempo_estimado || '',
+          filaPersonal.hora_inicio || '', String(usuario.id)
+        ], accessToken)
+      } else {
+        // Era el único día (o el último) — marcar como completada
+        await escribirFila('tareas_planner', [
+          Date.now().toString(), String(usuario.id), tarea.id, tarea._tipo,
+          tarea.nombre, tarea.dia_semana || 'por_asignar', tarea.fecha_limite || '',
+          tarea.fecha_exacta || '', 'completada', new Date().toISOString(),
+          tarea.etiqueta || '', '', '', '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', String(usuario.id)
+        ], accessToken)
+      }
     }
     setModalCompletar(null)
     await refrescar('tareas_planner')
