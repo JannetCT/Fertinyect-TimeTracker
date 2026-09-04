@@ -39,8 +39,9 @@ export default function Actas() {
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
-
   function crearActa(evento) {
+    const existente = actas.find(a => a.evento_id === evento.id)
+    if (existente) { abrirActa(existente); return }
     const participantes = evento.usuario_id ? evento.usuario_id.split(',').map(id => NOMBRES[id.trim()] || id).join(', ') : ''
     setActaActual({
       id: Date.now().toString(),
