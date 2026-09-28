@@ -1033,6 +1033,39 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
 
   if (vistaTarea) {
     const refId = vistaTarea._tipo === 'planner' ? getRefId(vistaTarea) : vistaTarea.id
+
+    function getRutaTarea(t) {
+      if (!t) return null
+      const tipo = t._tipo
+      if (tipo === 'planner') {
+        if (!t.tarea_padre_tipo || t.tarea_padre_tipo === '') return null
+        return { modulo: '📝 Tarea libre', partes: [] }
+      }
+      if (tipo === 'soporte') {
+        const tarea = tareasSoporte.find(ts => ts.id === t.id) || t
+        const proy = proyectosSoporte.find(p => p.id === tarea.proyecto_soporte_id)
+        const cat = categoriasSoporte.find(c => c.id === (proy?.categoria_id || tarea.categoria_id))
+        const sub = subcarpetasSoporte.find(s => s.id === tarea.subcarpeta_id)
+        const partes = [cat?.nombre, proy?.nombre, sub?.nombre].filter(Boolean)
+        return { modulo: '🔧 Soporte', partes, color: '#3b82f6' }
+      }
+      if (tipo === 'direccion') {
+        const td = tareasDireccion.find(td => td.id === t.id) || t
+        const cat = categoriasDireccion.find(c => c.id === td.categoria_id)
+        const partes = [cat?.nombre].filter(Boolean)
+        return { modulo: '🎯 Dirección', partes, color: '#7c3aed' }
+      }
+      if (tipo === 'proyecto') {
+        const tp = tareas.find(tp => tp.id === t.id) || t
+        const proy = todasTareasProyecto ? null : null
+        // buscar en proyectos, estados, acciones, ensayos
+        const ensayo = ensayosProyecto ? ensayosProyecto.find(e => e.id === tp.ensayo_id) : null
+        const accion = accionesProyecto ? accionesProyecto.find(a => a.id === (tp.accion_id || ensayo?.accion_id)) : null
+        return { modulo: '📁 Proyectos', partes: [accion?.nombre, ensayo?.nombre].filter(Boolean), color: '#00953B' }
+      }
+      return null
+    }
+    const ruta = getRutaTarea(vistaTarea)
     const refTipo = vistaTarea._tipo === 'planner' ? getRefTipo(vistaTarea) : vistaTarea._tipo
     const descripcion = getDescripcionTarea(vistaTarea)
     return (
@@ -1041,7 +1074,20 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <button onClick={() => setVistaTarea(null)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Volver</button>
-              <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaTarea.nombre}</h1>
+              <div>
+                <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaTarea.nombre}</h1>
+                {ruta && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: ruta.color || '#6b7280', background: `${ruta.color || '#6b7280'}15`, padding: '2px 8px', borderRadius: '20px' }}>{ruta.modulo}</span>
+                    {ruta.partes.map((p, i) => (
+                      <span key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '11px', color: '#9ca3af' }}>›</span>
+                        <span style={{ fontSize: '12px', color: '#6b7280' }}>{p}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => { const tipoLigar = vistaTarea.tarea_padre_tipo ? vistaTarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : vistaTarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''; const te = parseTiempoEstimado(vistaTarea); setModalEditarTarea({ ...vistaTarea, descripcion: getDescripcionTarea(vistaTarea), fechas_exactas: vistaTarea.fecha_exacta || '', _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos }) }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>✏️ Editar</button>
