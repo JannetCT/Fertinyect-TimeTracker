@@ -394,6 +394,7 @@ export default function Proyectos() {
   const [modalEventoProyecto, setModalEventoProyecto] = useState(null)
   const [modalTareaEstado, setModalTareaEstado] = useState(null)
   const [modalTareaProyecto, setModalTareaProyecto] = useState(null)
+  const [editTareaDirecta, setEditTareaDirecta] = useState(null)
   const [modalEstado, setModalEstado] = useState(null)
 
   const [editProyecto, setEditProyecto] = useState(null)
@@ -949,15 +950,21 @@ export default function Proyectos() {
             <div style={{ background: 'white', borderRadius: '12px', padding: '20px', marginBottom: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: '#373A36' }}>📋 Tareas directas del proyecto</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {tareasDirectasDeProyecto(vistaProyecto.id).map(t => (
-                  <div key={t.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '10px 14px', borderLeft: '3px solid #00953B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {tareasDirectasDeProyecto(vistaProyecto.id).map(t => {
+                  const completada = t.estado === 'completada'
+                  return (
+                  <div key={t.id} style={{ background: completada ? '#f9fafb' : '#f0fdf4', borderRadius: '8px', padding: '10px 14px', borderLeft: `3px solid ${completada ? '#9ca3af' : '#00953B'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: completada ? 0.8 : 1 }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado} {t.fecha_limite ? `· 📅 ${t.fecha_limite}` : ''}</p>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', textDecoration: completada ? 'line-through' : 'none', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
-                    <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>
+                      <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                    </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
@@ -1035,15 +1042,21 @@ export default function Proyectos() {
                     </div>}
                   </div>
                 ))}
-                {tareasDeEstado(estado.id).map(t => (
-                  <div key={t.id} style={{ background: '#f0fdf4', borderRadius: '8px', padding: '10px 14px', borderLeft: '3px solid #00953B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {tareasDeEstado(estado.id).map(t => {
+                  const completada = t.estado === 'completada'
+                  return (
+                  <div key={t.id} style={{ background: completada ? '#f9fafb' : '#f0fdf4', borderRadius: '8px', padding: '10px 14px', borderLeft: `3px solid ${completada ? '#9ca3af' : '#00953B'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: completada ? 0.8 : 1 }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', textDecoration: completada ? 'line-through' : 'none', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</p>
                       <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
-                    <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>
+                      <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                    </div>
                   </div>
-                ))}
+                  )
+                })}
                 {accionesDeEstado(estado.id).length === 0 && tareasDeEstado(estado.id).length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#aaa', fontStyle: 'italic' }}>Sin acciones aún</p>}
               </div>}
             </div>
@@ -1148,6 +1161,88 @@ export default function Proyectos() {
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label>
                   <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+              </div>
+            </div>
+          </Modal>
+        )}
+        {editTareaDirecta && (
+          <Modal titulo="Editar tarea" onClose={() => setEditTareaDirecta(null)} onSave={async () => {
+            await actualizarFila('tareas', editTareaDirecta.id, [
+              editTareaDirecta.id, editTareaDirecta.ensayo_id || '', editTareaDirecta.accion_id || '',
+              editTareaDirecta.proyecto_id, editTareaDirecta.nombre, editTareaDirecta.asignados || '',
+              editTareaDirecta.dia_semana || 'por_asignar', editTareaDirecta.fecha_exacta || '',
+              '', editTareaDirecta.fecha_limite || '', editTareaDirecta.estado || 'pendiente',
+              editTareaDirecta.fecha_creacion || new Date().toISOString(), editTareaDirecta.etiqueta || '',
+              editTareaDirecta.fecha_limite_original || editTareaDirecta.fecha_limite || '',
+              editTareaDirecta.descripcion || '', editTareaDirecta.tarea_grupo_id || '',
+              editTareaDirecta.tiempo_estimado || '', editTareaDirecta.hora_inicio || '',
+              editTareaDirecta.creado_por || String(usuario.id), editTareaDirecta.estado_id || ''
+            ], accessToken)
+            setEditTareaDirecta(null)
+            await new Promise(r => setTimeout(r, 800))
+            cargarDatos()
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input placeholder="Nombre *" value={editTareaDirecta.nombre} onChange={e => setEditTareaDirecta({...editTareaDirecta, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={editTareaDirecta.descripcion || ''} onChange={e => setEditTareaDirecta({...editTareaDirecta, descripcion: e.target.value})} rows={3} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', resize: 'vertical' }} />
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Estado:</label>
+                <select value={editTareaDirecta.estado || 'pendiente'} onChange={e => setEditTareaDirecta({...editTareaDirecta, estado: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="en_proceso">En proceso</option>
+                  <option value="completada">Completada</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Día en el Planner:</label>
+                  <input type="date" value={editTareaDirecta.fecha_exacta || ''} onChange={e => setEditTareaDirecta({...editTareaDirecta, fecha_exacta: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha límite:</label>
+                  <input type="date" value={editTareaDirecta.fecha_limite || ''} onChange={e => setEditTareaDirecta({...editTareaDirecta, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+              </div>
+            </div>
+          </Modal>
+        )}
+        {editTareaDirecta && (
+          <Modal titulo="Editar tarea" onClose={() => setEditTareaDirecta(null)} onSave={async () => {
+            await actualizarFila('tareas', editTareaDirecta.id, [
+              editTareaDirecta.id, editTareaDirecta.ensayo_id || '', editTareaDirecta.accion_id || '',
+              editTareaDirecta.proyecto_id, editTareaDirecta.nombre, editTareaDirecta.asignados || '',
+              editTareaDirecta.dia_semana || 'por_asignar', editTareaDirecta.fecha_exacta || '',
+              '', editTareaDirecta.fecha_limite || '', editTareaDirecta.estado || 'pendiente',
+              editTareaDirecta.fecha_creacion || new Date().toISOString(), editTareaDirecta.etiqueta || '',
+              editTareaDirecta.fecha_limite_original || editTareaDirecta.fecha_limite || '',
+              editTareaDirecta.descripcion || '', editTareaDirecta.tarea_grupo_id || '',
+              editTareaDirecta.tiempo_estimado || '', editTareaDirecta.hora_inicio || '',
+              editTareaDirecta.creado_por || String(usuario.id), editTareaDirecta.estado_id || ''
+            ], accessToken)
+            setEditTareaDirecta(null)
+            await new Promise(r => setTimeout(r, 800))
+            cargarDatos()
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input placeholder="Nombre *" value={editTareaDirecta.nombre} onChange={e => setEditTareaDirecta({...editTareaDirecta, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={editTareaDirecta.descripcion || ''} onChange={e => setEditTareaDirecta({...editTareaDirecta, descripcion: e.target.value})} rows={3} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', resize: 'vertical' }} />
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Estado:</label>
+                <select value={editTareaDirecta.estado || 'pendiente'} onChange={e => setEditTareaDirecta({...editTareaDirecta, estado: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="en_proceso">En proceso</option>
+                  <option value="completada">Completada</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Día en el Planner:</label>
+                  <input type="date" value={editTareaDirecta.fecha_exacta || ''} onChange={e => setEditTareaDirecta({...editTareaDirecta, fecha_exacta: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha límite:</label>
+                  <input type="date" value={editTareaDirecta.fecha_limite || ''} onChange={e => setEditTareaDirecta({...editTareaDirecta, fecha_limite: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
                 </div>
               </div>
             </div>
