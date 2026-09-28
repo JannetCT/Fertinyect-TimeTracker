@@ -547,7 +547,9 @@ export default function Proyectos() {
   async function crearTarea() {
     if (!nuevaTarea.nombre || !modalTarea) return
     const id = Date.now().toString()
-    const asignadosStr = nuevaTarea.asignados.join(',')
+    const _rawA = nuevaTarea.asignados
+    const asignadosArr0 = Array.isArray(_rawA) && _rawA.length > 0 ? _rawA : (typeof _rawA === 'string' && _rawA ? _rawA.split(',').filter(Boolean) : [String(usuario.id)])
+    const asignadosStr = asignadosArr0.join(',')
     const diaRec = [nuevaTarea.dia_recomendado, nuevaTarea.fecha_recomendada].filter(Boolean).join(' ')
     const fechasExactas = nuevaTarea.fechas_exactas || ''
     const primeraFecha2 = fechasExactas.split(',')[0]?.trim() || ''
@@ -561,8 +563,8 @@ export default function Proyectos() {
       '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', grupoId,
       '', '', String(usuario.id)
     ], accessToken)
-    if (!nuevaTarea.esFase && fechasExactas && nuevaTarea.asignados.length > 0) {
-      for (const uid of nuevaTarea.asignados) {
+    if (!nuevaTarea.esFase && fechasExactas && asignadosArr0.length > 0) {
+      for (const uid of asignadosArr0) {
         await guardarFechaPersonalEnPlanner(id, 'proyecto', fechasExactas, { id: uid }, accessToken, nuevaTarea.nombre)
       }
     }
@@ -573,7 +575,8 @@ export default function Proyectos() {
 
   async function guardarEditTarea() {
     if (!editTarea) return
-    const asignadosStr = Array.isArray(editTarea.asignados) ? editTarea.asignados.join(',') : editTarea.asignados
+    const _rawE = editTarea.asignados
+    const asignadosStr = Array.isArray(_rawE) ? _rawE.join(',') : (typeof _rawE === 'string' && _rawE ? _rawE : String(usuario.id))
     const diaRec = [editTarea.dia_recomendado, editTarea.fecha_recomendada].filter(Boolean).join(' ')
     // Guardamos datos compartidos en tareas (sin fecha_exacta — esa es personal)
     await actualizarFila('tareas', editTarea.id, [
