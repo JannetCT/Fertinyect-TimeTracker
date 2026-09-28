@@ -1054,7 +1054,8 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea del proyecto" onClose={() => { setModalTareaProyecto(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={async () => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const asignadosArr = Array.isArray(nuevaTarea.asignados) && nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
+            const _raw1 = nuevaTarea.asignados
+            const asignadosArr = Array.isArray(_raw1) && _raw1.length > 0 ? _raw1 : (typeof _raw1 === 'string' && _raw1 ? _raw1.split(',').filter(Boolean) : [String(usuario.id)])
             const asignadosStr = asignadosArr.join(',')
             const fechaPlanner = nuevaTarea.fecha_recomendada || ''
             const diaPlanner = fechaPlanner ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(fechaPlanner + 'T12:00:00').getDay()] || 'por_asignar') : 'por_asignar'
