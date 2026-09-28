@@ -1054,7 +1054,7 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea del proyecto" onClose={() => { setModalTareaProyecto(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={async () => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const asignadosArr = nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
+            const asignadosArr = Array.isArray(nuevaTarea.asignados) && nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
             const asignadosStr = asignadosArr.join(',')
             const fechaPlanner = nuevaTarea.fecha_recomendada || ''
             const diaPlanner = fechaPlanner ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(fechaPlanner + 'T12:00:00').getDay()] || 'por_asignar') : 'por_asignar'
@@ -1090,7 +1090,7 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const asignadosArr2 = nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
+            const asignadosArr2 = Array.isArray(nuevaTarea.asignados) && nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
             const asignadosStr = asignadosArr2.join(',')
             (async () => {
               const fechaP = nuevaTarea.fecha_recomendada || ''
@@ -1121,7 +1121,7 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const asignadosArr3 = nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
+            const asignadosArr3 = Array.isArray(nuevaTarea.asignados) && nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
             const asignadosStr = asignadosArr3.join(',')
             (async () => {
               const fechaP = nuevaTarea.fecha_recomendada || ''
