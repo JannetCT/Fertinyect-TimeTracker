@@ -968,7 +968,7 @@ export default function Proyectos() {
                 <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                   <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'estado', item: estado })}>🗑</BtnAccion>
                   <BtnAccion tipo="añadir" onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Acción</BtnAccion>
-                  <BtnAccion tipo="editar" onClick={() => setModalTareaEstado({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>📋 + Tarea</BtnAccion>
+                  <BtnAccion tipo="editar" onClick={() => { setNuevaTarea({ nombre: '', asignados: [String(usuario.id)], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); setModalTareaEstado({ estado_id: estado.id, proyecto_id: vistaProyecto.id }) }}>📋 + Tarea</BtnAccion>
                   <BtnAccion tipo="añadir" onClick={() => setModalEventoProyecto({ origenId: estado.id, origenTipo: 'estado', contexto: estado.nombre })}>+ Evento</BtnAccion>
                 </div>
               </div>
@@ -1090,7 +1090,7 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const asignadosArr2 = Array.isArray(nuevaTarea.asignados) && nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
+            const _raw2 = nuevaTarea.asignados; const asignadosArr2 = Array.isArray(_raw2) && _raw2.length > 0 ? _raw2 : (typeof _raw2 === 'string' && _raw2 ? _raw2.split(',').filter(Boolean) : [String(usuario.id)])
             const asignadosStr = asignadosArr2.join(',')
             (async () => {
               const fechaP = nuevaTarea.fecha_recomendada || ''
@@ -1121,7 +1121,7 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const asignadosArr3 = Array.isArray(nuevaTarea.asignados) && nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
+            const _raw3 = nuevaTarea.asignados; const asignadosArr3 = Array.isArray(_raw3) && _raw3.length > 0 ? _raw3 : (typeof _raw3 === 'string' && _raw3 ? _raw3.split(',').filter(Boolean) : [String(usuario.id)])
             const asignadosStr = asignadosArr3.join(',')
             (async () => {
               const fechaP = nuevaTarea.fecha_recomendada || ''
