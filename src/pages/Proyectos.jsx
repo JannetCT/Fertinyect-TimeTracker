@@ -1051,16 +1051,38 @@ export default function Proyectos() {
         </div>
 
         {modalTareaProyecto && (
-          <Modal titulo="Nueva tarea del proyecto" onClose={() => { setModalTareaProyecto(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
+          <Modal titulo="Nueva tarea del proyecto" onClose={() => { setModalTareaProyecto(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={async () => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const asignadosStr = nuevaTarea.asignados.join(',')
-            escribirFila('tareas', [id, '', '', modalTareaProyecto.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id), ''], accessToken).then(async () => { setModalTareaProyecto(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); await new Promise(r => setTimeout(r, 800)); cargarDatos() })
+            const asignadosArr = nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
+            const asignadosStr = asignadosArr.join(',')
+            const fechaPlanner = nuevaTarea.fecha_recomendada || ''
+            const diaPlanner = fechaPlanner ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(fechaPlanner + 'T12:00:00').getDay()] || 'por_asignar') : 'por_asignar'
+            await escribirFila('tareas', [id, '', '', modalTareaProyecto.proyecto_id, nuevaTarea.nombre, asignadosStr, diaPlanner, fechaPlanner, '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id), ''], accessToken)
+            if (fechaPlanner) {
+              for (const uid of asignadosArr) {
+                const planId = Date.now().toString() + '_' + uid
+                await escribirFila('tareas_planner', [planId, uid, id, 'planner_proyecto', nuevaTarea.nombre, diaPlanner, nuevaTarea.fecha_limite || '', fechaPlanner, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite || '', nuevaTarea.descripcion || '', '', '', '', asignadosStr, String(usuario.id)], accessToken)
+              }
+            }
+            setModalTareaProyecto(null)
+            setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' })
+            await new Promise(r => setTimeout(r, 800))
+            cargarDatos()
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input placeholder="Nombre de la tarea *" value={nuevaTarea.nombre} onChange={e => setNuevaTarea({ ...nuevaTarea, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
               <SelectorPersonas usuarios={usuarios} seleccionados={nuevaTarea.asignados} onChange={ids => setNuevaTarea({ ...nuevaTarea, asignados: ids })} />
-              <div><label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label><input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Día en el Planner (opcional):</label>
+                  <input type="date" value={nuevaTarea.fecha_recomendada || ''} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_recomendada: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite (opcional):</label>
+                  <input type="date" value={nuevaTarea.fecha_limite} onChange={e => setNuevaTarea({ ...nuevaTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+                </div>
+              </div>
             </div>
           </Modal>
         )}
@@ -1068,7 +1090,8 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const asignadosStr = nuevaTarea.asignados.join(',')
+            const asignadosArr2 = nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
+            const asignadosStr = asignadosArr2.join(',')
             escribirFila('tareas', [id, '', '', modalTareaEstado.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id), modalTareaEstado.estado_id || ''], accessToken).then(async () => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); await new Promise(r => setTimeout(r, 800)); cargarDatos() })
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1082,7 +1105,8 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const asignadosStr = nuevaTarea.asignados.join(',')
+            const asignadosArr3 = nuevaTarea.asignados.length > 0 ? nuevaTarea.asignados : [String(usuario.id)]
+            const asignadosStr = asignadosArr3.join(',')
             escribirFila('tareas', [id, '', modalTareaAccion.accion_id, modalTareaAccion.proyecto_id, nuevaTarea.nombre, asignadosStr, 'por_asignar', '', '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id)], accessToken).then(async () => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); await new Promise(r => setTimeout(r, 800)); cargarDatos() })
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
