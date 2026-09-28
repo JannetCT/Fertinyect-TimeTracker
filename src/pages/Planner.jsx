@@ -1057,11 +1057,8 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       }
       if (tipo === 'proyecto') {
         const tp = tareas.find(tp => tp.id === t.id) || t
-        const proy = todasTareasProyecto ? null : null
-        // buscar en proyectos, estados, acciones, ensayos
-        const ensayo = ensayosProyecto ? ensayosProyecto.find(e => e.id === tp.ensayo_id) : null
-        const accion = accionesProyecto ? accionesProyecto.find(a => a.id === (tp.accion_id || ensayo?.accion_id)) : null
-        return { modulo: '📁 Proyectos', partes: [accion?.nombre, ensayo?.nombre].filter(Boolean), color: '#00953B' }
+        const contexto = getContextoTarea ? getContextoTarea(tp, 'proyecto') : ''
+        return { modulo: '📁 Proyectos', partes: contexto ? [contexto] : [], color: '#00953B' }
       }
       return null
     }
