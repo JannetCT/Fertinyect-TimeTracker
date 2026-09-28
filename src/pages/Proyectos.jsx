@@ -1057,9 +1057,8 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea del proyecto" onClose={() => { setModalTareaProyecto(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={async () => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const _raw1 = nuevaTarea.asignados
-            const asignadosArr = Array.isArray(_raw1) && _raw1.length > 0 ? _raw1 : (typeof _raw1 === 'string' && _raw1 ? _raw1.split(',').filter(Boolean) : [String(usuario.id)])
-            const asignadosStr = asignadosArr.join(',')
+            const asignadosArr = [].concat(nuevaTarea.asignados || []).filter(Boolean)
+            const asignadosStr = asignadosArr.length > 0 ? asignadosArr.join(',') : String(usuario.id)
             const fechaPlanner = nuevaTarea.fecha_recomendada || ''
             const diaPlanner = fechaPlanner ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(fechaPlanner + 'T12:00:00').getDay()] || 'por_asignar') : 'por_asignar'
             await escribirFila('tareas', [id, '', '', modalTareaProyecto.proyecto_id, nuevaTarea.nombre, asignadosStr, diaPlanner, fechaPlanner, '', nuevaTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', nuevaTarea.fecha_limite, nuevaTarea.descripcion || '', Date.now().toString() + '_g', '', '', String(usuario.id), ''], accessToken)
@@ -1094,8 +1093,8 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaEstado(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const _raw2 = nuevaTarea.asignados; const asignadosArr2 = Array.isArray(_raw2) && _raw2.length > 0 ? _raw2 : (typeof _raw2 === 'string' && _raw2 ? _raw2.split(',').filter(Boolean) : [String(usuario.id)])
-            const asignadosStr = asignadosArr2.join(',')
+            const asignadosArr2 = [].concat(nuevaTarea.asignados || []).filter(Boolean)
+            const asignadosStr = asignadosArr2.length > 0 ? asignadosArr2.join(',') : String(usuario.id)
             (async () => {
               const fechaP = nuevaTarea.fecha_recomendada || ''
               const diaP = fechaP ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(fechaP + 'T12:00:00').getDay()] || 'por_asignar') : 'por_asignar'
@@ -1125,8 +1124,8 @@ export default function Proyectos() {
           <Modal titulo="Nueva tarea directa" onClose={() => { setModalTareaAccion(null); setNuevaTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }) }} onSave={() => {
             if (!nuevaTarea.nombre) return
             const id = Date.now().toString()
-            const _raw3 = nuevaTarea.asignados; const asignadosArr3 = Array.isArray(_raw3) && _raw3.length > 0 ? _raw3 : (typeof _raw3 === 'string' && _raw3 ? _raw3.split(',').filter(Boolean) : [String(usuario.id)])
-            const asignadosStr = asignadosArr3.join(',')
+            const asignadosArr3 = [].concat(nuevaTarea.asignados || []).filter(Boolean)
+            const asignadosStr = asignadosArr3.length > 0 ? asignadosArr3.join(',') : String(usuario.id)
             (async () => {
               const fechaP = nuevaTarea.fecha_recomendada || ''
               const diaP = fechaP ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(fechaP + 'T12:00:00').getDay()] || 'por_asignar') : 'por_asignar'
