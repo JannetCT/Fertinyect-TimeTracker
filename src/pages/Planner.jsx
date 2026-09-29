@@ -1052,7 +1052,9 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       if (tipo === 'direccion') {
         const td = tareasDireccion.find(td => td.id === t.id) || t
         const cat = categoriasDireccion.find(c => c.id === td.categoria_id)
-        const partes = [cat?.nombre].filter(Boolean)
+        const proy = proyectosDireccion.find(p => p.id === td.proyecto_direccion_id)
+        const sub = subcarpetasDireccion.find(s => s.id === td.subcarpeta_id)
+        const partes = [cat?.nombre, proy?.nombre, sub?.nombre].filter(Boolean)
         return { modulo: '🎯 Dirección', partes, color: '#7c3aed' }
       }
       if (tipo === 'proyecto') {
