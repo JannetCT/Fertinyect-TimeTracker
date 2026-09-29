@@ -40,7 +40,7 @@ function horaEspañaActual() {
 
 export default function Notificaciones() {
   const { usuario, accessToken } = useAuth()
-  const { refrescar, datosEnMemoria } = useDatos()
+  const { refrescar } = useDatos()
   const [abierto, setAbierto] = useState(false)
   const [alertas, setAlertas] = useState([])
   const [tareasNuevas, setTareasNuevas] = useState([])
@@ -69,18 +69,19 @@ export default function Notificaciones() {
     return () => document.removeEventListener('mousedown', handleClickFuera)
   }, [abierto])
 
-  function cargarAlertas() {
+  async function cargarAlertas() {
     setCargando(true)
     try {
       const horaActual = horaEspañaActual()
       const esHoyVencido = horaActual >= HORA_VENCIMIENTO_HOY
 
-      const getMem = (hoja) => datosEnMemoria(hoja) || []
-      const tareas = getMem('tareas')
-      const tareasPlanner = getMem('tareas_planner')
-      const tareasSoporte = getMem('tareas_soporte')
-      const acciones = getMem('acciones')
-      const ensayos = getMem('ensayos')
+      const [tareas, tareasPlanner, tareasSoporte, acciones, ensayos] = await Promise.all([
+        leerHoja('tareas', accessToken),
+        leerHoja('tareas_planner', accessToken),
+        leerHoja('tareas_soporte', accessToken),
+        leerHoja('acciones', accessToken),
+        leerHoja('ensayos', accessToken),
+      ])
 
       const nuevasAlertas = []
 
@@ -161,7 +162,7 @@ export default function Notificaciones() {
       }
 
       // ── TAREAS DIRECCIÓN ──────────────────────────────────────────
-      const tareasDireccion = getMem('tareas_direccion')
+      const tareasDireccion = await leerHoja('tareas_direccion', accessToken)
       for (const tarea of tareasDireccion) {
         const asignadosList = tarea.asignados ? tarea.asignados.split(',').map(s => s.trim()) : []
         const esDeEstUsuario = asignadosList.length === 0 || asignadosList.includes(String(usuario.id))
