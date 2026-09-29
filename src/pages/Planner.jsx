@@ -741,7 +741,9 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     else if (tarea._tipo === 'soporte') { await marcarEliminado('tareas_soporte', tarea.id, accessToken); await eliminarTareasPlanner(tarea.id, accessToken) }
     else if (tarea._tipo === 'direccion') { await marcarEliminado('tareas_direccion', tarea.id, accessToken); await eliminarTareasPlanner(tarea.id, accessToken) }
     else await marcarEliminado('tareas_planner', tarea.id, accessToken)
-    setModalEditarTarea(null); setVistaTarea(null); cargarDatos()
+    setModalEditarTarea(null); setVistaTarea(null)
+    await new Promise(r => setTimeout(r, 800))
+    cargarDatos()
   }
   async function guardarEditarTarea() {
     if (!modalEditarTarea) return
@@ -820,7 +822,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     await actualizarFila('eventos', ev.id, [ev.id, asignadosStr, ev.titulo, ev.descripcion || '', ev.fecha_exacta, ev.hora_inicio || '', ev.hora_fin || '', ev.tipo, ev.fecha_creacion, ev.estado || '', origenId, origenTipo], accessToken)
     setModalEditarEvento(null); cargarDatos()
   }
-  async function eliminarEvento(eventoId) { await marcarEliminado('eventos', eventoId, accessToken); setModalEditarEvento(null); cargarDatos() }
+  async function eliminarEvento(eventoId) { await marcarEliminado('eventos', eventoId, accessToken); setModalEditarEvento(null); await new Promise(r => setTimeout(r, 800)); cargarDatos() }
   async function crearTareaPlanner() {
     if (!formTarea.nombre) return
     const fechasExactas = formTarea.fechas_exactas || ''
