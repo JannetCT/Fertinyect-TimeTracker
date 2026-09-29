@@ -653,7 +653,38 @@ export default function Proyectos() {
   function estadosDeProyecto(pId) { return estados.filter(e => e.proyecto_id === pId).sort((a, b) => Number(a.orden) - Number(b.orden)) }
   function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function todasCompletadas(lista) { return lista.length > 0 && lista.every(t => t.estado === 'completada' || t.estado === 'completado') }
+  function ensayoCompletado(eId) { return todasCompletadas(tareas.filter(t => t.ensayo_id === eId)) }
+  function accionCompletada(aId) {
+    const dir = tareas.filter(t => t.accion_id === aId && !t.ensayo_id && t.id !== 'eliminado')
+    const ens = ensayos.filter(e => e.accion_id === aId)
+    return todasCompletadas([...dir, ...ens.flatMap(e => tareas.filter(t => t.ensayo_id === e.id))])
+  }
+  function estadoCompletado(eId) {
+    const tarEst = tareas.filter(t => t.estado_id === eId && !t.accion_id && !t.ensayo_id && t.id !== 'eliminado')
+    const accs = acciones.filter(a => a.estado_id === eId)
+    const tarAccs = accs.flatMap(a => {
+      const dir = tareas.filter(t => t.accion_id === a.id && !t.ensayo_id && t.id !== 'eliminado')
+      const ens = ensayos.filter(e => e.accion_id === a.id)
+      return [...dir, ...ens.flatMap(e => tareas.filter(t => t.ensayo_id === e.id))]
+    })
+    return todasCompletadas([...tarEst, ...tarAccs])
+  }
+
   function tareasDeEnsayo(eId) { return tareas.filter(t => t.ensayo_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function todasCompletadas(lista) { return lista.length > 0 && lista.every(t => t.estado === 'completada' || t.estado === 'completado') }
+  function ensayoCompletado(eId) { return todasCompletadas(tareasDeEnsayo(eId)) }
+  function accionCompletada(aId) {
+    const dir = tareas.filter(t => t.accion_id === aId && !t.ensayo_id && t.id !== 'eliminado')
+    const ens = ensayos.filter(e => e.accion_id === aId)
+    return todasCompletadas([...dir, ...ens.flatMap(e => tareasDeEnsayo(e.id))])
+  }
+  function estadoCompletado(eId) {
+    const tarEst = tareas.filter(t => t.estado_id === eId && !t.accion_id && !t.ensayo_id && t.id !== 'eliminado')
+    const accs = acciones.filter(a => a.estado_id === eId)
+    const tarAccs = accs.flatMap(a => [...tareas.filter(t => t.accion_id === a.id && !t.ensayo_id && t.id !== 'eliminado'), ...ensayos.filter(e => e.accion_id === a.id).flatMap(e => tareasDeEnsayo(e.id))])
+    return todasCompletadas([...tarEst, ...tarAccs])
+  }
   function tareasDirectasDeAccion(aId) { return tareas.filter(t => t.accion_id === aId && !t.ensayo_id && t.id !== 'eliminado' && t.accion_id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDirectasDeProyecto(pId) { return tareas.filter(t => t.proyecto_id === pId && !t.accion_id && !t.ensayo_id && !t.estado_id && t.id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDeEstado(eId) { return tareas.filter(t => t.estado_id === eId && !t.accion_id && !t.ensayo_id && t.id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
@@ -973,7 +1004,7 @@ export default function Proyectos() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estadosColapsados[estado.id] ? '0' : '16px', cursor: 'pointer' }} onClick={() => toggleColapso(estado.id)}>
                 <h3 style={{ margin: 0, fontSize: '16px', color: '#373A36', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ color: '#00953B', fontSize: '12px' }}>{estaExpandido(estado.id) ? '▼' : '▶'}</span>
-                  <span style={{ color: '#00953B', marginRight: '4px' }}>{estado.orden}.</span>{estado.nombre}
+                  <span style={{ color: '#00953B', marginRight: '4px' }}>{estado.orden}.</span><span style={{ color: estadoCompletado(estado.id) ? '#9ca3af' : '#373A36' }}>{estado.nombre}</span>{estadoCompletado(estado.id) && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px', marginLeft: '8px' }}>Completado</span>}
                 </h3>
                 <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
                   <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'estado', item: estado })}>🗑</BtnAccion>
@@ -987,7 +1018,7 @@ export default function Proyectos() {
                   <div key={accion.id} style={{ background: '#f8f9fa', borderRadius: '8px', padding: '14px', borderLeft: `3px solid ${vistaProyecto.color}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }} onClick={() => toggleColapso('accion_' + accion.id)}>
                       <div>
-                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '11px', color: '#6b7280' }}>{estaExpandido('accion_' + accion.id) ? '▼' : '▶'}</span>{accion.nombre}</p>
+                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '11px', color: '#6b7280' }}>{estaExpandido('accion_' + accion.id) ? '▼' : '▶'}</span><span style={{ color: accionCompletada(accion.id) ? '#9ca3af' : '#373A36' }}>{accion.nombre}</span>{accionCompletada(accion.id) && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}</p>
                         {accion.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{accion.descripcion}</p>}
                         {(accion.fecha_inicio || accion.fecha_fin) && (
                           <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6b7280' }}>
@@ -1011,7 +1042,7 @@ export default function Proyectos() {
                         <div key={ensayo.id} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <span style={{ background: ensayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7', color: ensayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: '600' }}>{ensayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}</span>
-                            <span style={{ fontSize: '13px', fontWeight: '600', flex: 1 }}>{ensayo.nombre}</span>
+                            <span style={{ fontSize: '13px', fontWeight: '600', flex: 1, color: ensayoCompletado(ensayo.id) ? '#9ca3af' : '#373A36' }}>{ensayo.nombre}</span>{ensayoCompletado(ensayo.id) && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}
                           </div>
                           {(ensayo.fecha_inicio || ensayo.fecha_fin) && (
                             <span style={{ fontSize: '11px', color: '#6b7280' }}>📅 {ensayo.fecha_inicio || '?'} → {ensayo.fecha_fin || '?'}</span>
