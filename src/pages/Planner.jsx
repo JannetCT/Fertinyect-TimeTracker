@@ -1061,8 +1061,10 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         const tp = tareas.find(x => x.id === t.id) || t
         const proy = proyectos.find(p => p.id === tp.proyecto_id)
         const accion = acciones.find(a => a.id === tp.accion_id)
+        const estado = estadosProyecto.find(e => e.id === (accion?.estado_id || tp.estado_id))
         const ensayo = ensayos.find(e => e.id === tp.ensayo_id)
-        const partes = [proy?.nombre, accion?.nombre, ensayo?.nombre].filter(Boolean)
+        const fase = tareas.find(x => x.tarea_grupo_id === 'fase' && x.id === tp.tarea_padre_id)
+        const partes = [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre, fase?.nombre].filter(Boolean)
         return { modulo: '📁 Proyectos', partes, color: '#00953B' }
       }
       return null
