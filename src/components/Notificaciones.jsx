@@ -46,6 +46,8 @@ export default function Notificaciones() {
   const [tareasNuevas, setTareasNuevas] = useState([])
   const [cargando, setCargando] = useState(false)
   const [vistaActiva, setVistaActiva] = useState('alertas') // 'alertas' | 'nuevas'
+  const [alertasVistas, setAlertasVistas] = useState(false)
+  const [nuevasVistas, setNuevasVistas] = useState(false)
   const panelRef = useRef(null)
   const navigate = useNavigate()
 
@@ -283,6 +285,7 @@ export default function Notificaciones() {
       }
 
       setAlertas(nuevasAlertas)
+      setAlertasVistas(false)
 
       // ── TAREAS NUEVAS (asignadas recientemente) ───────────────────
       const hace7dias = new Date()
@@ -306,6 +309,7 @@ export default function Notificaciones() {
         }
       }
       setTareasNuevas(nuevas)
+      setNuevasVistas(false)
     } catch (err) {
       console.error('Error cargando notificaciones:', err)
     } finally {
@@ -324,19 +328,19 @@ export default function Notificaciones() {
 
   return (
     <div ref={panelRef} style={{ position: 'relative', display: 'flex', gap: '4px', alignItems: 'center' }}>
-      <button onClick={() => { setVistaActiva('nuevas'); setAbierto(!abierto) }} title="Tareas nuevas asignadas"
+      <button onClick={() => { setVistaActiva('nuevas'); setAbierto(!abierto); setNuevasVistas(true) }} title="Tareas nuevas asignadas"
         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', position: 'relative', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         📬
-        {tareasNuevas.length > 0 && (
+        {tareasNuevas.length > 0 && !nuevasVistas && (
           <span style={{ position: 'absolute', top: '-2px', right: '-4px', background: '#7c3aed', color: 'white', borderRadius: '50%', fontSize: '10px', fontWeight: '700', minWidth: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '0 3px' }}>
             {tareasNuevas.length}
           </span>
         )}
       </button>
-      <button onClick={() => { setVistaActiva('alertas'); setAbierto(!abierto) }} title="Notificaciones"
+      <button onClick={() => { setVistaActiva('alertas'); setAbierto(!abierto); setAlertasVistas(true) }} title="Notificaciones"
         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', position: 'relative', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         🔔
-        {totalUrgentes > 0 && (
+        {totalUrgentes > 0 && !alertasVistas && (
           <span style={{ position: 'absolute', top: '-2px', right: '-4px', background: '#dc2626', color: 'white', borderRadius: '50%', fontSize: '10px', fontWeight: '700', minWidth: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '0 3px' }}>
             {totalUrgentes}
           </span>
