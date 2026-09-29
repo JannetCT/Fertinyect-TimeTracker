@@ -1712,7 +1712,6 @@ function EventoCard({ ev, completado, contexto, onEditar, onClonar, onCompletar,
           {ev.hora_inicio && <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{ev.hora_inicio}{ev.hora_fin ? ` — ${ev.hora_fin}` : ''}</p>}
           <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
           {contexto && <span style={{ display: 'inline-block', marginTop: '3px', fontSize: '10px', fontWeight: '700', color: contexto.color, background: `${contexto.color}15`, padding: '1px 7px', borderRadius: '20px' }}>{contexto.texto}</span>}
-          {contexto && <span style={{ display: 'inline-block', marginTop: '3px', fontSize: '10px', fontWeight: '700', color: contexto.color, background: `${contexto.color}15`, padding: '1px 7px', borderRadius: '20px' }}>{contexto.texto}</span>}
         </div>
       </div>
       <div style={{ position: 'absolute', top: '6px', right: '6px', zIndex: 10 }}>
