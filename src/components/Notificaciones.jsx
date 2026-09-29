@@ -40,7 +40,7 @@ function horaEspañaActual() {
 
 export default function Notificaciones() {
   const { usuario, accessToken } = useAuth()
-  const { refrescar } = useDatos()
+  const { refrescar, datosEnMemoria } = useDatos()
   const [abierto, setAbierto] = useState(false)
   const [alertas, setAlertas] = useState([])
   const [tareasNuevas, setTareasNuevas] = useState([])
@@ -67,19 +67,18 @@ export default function Notificaciones() {
     return () => document.removeEventListener('mousedown', handleClickFuera)
   }, [abierto])
 
-  async function cargarAlertas() {
+  function cargarAlertas() {
     setCargando(true)
     try {
       const horaActual = horaEspañaActual()
       const esHoyVencido = horaActual >= HORA_VENCIMIENTO_HOY
 
-      const [tareas, tareasPlanner, tareasSoporte, acciones, ensayos] = await Promise.all([
-        leerHoja('tareas', accessToken),
-        leerHoja('tareas_planner', accessToken),
-        leerHoja('tareas_soporte', accessToken),
-        leerHoja('acciones', accessToken),
-        leerHoja('ensayos', accessToken),
-      ])
+      const getMem = (hoja) => datosEnMemoria(hoja) || []
+      const tareas = getMem('tareas')
+      const tareasPlanner = getMem('tareas_planner')
+      const tareasSoporte = getMem('tareas_soporte')
+      const acciones = getMem('acciones')
+      const ensayos = getMem('ensayos')
 
       const nuevasAlertas = []
 
@@ -160,7 +159,7 @@ export default function Notificaciones() {
       }
 
       // ── TAREAS DIRECCIÓN ──────────────────────────────────────────
-      const tareasDireccion = await leerHoja('tareas_direccion', accessToken)
+      const tareasDireccion = getMem('tareas_direccion')
       for (const tarea of tareasDireccion) {
         const asignadosList = tarea.asignados ? tarea.asignados.split(',').map(s => s.trim()) : []
         const esDeEstUsuario = asignadosList.length === 0 || asignadosList.includes(String(usuario.id))
@@ -291,8 +290,7 @@ export default function Notificaciones() {
       const hace7diasStr = hace7dias.toISOString().split('T')[0]
       const misId = String(usuario.id)
       const nuevas = []
-      const tareasDireccionN = await leerHoja('tareas_direccion', accessToken)
-      const todasParaNuevas = [...tareas, ...tareasSoporte, ...tareasDireccionN, ...tareasPlanner]
+      const todasParaNuevas = [...tareas, ...tareasSoporte, ...tareasDireccion, ...tareasPlanner]
       for (const t of todasParaNuevas) {
         if (t.estado === 'completada' || t.estado === 'completado') continue
         // Para tareas_planner verificar usuario_id, para el resto verificar asignados
@@ -425,10 +423,7 @@ export default function Notificaciones() {
           </div>
 
           <div style={{ padding: '12px', borderTop: '1px solid #1f2937' }}>
-            <button onClick={() => {
-              ['tareas','tareas_soporte','tareas_direccion','tareas_planner','acciones','ensayos','proyectos'].forEach(h => invalidarCache(h))
-              cargarAlertas()
-            }} style={{
+            <button onClick={() => cargarAlertas()} style={{
               width: '100%', padding: '8px', background: '#1f2937', color: '#9ca3af',
               border: '1px solid #374151', borderRadius: '8px', cursor: 'pointer',
               fontSize: '13px', fontWeight: '600',
