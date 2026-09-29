@@ -140,7 +140,7 @@ export default function CalendarioEquipo() {
   function getItemsDeDia(fechaStr) {
     const items = []
 
-    // Tareas proyecto
+    // Tareas proyecto (fecha directa en la tabla)
     tareas.forEach(t => {
       if (t.fecha_exacta !== fechaStr) return
       const asignados = (t.asignados || '').split(',').map(s => s.trim()).filter(Boolean)
@@ -152,7 +152,23 @@ export default function CalendarioEquipo() {
       })
     })
 
-    // Tareas soporte
+    // Tareas proyecto via tareas_planner (fecha personal)
+    const idsYaAgregados = new Set(items.map(i => i.id))
+    tareasPlanner.forEach(tp => {
+      if (tp.fecha_exacta !== fechaStr) return
+      if (!tp.tarea_padre_id) return
+      const tPadre = tareas.find(t => t.id === tp.tarea_padre_id)
+      if (!tPadre) return
+      const itemId = tPadre.id + tp.usuario_id
+      if (idsYaAgregados.has(itemId)) return
+      const email = getEmailUsuario(tp.usuario_id)
+      if (filtroPersona !== 'todos' && email !== filtroPersona) return
+      const cu = getColorUsuario(email)
+      items.push({ id: itemId, texto: `${cu.nombre} — ${getContextoTarea(tPadre, 'proyecto')}`, color: cu.color, bg: cu.bg, email, userId: tp.usuario_id, tipo: 'proyecto' })
+      idsYaAgregados.add(itemId)
+    })
+
+    // Tareas soporte (fecha directa en la tabla)
     tareasSoporte.forEach(t => {
       if (t.fecha_exacta !== fechaStr) return
       const asignados = (t.asignados || '').split(',').map(s => s.trim()).filter(Boolean)
@@ -164,13 +180,30 @@ export default function CalendarioEquipo() {
       })
     })
 
+    // Tareas soporte via tareas_planner (fecha personal)
+    tareasPlanner.forEach(tp => {
+      if (tp.fecha_exacta !== fechaStr) return
+      if (!tp.tarea_padre_id) return
+      const tPadre = tareasSoporte.find(t => t.id === tp.tarea_padre_id)
+      if (!tPadre) return
+      const itemId = tPadre.id + tp.usuario_id
+      if (idsYaAgregados.has(itemId)) return
+      const email = getEmailUsuario(tp.usuario_id)
+      if (filtroPersona !== 'todos' && email !== filtroPersona) return
+      const cu = getColorUsuario(email)
+      items.push({ id: itemId, texto: `${cu.nombre} — ${getContextoTarea(tPadre, 'soporte')}`, color: cu.color, bg: cu.bg, email, userId: tp.usuario_id, tipo: 'soporte' })
+      idsYaAgregados.add(itemId)
+    })
+
     // Tareas planner
     tareasPlanner.forEach(t => {
       if (t.fecha_exacta !== fechaStr) return
+      if (t.tarea_padre_id) return // ya procesadas arriba via tareas/soporte
       const email = getEmailUsuario(t.usuario_id)
       if (filtroPersona !== 'todos' && email !== filtroPersona) return
       const cu = getColorUsuario(email)
-      items.push({ id: t.id, texto: `${cu.nombre} — ${t.nombre}`, color: cu.color, bg: cu.bg, email, userId: t.usuario_id, tipo: 'planner' })
+      const nombre = t.nombre || '(sin nombre)'
+      items.push({ id: t.id, texto: `${cu.nombre} — ${nombre}`, color: cu.color, bg: cu.bg, email, userId: t.usuario_id, tipo: 'planner' })
     })
 
     // Eventos
