@@ -654,21 +654,6 @@ export default function Proyectos() {
   function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDeEnsayo(eId) { return tareas.filter(t => t.ensayo_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
-  function todasCompletadas(lista) { return lista.length > 0 && lista.every(t => t.estado === 'completada' || t.estado === 'completado') }
-  function ensayoCompletado(eId) { return todasCompletadas(tareasDeEnsayo(eId)) }
-  function accionCompletada(aId) {
-    const dir = tareasDirectasDeAccion(aId)
-    const ens = ensayosDeAccion(aId)
-    const total = [...dir, ...ens.flatMap(e => tareasDeEnsayo(e.id))]
-    return total.length > 0 && total.every(t => t.estado === 'completada' || t.estado === 'completado')
-  }
-  function estadoCompletado(eId) {
-    const tarEst = tareasDeEstado(eId)
-    const accs = accionesDeEstado(eId)
-    const tarAccs = accs.flatMap(a => [...tareasDirectasDeAccion(a.id), ...ensayosDeAccion(a.id).flatMap(e => tareasDeEnsayo(e.id))])
-    const total = [...tarEst, ...tarAccs]
-    return total.length > 0 && total.every(t => t.estado === 'completada' || t.estado === 'completado')
-  }
   function tareasDirectasDeAccion(aId) { return tareas.filter(t => t.accion_id === aId && !t.ensayo_id && t.id !== 'eliminado' && t.accion_id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDirectasDeProyecto(pId) { return tareas.filter(t => t.proyecto_id === pId && !t.accion_id && !t.ensayo_id && !t.estado_id && t.id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDeEstado(eId) { return tareas.filter(t => t.estado_id === eId && !t.accion_id && !t.ensayo_id && t.id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
@@ -1022,14 +1007,11 @@ export default function Proyectos() {
                       </div>
                     </div>
                     {estaExpandido('accion_' + accion.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {ensayosDeAccion(accion.id).map(ensayo => {
-                        const ensComp = ensayoCompletado(ensayo.id)
-                        return (
-                        <div key={ensayo.id} style={{ background: ensComp ? '#f9fafb' : 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px', opacity: ensComp ? 0.8 : 1 }}>
+                      {ensayosDeAccion(accion.id).map(ensayo => (
+                        <div key={ensayo.id} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <span style={{ background: ensayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7', color: ensayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: '600' }}>{ensayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}</span>
-                            <span style={{ fontSize: '13px', fontWeight: '600', flex: 1, color: ensComp ? '#9ca3af' : '#373A36' }}>{ensayo.nombre}</span>
-                            {ensComp && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}
+                            <span style={{ fontSize: '13px', fontWeight: '600', flex: 1 }}>{ensayo.nombre}</span>
                           </div>
                           {(ensayo.fecha_inicio || ensayo.fecha_fin) && (
                             <span style={{ fontSize: '11px', color: '#6b7280' }}>📅 {ensayo.fecha_inicio || '?'} → {ensayo.fecha_fin || '?'}</span>
@@ -1043,8 +1025,7 @@ export default function Proyectos() {
                             </div>
                           </div>
                         </div>
-                        )
-                      })}
+                      ))}
                       {tareasDirectasDeAccion(accion.id).map(t => (
                         <div key={t.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '10px 14px', borderLeft: '3px solid #00953B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
