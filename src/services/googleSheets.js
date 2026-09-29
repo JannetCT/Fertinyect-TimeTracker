@@ -15,7 +15,7 @@ async function fetchConCache(url) {
   return promesa
 }
 
-function invalidarCache(nombreHoja) {
+export function invalidarCache(nombreHoja) {
   for (const key of _cache.keys()) {
     if (key.includes(`/values/${nombreHoja}`)) _cache.delete(key)
   }

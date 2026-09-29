@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useDatos } from '../contexts/DatosContext'
-import { leerHoja } from '../services/googleSheets'
+import { leerHoja, invalidarCache } from '../services/googleSheets'
 import { useNavigate } from 'react-router-dom'
 
 const HORA_VENCIMIENTO_HOY = 15
@@ -425,8 +425,8 @@ export default function Notificaciones() {
           </div>
 
           <div style={{ padding: '12px', borderTop: '1px solid #1f2937' }}>
-            <button onClick={async () => {
-              await Promise.all(['tareas','tareas_soporte','tareas_direccion','tareas_planner','acciones','ensayos','proyectos'].map(h => refrescar(h)))
+            <button onClick={() => {
+              ['tareas','tareas_soporte','tareas_direccion','tareas_planner','acciones','ensayos','proyectos'].forEach(h => invalidarCache(h))
               cargarAlertas()
             }} style={{
               width: '100%', padding: '8px', background: '#1f2937', color: '#9ca3af',
