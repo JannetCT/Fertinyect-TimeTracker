@@ -617,6 +617,7 @@ function Planner() {
       await guardarFechaPersonalEnPlanner(tarea.id, tarea._tipo, nuevaFecha, usuario, accessToken, tarea.nombre)
     }
     await refrescar('tareas_planner')
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -624,6 +625,7 @@ function Planner() {
     const id = Date.now().toString()
     await escribirFila('eventos', [id, String(usuario.id), `${evento.titulo} (copia)`, evento.descripcion || '', evento.fecha_exacta || '', evento.hora_inicio || '', evento.hora_fin || '', evento.tipo || 'reunion', new Date().toISOString(), 'pendiente', evento.origen_id || '', evento.origen_tipo || ''], accessToken)
     await refrescar('eventos')
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -637,6 +639,7 @@ function Planner() {
     const tipoClon = tarea.tarea_padre_tipo || ''
     await escribirFila('tareas_planner', [id, String(usuario.id), padreClon, tipoClon, nombre, diaClon, tarea.fecha_limite || '', fechaClon, 'pendiente', new Date().toISOString(), tarea.etiqueta || '', tarea.fecha_limite || '', tarea.descripcion || '', grupoIdClon, tarea.tiempo_estimado || '', '', String(usuario.id), String(usuario.id)], accessToken)
     await refrescar('tareas_planner')
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -710,6 +713,7 @@ function Planner() {
     }
     setModalCompletar(null)
     await refrescar('tareas_planner')
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
   async function completarEvento(evento) {
@@ -838,6 +842,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     setModalNuevaTarea(false)
     setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0, hora_inicio: '' })
     await refrescar('tareas_planner')
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
   async function crearPostit(form) {
@@ -848,6 +853,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     const dia = primeraFecha ? (['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date(primeraFecha + 'T12:00:00').getDay()]) : 'por_asignar'
     await escribirFila('tareas_planner', [id, String(usuario.id), '', '', form.nombre, dia, '', fechas, 'pendiente', new Date().toISOString(), form.etiqueta || '', '', form.descripcion || '', 'postit', '', '', String(usuario.id), String(usuario.id)], accessToken)
     await refrescar('tareas_planner')
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -858,6 +864,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     await escribirFila('eventos', [id, asignadosStr, formEvento.titulo, formEvento.descripcion, formEvento.fecha_exacta, formEvento.hora_inicio, formEvento.hora_fin, formEvento.tipo, new Date().toISOString(), '', formEvento._origenId || '', formEvento._origenTipo || ''], accessToken)
     setModalNuevoEvento(false)
     setFormEvento({ titulo: '', descripcion: '', fecha_exacta: '', hora_inicio: '', hora_fin: '', tipo: 'reunion', _asignados: [] })
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 

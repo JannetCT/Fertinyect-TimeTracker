@@ -466,6 +466,7 @@ export default function Proyectos() {
     }
     setModalProyecto(false)
     setNuevoProyecto({ nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: '' })
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -474,6 +475,7 @@ export default function Proyectos() {
     await actualizarFila('proyectos', editProyecto.id, [editProyecto.id, editProyecto.nombre, editProyecto.descripcion, editProyecto.tipo, editProyecto.color, editProyecto.fecha_inicio, editProyecto.fecha_fin, editProyecto.fecha_creacion], accessToken)
     setVistaProyecto(editProyecto)
     setEditProyecto(null)
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -485,6 +487,7 @@ export default function Proyectos() {
     await escribirFila('estados_proyecto', [id, modalEstado.proyecto_id, nuevoEstado.nombre, maxOrden + 1, 'true'], accessToken)
     setModalEstado(null)
     setNuevoEstado({ nombre: '' })
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -499,6 +502,7 @@ export default function Proyectos() {
     ], accessToken)
     setModalAccion(null)
     setNuevaAccion({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -513,6 +517,7 @@ export default function Proyectos() {
       editAccion.estado || 'pendiente'
     ], accessToken)
     setEditAccion(null)
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -527,6 +532,7 @@ export default function Proyectos() {
     ], accessToken)
     setModalEnsayo(null)
     setNuevoEnsayo({ nombre: '', tipo: 'ensayo', descripcion: '', fecha_inicio: '', fecha_fin: '' })
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -542,6 +548,7 @@ export default function Proyectos() {
     ], accessToken)
     setVistaEnsayo(editEnsayo)
     setEditEnsayo(null)
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -618,6 +625,7 @@ export default function Proyectos() {
     }
     await actualizarFila('tareas', tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', 'completada', tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || ''], accessToken)
     setModalCompletar(null)
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -640,6 +648,7 @@ export default function Proyectos() {
       if (vistaTarea?.id === item.id) setVistaTarea(null)
     }
     setConfirmEliminar(null)
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 

@@ -417,6 +417,7 @@ export default function Soporte() {
     setModalTarea(null)
     setForm({ nombre: '', descripcion: '' })
     setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -428,6 +429,7 @@ export default function Soporte() {
     if (editItem._tipo === 'subcarpeta') setVistaSubcarpeta({...editItem, nombre: form.nombre, descripcion: form.descripcion})
     setEditItem(null)
     setForm({ nombre: '', descripcion: '' })
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -444,6 +446,7 @@ export default function Soporte() {
     setForm({ nombre: '', descripcion: '' })
     await refrescar('tareas_soporte')
     await refrescar('tareas_planner')
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -473,6 +476,7 @@ export default function Soporte() {
     }
     await actualizarFila('tareas_soporte', tarea.id, [tarea.id, tarea.categoria_id, tarea.proyecto_soporte_id || '', tarea.subcarpeta_id || '', tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', 'completada', tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || ''], accessToken)
     setModalCompletar(null)
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
@@ -487,6 +491,7 @@ export default function Soporte() {
       setVistaTarea(null)
     }
     setConfirmEliminar(null)
+    await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
 
