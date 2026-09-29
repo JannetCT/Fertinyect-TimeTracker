@@ -198,7 +198,8 @@ export default function CalendarioEquipo() {
     // Tareas planner
     tareasPlanner.forEach(t => {
       if (t.fecha_exacta !== fechaStr) return
-      if (t.tarea_padre_id) return // ya procesadas arriba via tareas/soporte
+      // Saltar solo si el padre ya se procesó como proyecto o soporte
+      if (t.tarea_padre_id && idsYaAgregados.has(t.tarea_padre_id + t.usuario_id)) return
       const email = getEmailUsuario(t.usuario_id)
       if (filtroPersona !== 'todos' && email !== filtroPersona) return
       const cu = getColorUsuario(email)
