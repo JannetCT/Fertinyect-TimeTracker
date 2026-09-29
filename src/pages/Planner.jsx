@@ -811,7 +811,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     if (!modalEditarEvento) return
     const ev = modalEditarEvento
     const asignadosStr = ev._asignados && ev._asignados.length > 0 ? ev._asignados.join(',') : String(usuario.id)
-    await actualizarFila('eventos', ev.id, [ev.id, asignadosStr, ev.titulo, ev.descripcion || '', ev.fecha_exacta, ev.hora_inicio || '', ev.hora_fin || '', ev.tipo, ev.fecha_creacion, ev.estado || ''], accessToken)
+    await actualizarFila('eventos', ev.id, [ev.id, asignadosStr, ev.titulo, ev.descripcion || '', ev.fecha_exacta, ev.hora_inicio || '', ev.hora_fin || '', ev.tipo, ev.fecha_creacion, ev.estado || '', ev.origen_id || '', ev.origen_tipo || ''], accessToken)
     setModalEditarEvento(null); cargarDatos()
   }
   async function eliminarEvento(eventoId) { await marcarEliminado('eventos', eventoId, accessToken); setModalEditarEvento(null); cargarDatos() }
@@ -1377,6 +1377,18 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                 <div style={{ flex: 1 }}><label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Hora fin</label><input type="time" value={modalEditarEvento.hora_fin || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, hora_fin: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} /></div>
               </div>
               <textarea placeholder="Descripción" value={modalEditarEvento.descripcion || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '70px', resize: 'none' }} />
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '4px' }}>Enlazar a (opcional):</label>
+                <select value={modalEditarEvento._tipoLigar || ''} onChange={e => setModalEditarEvento({...modalEditarEvento, _tipoLigar: e.target.value, origen_id: '', origen_tipo: ''})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%', marginBottom: '8px' }}>
+                  <option value="">Sin enlace</option>
+                  <option value="proyecto">De Proyectos I+D</option>
+                  <option value="soporte">De Soporte</option>
+                  <option value="direccion">De Dirección</option>
+                </select>
+                {modalEditarEvento._tipoLigar === 'proyecto' && <SelectorColapsable opciones={opcionesProyecto()} valor={modalEditarEvento._opcionProyectoId || ''} onChange={op => setModalEditarEvento({...modalEditarEvento, origen_id: op.realId, origen_tipo: op.tipo, _opcionProyectoId: op.id})} placeholder='Selecciona elemento...' />}
+                {modalEditarEvento._tipoLigar === 'soporte' && <SelectorColapsable opciones={opcionesSoporte()} valor={modalEditarEvento._opcionSoporteId || ''} onChange={op => setModalEditarEvento({...modalEditarEvento, origen_id: op.realId, origen_tipo: op.tipo, _opcionSoporteId: op.id})} placeholder='Selecciona elemento...' />}
+                {modalEditarEvento._tipoLigar === 'direccion' && <SelectorColapsable opciones={opcionesDireccion()} valor={modalEditarEvento._opcionDireccionId || ''} onChange={op => setModalEditarEvento({...modalEditarEvento, origen_id: op.realId, origen_tipo: op.tipo, _opcionDireccionId: op.id})} placeholder='Selecciona elemento...' />}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '24px' }}>
               <button onClick={() => eliminarEvento(modalEditarEvento.id)} style={{ padding: '10px 14px', borderRadius: '8px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>🗑 Eliminar</button>
@@ -1486,22 +1498,13 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                   <option value="direccion">Dirección</option>
                 </select>
                 {formEvento._tipoLigar === 'proyecto' && (
-                  <select value={formEvento._opcionProyectoId || ''} onChange={e => { const op = opcionesProyecto().find(o => o.id === e.target.value); if (op) setFormEvento({...formEvento, _origenId: op.realId, _origenTipo: op.tipo, _opcionProyectoId: op.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                    <option value="">Selecciona elemento...</option>
-                    {opcionesProyecto().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
-                  </select>
+                  <SelectorColapsable opciones={opcionesProyecto()} valor={formEvento._opcionProyectoId || ''} onChange={op => setFormEvento({...formEvento, _origenId: op.realId, _origenTipo: op.tipo, _opcionProyectoId: op.id})} placeholder='Selecciona elemento de proyecto...' />
                 )}
                 {formEvento._tipoLigar === 'soporte' && (
-                  <select value={formEvento._opcionSoporteId || ''} onChange={e => { const op = opcionesSoporte().find(o => o.id === e.target.value); if (op) setFormEvento({...formEvento, _origenId: op.realId, _origenTipo: op.tipo, _opcionSoporteId: op.id}) }} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                    <option value="">Selecciona elemento...</option>
-                    {opcionesSoporte().map(op => <option key={op.id} value={op.id}>{op.label}</option>)}
-                  </select>
+                  <SelectorColapsable opciones={opcionesSoporte()} valor={formEvento._opcionSoporteId || ''} onChange={op => setFormEvento({...formEvento, _origenId: op.realId, _origenTipo: op.tipo, _opcionSoporteId: op.id})} placeholder='Selecciona elemento de soporte...' />
                 )}
                 {formEvento._tipoLigar === 'direccion' && (
-                  <select value={formEvento._opcionDireccionId || ''} onChange={e => setFormEvento({...formEvento, _origenId: e.target.value, _origenTipo: 'direccion', _opcionDireccionId: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
-                    <option value="">Selecciona categoría...</option>
-                    {categoriasDireccion.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
+                  <SelectorColapsable opciones={opcionesDireccion()} valor={formEvento._opcionDireccionId || ''} onChange={op => setFormEvento({...formEvento, _origenId: op.realId, _origenTipo: op.tipo, _opcionDireccionId: op.id})} placeholder='Selecciona elemento de dirección...' />
                 )}
               </div>
             </div>
