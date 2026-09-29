@@ -653,30 +653,6 @@ export default function Proyectos() {
   function estadosDeProyecto(pId) { return estados.filter(e => e.proyecto_id === pId).sort((a, b) => Number(a.orden) - Number(b.orden)) }
   function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
-  function todasCompletadas(listaTareas) {
-    return listaTareas.length > 0 && listaTareas.every(t => t.estado === 'completada' || t.estado === 'completado')
-  }
-  function ensayoCompletado(ensayoId) { return todasCompletadas(tareasDeEnsayo(ensayoId)) }
-  function accionCompletada(accionId) {
-    const tareasDir = tareasDirectasDeAccion(accionId)
-    const ensayosAcc = ensayosDeAccion(accionId)
-    const tareasEnsayos = ensayosAcc.flatMap(e => tareasDeEnsayo(e.id))
-    const total = [...tareasDir, ...tareasEnsayos]
-    return total.length > 0 && total.every(t => t.estado === 'completada' || t.estado === 'completado')
-  }
-  function estadoCompletado(estadoId) {
-    const tareasEst = tareasDeEstado(estadoId)
-    const accs = accionesDeEstado(estadoId)
-    const tareasAcciones = accs.flatMap(a => {
-      const dir = tareasDirectasDeAccion(a.id)
-      const ensayosA = ensayosDeAccion(a.id)
-      const tEnsayos = ensayosA.flatMap(e => tareasDeEnsayo(e.id))
-      return [...dir, ...tEnsayos]
-    })
-    const total = [...tareasEst, ...tareasAcciones]
-    return total.length > 0 && total.every(t => t.estado === 'completada' || t.estado === 'completado')
-  }
-
   function tareasDeEnsayo(eId) { return tareas.filter(t => t.ensayo_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function todasCompletadas(lista) { return lista.length > 0 && lista.every(t => t.estado === 'completada' || t.estado === 'completado') }
   function ensayoCompletado(eId) { return todasCompletadas(tareasDeEnsayo(eId)) }
