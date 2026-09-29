@@ -45,9 +45,9 @@ export default function Notificaciones() {
   const [alertas, setAlertas] = useState([])
   const [tareasNuevas, setTareasNuevas] = useState([])
   const [cargando, setCargando] = useState(false)
+  const [descartadas, setDescartadas] = useState(new Set())
   const [vistaActiva, setVistaActiva] = useState('alertas') // 'alertas' | 'nuevas'
-  const [alertasVistas, setAlertasVistas] = useState(false)
-  const [nuevasVistas, setNuevasVistas] = useState(false)
+
   const panelRef = useRef(null)
   const navigate = useNavigate()
 
@@ -286,7 +286,6 @@ export default function Notificaciones() {
       }
 
       setAlertas(nuevasAlertas)
-      setAlertasVistas(false)
 
       // ── TAREAS NUEVAS (asignadas recientemente) ───────────────────
       const hace7dias = new Date()
@@ -310,7 +309,6 @@ export default function Notificaciones() {
         }
       }
       setTareasNuevas(nuevas)
-      setNuevasVistas(false)
     } catch (err) {
       console.error('Error cargando notificaciones:', err)
     } finally {
@@ -318,30 +316,35 @@ export default function Notificaciones() {
     }
   }
 
+  function descartar(id) {
+    setDescartadas(prev => new Set([...prev, id]))
+  }
+
   function handleClickAlerta(alerta) {
     setAbierto(false)
     navigate(alerta.url)
   }
 
-  const vencidas = alertas.filter(a => a.tipo === 'vencida')
-  const proximas = alertas.filter(a => a.tipo === 'proxima')
+  const vencidas = alertas.filter(a => a.tipo === 'vencida' && !descartadas.has(a.id))
+  const proximas = alertas.filter(a => a.tipo === 'proxima' && !descartadas.has(a.id))
+  const nuevasVisibles = tareasNuevas.filter(t => !descartadas.has(t.id))
   const totalUrgentes = vencidas.length
 
   return (
     <div ref={panelRef} style={{ position: 'relative', display: 'flex', gap: '4px', alignItems: 'center' }}>
-      <button onClick={() => { setVistaActiva('nuevas'); setAbierto(!abierto); setNuevasVistas(true) }} title="Tareas nuevas asignadas"
+      <button onClick={() => { setVistaActiva('nuevas'); setAbierto(!abierto) }} title="Tareas nuevas asignadas"
         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', position: 'relative', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         📬
-        {tareasNuevas.length > 0 && !nuevasVistas && (
+        {nuevasVisibles.length > 0 && (
           <span style={{ position: 'absolute', top: '-2px', right: '-4px', background: '#7c3aed', color: 'white', borderRadius: '50%', fontSize: '10px', fontWeight: '700', minWidth: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '0 3px' }}>
-            {tareasNuevas.length}
+            {nuevasVisibles.length}
           </span>
         )}
       </button>
-      <button onClick={() => { setVistaActiva('alertas'); setAbierto(!abierto); setAlertasVistas(true) }} title="Notificaciones"
+      <button onClick={() => { setVistaActiva('alertas'); setAbierto(!abierto) }} title="Notificaciones"
         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', position: 'relative', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         🔔
-        {totalUrgentes > 0 && !alertasVistas && (
+        {totalUrgentes > 0 && (
           <span style={{ position: 'absolute', top: '-2px', right: '-4px', background: '#dc2626', color: 'white', borderRadius: '50%', fontSize: '10px', fontWeight: '700', minWidth: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '0 3px' }}>
             {totalUrgentes}
           </span>
@@ -363,7 +366,7 @@ export default function Notificaciones() {
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => setVistaActiva('alertas')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: vistaActiva === 'alertas' ? '#374151' : 'none', color: vistaActiva === 'alertas' ? '#f9fafb' : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>🔔 Alertas {alertas.length > 0 && `(${alertas.length})`}</button>
-              <button onClick={() => setVistaActiva('nuevas')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: vistaActiva === 'nuevas' ? '#374151' : 'none', color: vistaActiva === 'nuevas' ? '#f9fafb' : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>📬 Nuevas {tareasNuevas.length > 0 && `(${tareasNuevas.length})`}</button>
+              <button onClick={() => setVistaActiva('nuevas')} style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', background: vistaActiva === 'nuevas' ? '#374151' : 'none', color: vistaActiva === 'nuevas' ? '#f9fafb' : '#6b7280', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>📬 Nuevas {tareasNuevas.length > 0 && `(${nuevasVisibles.length})`}</button>
             </div>
           </div>
 
@@ -377,14 +380,15 @@ export default function Notificaciones() {
               ) : (
                 <div>
                   <p style={{ color: '#9ca3af', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Últimos 7 días</p>
-                  {tareasNuevas.map(t => {
+                  {nuevasVisibles.map(t => {
                     const nombres = { '1': 'Lorenzo', '2': 'Ahlam', '3': 'Jannet' }
                     const colores = { '1': '#00953B', '2': '#3b82f6', '3': '#f59e0b' }
                     const color = colores[String(t.creadoPor)] || '#6b7280'
                     const nombre = nombres[String(t.creadoPor)] || `Usuario ${t.creadoPor}`
                     return (
-                      <div key={t.id} style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid #7c3aed', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
-                        <p style={{ margin: 0, color: '#f9fafb', fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
+                      <div key={t.id} style={{ position: 'relative', background: 'rgba(124,58,237,0.08)', border: '1px solid #7c3aed', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
+                        <button onClick={() => descartar(t.id)} style={{ position: 'absolute', top: '6px', right: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', lineHeight: 1, padding: '2px' }}>✕</button>
+                        <p style={{ margin: 0, color: '#f9fafb', fontSize: '13px', fontWeight: '600', paddingRight: '16px' }}>{t.nombre}</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                           <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'white', fontWeight: '700', flexShrink: 0 }}>{nombre[0]}</span>
                           <p style={{ margin: 0, color: '#9ca3af', fontSize: '11px' }}>Asignada por <span style={{ color }}>{nombre}</span> · {t.fecha}</p>
@@ -409,7 +413,7 @@ export default function Notificaciones() {
                       🔴 Vencidas ({vencidas.length})
                     </p>
                     {vencidas.map(alerta => (
-                      <TarjetaAlerta key={alerta.id} alerta={alerta} onClick={() => handleClickAlerta(alerta)} />
+                      <TarjetaAlerta key={alerta.id} alerta={alerta} onClick={() => handleClickAlerta(alerta)} onDescartar={() => descartar(alerta.id)} />
                     ))}
                   </div>
                 )}
@@ -419,7 +423,7 @@ export default function Notificaciones() {
                       🟡 Próximas a vencer ({proximas.length})
                     </p>
                     {proximas.map(alerta => (
-                      <TarjetaAlerta key={alerta.id} alerta={alerta} onClick={() => handleClickAlerta(alerta)} />
+                      <TarjetaAlerta key={alerta.id} alerta={alerta} onClick={() => handleClickAlerta(alerta)} onDescartar={() => descartar(alerta.id)} />
                     ))}
                   </div>
                 )}
@@ -442,10 +446,13 @@ export default function Notificaciones() {
   )
 }
 
-function TarjetaAlerta({ alerta, onClick }) {
+function TarjetaAlerta({ alerta, onClick, onDescartar }) {
   const colorBorde = alerta.tipo === 'vencida' ? '#dc2626' : '#f59e0b'
   const colorFondo = alerta.tipo === 'vencida' ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.08)'
   return (
+    <div style={{ position: 'relative' }}>
+      <button onClick={e => { e.stopPropagation(); onDescartar && onDescartar() }}
+        style={{ position: 'absolute', top: '6px', right: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', lineHeight: 1, padding: '2px', zIndex: 1 }}>✕</button>
     <div
       onClick={onClick}
       style={{
@@ -462,6 +469,7 @@ function TarjetaAlerta({ alerta, onClick }) {
       <p style={{ margin: '2px 0 0', color: '#9ca3af', fontSize: '11px' }}>
         {alerta.subtexto} · <span style={{ color: '#60a5fa' }}>Ir →</span>
       </p>
+    </div>
     </div>
   )
 }
