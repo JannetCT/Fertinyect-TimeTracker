@@ -1046,11 +1046,14 @@ export default function Proyectos() {
                       </div>
                     </div>
                     {estaExpandido('accion_' + accion.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {ensayosDeAccion(accion.id).map(ensayo => (
-                        <div key={ensayo.id} style={{ background: 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {ensayosDeAccion(accion.id).map(ensayo => {
+                        const ensComp = ensayoCompletado(ensayo.id)
+                        return (
+                        <div key={ensayo.id} style={{ background: ensComp ? '#f9fafb' : 'white', borderRadius: '6px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px', opacity: ensComp ? 0.8 : 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <span style={{ background: ensayo.tipo === 'ensayo' ? '#dbeafe' : '#fef3c7', color: ensayo.tipo === 'ensayo' ? '#1d4ed8' : '#92400e', borderRadius: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: '600' }}>{ensayo.tipo === 'ensayo' ? 'ENSAYO' : 'INFORME'}</span>
-                            <span style={{ fontSize: '13px', fontWeight: '600', flex: 1 }}>{ensayo.nombre}</span>
+                            <span style={{ fontSize: '13px', fontWeight: '600', flex: 1, color: ensComp ? '#9ca3af' : '#373A36' }}>{ensayo.nombre}</span>
+                            {ensComp && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}
                           </div>
                           {(ensayo.fecha_inicio || ensayo.fecha_fin) && (
                             <span style={{ fontSize: '11px', color: '#6b7280' }}>📅 {ensayo.fecha_inicio || '?'} → {ensayo.fecha_fin || '?'}</span>
@@ -1064,7 +1067,8 @@ export default function Proyectos() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                       {tareasDirectasDeAccion(accion.id).map(t => (
                         <div key={t.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '10px 14px', borderLeft: '3px solid #00953B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
