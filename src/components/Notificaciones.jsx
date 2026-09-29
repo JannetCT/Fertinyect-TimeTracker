@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useDatos } from '../contexts/DatosContext'
 import { leerHoja } from '../services/googleSheets'
 import { useNavigate } from 'react-router-dom'
 
@@ -39,6 +40,7 @@ function horaEspañaActual() {
 
 export default function Notificaciones() {
   const { usuario, accessToken } = useAuth()
+  const { refrescar } = useDatos()
   const [abierto, setAbierto] = useState(false)
   const [alertas, setAlertas] = useState([])
   const [tareasNuevas, setTareasNuevas] = useState([])
@@ -423,7 +425,10 @@ export default function Notificaciones() {
           </div>
 
           <div style={{ padding: '12px', borderTop: '1px solid #1f2937' }}>
-            <button onClick={cargarAlertas} style={{
+            <button onClick={async () => {
+              await Promise.all(['tareas','tareas_soporte','tareas_direccion','tareas_planner','acciones','ensayos','proyectos'].map(h => refrescar(h)))
+              cargarAlertas()
+            }} style={{
               width: '100%', padding: '8px', background: '#1f2937', color: '#9ca3af',
               border: '1px solid #374151', borderRadius: '8px', cursor: 'pointer',
               fontSize: '13px', fontWeight: '600',
