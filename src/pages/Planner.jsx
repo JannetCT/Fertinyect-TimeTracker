@@ -1039,7 +1039,16 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       const tipo = t._tipo
       if (tipo === 'planner') {
         if (!t.tarea_padre_tipo || t.tarea_padre_tipo === '') return null
-        return { modulo: '📝 Tarea libre', partes: [] }
+        // Mini tarea ligada a una Fase
+        const fase = tareas.find(x => x.tarea_grupo_id === 'fase' && x.id === t.tarea_padre_id)
+        if (fase) {
+          const proy = proyectos.find(p => p.id === fase.proyecto_id)
+          const accion = acciones.find(a => a.id === fase.accion_id)
+          const estado = estadosProyecto.find(e => e.id === accion?.estado_id)
+          const ensayo = ensayos.find(e => e.id === fase.ensayo_id)
+          return { modulo: '📁 Proyectos', partes: [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre, fase.nombre].filter(Boolean), color: '#00953B' }
+        }
+        return null
       }
       if (tipo === 'soporte') {
         const tarea = tareasSoporte.find(ts => ts.id === t.id) || t
@@ -1063,8 +1072,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         const accion = acciones.find(a => a.id === tp.accion_id)
         const estado = estadosProyecto.find(e => e.id === (accion?.estado_id || tp.estado_id))
         const ensayo = ensayos.find(e => e.id === tp.ensayo_id)
-        const fase = tareas.find(x => x.tarea_grupo_id === 'fase' && x.id === tp.tarea_padre_id)
-        const partes = [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre, fase?.nombre].filter(Boolean)
+        const partes = [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre].filter(Boolean)
         return { modulo: '📁 Proyectos', partes, color: '#00953B' }
       }
       return null
