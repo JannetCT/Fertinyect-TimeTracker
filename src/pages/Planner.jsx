@@ -811,7 +811,9 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     if (!modalEditarEvento) return
     const ev = modalEditarEvento
     const asignadosStr = ev._asignados && ev._asignados.length > 0 ? ev._asignados.join(',') : String(usuario.id)
-    await actualizarFila('eventos', ev.id, [ev.id, asignadosStr, ev.titulo, ev.descripcion || '', ev.fecha_exacta, ev.hora_inicio || '', ev.hora_fin || '', ev.tipo, ev.fecha_creacion, ev.estado || '', ev.origen_id || '', ev.origen_tipo || ''], accessToken)
+    const origenId = ev.origen_id || ev.origen_id_original || ''
+    const origenTipo = ev.origen_tipo || ev.origen_tipo_original || ''
+    await actualizarFila('eventos', ev.id, [ev.id, asignadosStr, ev.titulo, ev.descripcion || '', ev.fecha_exacta, ev.hora_inicio || '', ev.hora_fin || '', ev.tipo, ev.fecha_creacion, ev.estado || '', origenId, origenTipo], accessToken)
     setModalEditarEvento(null); cargarDatos()
   }
   async function eliminarEvento(eventoId) { await marcarEliminado('eventos', eventoId, accessToken); setModalEditarEvento(null); cargarDatos() }
@@ -912,6 +914,30 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     if (tarea.tarea_padre_id && tarea.tarea_padre_tipo !== 'planner') { const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id) || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id); return padre ? `↳ ${padre.nombre}` : '↳ Subtarea' }
     return '📝 Tarea libre'
   }
+  function getContextoEvento(ev) {
+    if (!ev.origen_id || !ev.origen_tipo) return null
+    if (ev.origen_tipo.startsWith('soporte')) {
+      const proy = proyectosSoporte.find(p => p.id === ev.origen_id)
+      if (proy) return { texto: proy.nombre, color: '#3b82f6' }
+      const cat = categoriasSoporte.find(c => c.id === ev.origen_id)
+      if (cat) return { texto: cat.nombre, color: '#3b82f6' }
+      return { texto: 'Soporte', color: '#3b82f6' }
+    }
+    if (ev.origen_tipo.startsWith('direccion')) {
+      const cat = categoriasDireccion.find(c => c.id === ev.origen_id)
+      if (cat) return { texto: cat.nombre, color: '#7c3aed' }
+      const proy = proyectosDireccion.find(p => p.id === ev.origen_id)
+      if (proy) return { texto: proy.nombre, color: '#7c3aed' }
+      return { texto: 'Dirección', color: '#7c3aed' }
+    }
+    if (ev.origen_tipo.startsWith('proyecto') || ev.origen_tipo === 'proyecto') {
+      const proy = proyectos.find(p => p.id === ev.origen_id)
+      if (proy) return { texto: proy.nombre, color: '#00953B' }
+      return { texto: 'Proyecto', color: '#00953B' }
+    }
+    return null
+  }
+
   function getDescripcionTarea(tarea) {
     if (tarea._tipo === 'planner' && tarea.tarea_padre_id) {
       const padre = todasTareasProyecto.find(t => t.id === tarea.tarea_padre_id) || todasTareasSoporte.find(t => t.id === tarea.tarea_padre_id)
@@ -1241,8 +1267,8 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                       const evComoTarea = { ...ev, _tipo: 'evento', fecha_exacta: ev.fecha_exacta }
                       return (
                         <DraggableTarea key={ev.id} tarea={evComoTarea}>
-                        <EventoCard ev={ev} completado={completado}
-                          onEditar={() => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId] })}
+                        <EventoCard ev={ev} completado={completado} contexto={getContextoEvento(ev)}
+                          onEditar={() => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId], _tipoLigar: ev.origen_tipo ? (ev.origen_tipo.startsWith('soporte') ? 'soporte' : ev.origen_tipo.startsWith('direccion') ? 'direccion' : ev.origen_tipo.startsWith('proyecto') ? 'proyecto' : '') : '' })}
                           onClonar={() => clonarEvento(ev)}
                           onCompletar={() => completarEvento(ev)}
                           onReactivar={() => actualizarEstado(ev, 'evento', 'pendiente').then(() => { refrescar('eventos'); cargarDatos() })}
@@ -1344,7 +1370,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                   setDblClickInfo({ fecha, hora })
                   setMostrarMenuDblClick(true)
                 }}
-                onEditarEvento={ev => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId] })}
+                onEditarEvento={ev => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId], _tipoLigar: ev.origen_tipo ? (ev.origen_tipo.startsWith('soporte') ? 'soporte' : ev.origen_tipo.startsWith('direccion') ? 'direccion' : ev.origen_tipo.startsWith('proyecto') ? 'proyecto' : '') : '' })}
                 onCompletarEvento={completarEvento} getChecklistCount={getChecklistCount}
                 onMoverHora={(tarea, hora) => moverTareaHora(tarea, hora)}
               />
@@ -1676,7 +1702,7 @@ function DroppableColumna({ diaFecha, children }) {
   return <div ref={setNodeRef} style={{ flex: 1, minHeight: '100px', background: isOver ? 'rgba(0,149,59,0.05)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s' }}>{children}</div>
 }
 
-function EventoCard({ ev, completado, onEditar, onClonar, onCompletar, onReactivar, onEliminar }) {
+function EventoCard({ ev, completado, contexto, onEditar, onClonar, onCompletar, onReactivar, onEliminar }) {
   const [menuAbierto, setMenuAbierto] = useState(false)
   return (
     <div style={{ position: 'relative', marginBottom: '6px', zIndex: menuAbierto ? 50 : 'auto' }}>
@@ -1685,6 +1711,8 @@ function EventoCard({ ev, completado, onEditar, onClonar, onCompletar, onReactiv
           <p style={{ margin: 0, fontWeight: '600', fontSize: '13px', color: '#7c3aed', textDecoration: completado ? 'line-through' : 'none' }}>🗓 {ev.titulo}</p>
           {ev.hora_inicio && <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{ev.hora_inicio}{ev.hora_fin ? ` — ${ev.hora_fin}` : ''}</p>}
           <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#a78bfa' }}>{ev.tipo}</p>
+          {contexto && <span style={{ display: 'inline-block', marginTop: '3px', fontSize: '10px', fontWeight: '700', color: contexto.color, background: `${contexto.color}15`, padding: '1px 7px', borderRadius: '20px' }}>{contexto.texto}</span>}
+          {contexto && <span style={{ display: 'inline-block', marginTop: '3px', fontSize: '10px', fontWeight: '700', color: contexto.color, background: `${contexto.color}15`, padding: '1px 7px', borderRadius: '20px' }}>{contexto.texto}</span>}
         </div>
       </div>
       <div style={{ position: 'absolute', top: '6px', right: '6px', zIndex: 10 }}>
