@@ -1056,9 +1056,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         return { modulo: '🎯 Dirección', partes, color: '#7c3aed' }
       }
       if (tipo === 'proyecto') {
-        const tp = tareas.find(tp => tp.id === t.id) || t
-        const contexto = getContextoTarea ? getContextoTarea(tp, 'proyecto') : ''
-        return { modulo: '📁 Proyectos', partes: contexto ? [contexto] : [], color: '#00953B' }
+        return { modulo: '📁 Proyectos', partes: [], color: '#00953B' }
       }
       return null
     }
