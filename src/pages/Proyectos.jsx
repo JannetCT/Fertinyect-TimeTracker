@@ -653,7 +653,46 @@ export default function Proyectos() {
   function estadosDeProyecto(pId) { return estados.filter(e => e.proyecto_id === pId).sort((a, b) => Number(a.orden) - Number(b.orden)) }
   function accionesDeEstado(eId) { return acciones.filter(a => a.estado_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function ensayosDeAccion(aId) { return ensayos.filter(e => e.accion_id === aId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function todasCompletadas(listaTareas) {
+    return listaTareas.length > 0 && listaTareas.every(t => t.estado === 'completada' || t.estado === 'completado')
+  }
+  function ensayoCompletado(ensayoId) { return todasCompletadas(tareasDeEnsayo(ensayoId)) }
+  function accionCompletada(accionId) {
+    const tareasDir = tareasDirectasDeAccion(accionId)
+    const ensayosAcc = ensayosDeAccion(accionId)
+    const tareasEnsayos = ensayosAcc.flatMap(e => tareasDeEnsayo(e.id))
+    const total = [...tareasDir, ...tareasEnsayos]
+    return total.length > 0 && total.every(t => t.estado === 'completada' || t.estado === 'completado')
+  }
+  function estadoCompletado(estadoId) {
+    const tareasEst = tareasDeEstado(estadoId)
+    const accs = accionesDeEstado(estadoId)
+    const tareasAcciones = accs.flatMap(a => {
+      const dir = tareasDirectasDeAccion(a.id)
+      const ensayosA = ensayosDeAccion(a.id)
+      const tEnsayos = ensayosA.flatMap(e => tareasDeEnsayo(e.id))
+      return [...dir, ...tEnsayos]
+    })
+    const total = [...tareasEst, ...tareasAcciones]
+    return total.length > 0 && total.every(t => t.estado === 'completada' || t.estado === 'completado')
+  }
+
   function tareasDeEnsayo(eId) { return tareas.filter(t => t.ensayo_id === eId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function todasCompletadas(lista) { return lista.length > 0 && lista.every(t => t.estado === 'completada' || t.estado === 'completado') }
+  function ensayoCompletado(eId) { return todasCompletadas(tareasDeEnsayo(eId)) }
+  function accionCompletada(aId) {
+    const dir = tareasDirectasDeAccion(aId)
+    const ens = ensayosDeAccion(aId)
+    const total = [...dir, ...ens.flatMap(e => tareasDeEnsayo(e.id))]
+    return total.length > 0 && total.every(t => t.estado === 'completada' || t.estado === 'completado')
+  }
+  function estadoCompletado(eId) {
+    const tarEst = tareasDeEstado(eId)
+    const accs = accionesDeEstado(eId)
+    const tarAccs = accs.flatMap(a => [...tareasDirectasDeAccion(a.id), ...ensayosDeAccion(a.id).flatMap(e => tareasDeEnsayo(e.id))])
+    const total = [...tarEst, ...tarAccs]
+    return total.length > 0 && total.every(t => t.estado === 'completada' || t.estado === 'completado')
+  }
   function tareasDirectasDeAccion(aId) { return tareas.filter(t => t.accion_id === aId && !t.ensayo_id && t.id !== 'eliminado' && t.accion_id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDirectasDeProyecto(pId) { return tareas.filter(t => t.proyecto_id === pId && !t.accion_id && !t.ensayo_id && !t.estado_id && t.id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDeEstado(eId) { return tareas.filter(t => t.estado_id === eId && !t.accion_id && !t.ensayo_id && t.id !== 'eliminado').sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
