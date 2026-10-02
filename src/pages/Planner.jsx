@@ -505,6 +505,8 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
 
 function Planner() {
   const { usuario, accessToken } = useAuth()
+  const isViewer = usuario?.rol === 'viewer'
+  const [usuarioVista, setUsuarioVista] = useState(null) // para viewer: ver planner de otro usuario
   const { obtenerHoja, refrescar } = useDatos()
   const [semanaBase, setSemanaBase] = useState(() => getLunesDeSemana(new Date()))
   const [vista, setVista] = useState('semana')
@@ -560,7 +562,7 @@ function Planner() {
         obtenerHoja('checklist_items'),
         obtenerHoja('usuarios'),
       ])
-      const misId = String(usuario.id)
+      const misId = usuarioVista ? String(usuarioVista) : String(usuario.id)
       setTareas(t.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
       setTareasSoporte(ts.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))
       setTareasDireccion(td.filter(t => t.asignados && t.asignados.split(',').map(s => s.trim()).includes(misId)))

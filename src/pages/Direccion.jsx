@@ -320,6 +320,7 @@ function BuscadorGlobal({ resultados, busqueda, setBusqueda, onSeleccionar, colo
 }
 export default function Direccion() {
   const { usuario, accessToken } = useAuth()
+  const isViewer = usuario?.rol === 'viewer'
   const { obtenerHoja, refrescar } = useDatos()
 
   const [categorias, setCategorias] = useState([])

@@ -844,8 +844,8 @@ export default function Proyectos() {
             <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaTarea.nombre}</h1>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <BtnAccion tipo="editar" onClick={() => setEditTarea({ ...vistaTarea, asignados: vistaTarea.asignados ? vistaTarea.asignados.split(',').filter(Boolean) : [] })}>✏️ Editar</BtnAccion>
-            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: vistaTarea })}>🗑 Eliminar</BtnAccion>
+            {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditTarea({ ...vistaTarea, asignados: vistaTarea.asignados ? vistaTarea.asignados.split(',').filter(Boolean) : [] })}>✏️ Editar</BtnAccion>}
+            {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: vistaTarea })}>🗑 Eliminar</BtnAccion>}
           </div>
         </div>
         <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
@@ -880,8 +880,8 @@ export default function Proyectos() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <BtnAccion tipo="editar" onClick={() => setEditEnsayo({ ...vistaEnsayo })}>✏️ Editar</BtnAccion>
-            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: vistaEnsayo })}>🗑 Eliminar</BtnAccion>
+            {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditEnsayo({ ...vistaEnsayo })}>✏️ Editar</BtnAccion>}
+            {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: vistaEnsayo })}>🗑 Eliminar</BtnAccion>}
             <button onClick={() => { setNuevaTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [], esFase: false })); setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id }) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva tarea</button>
             <button onClick={() => { setNuevaTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [], esFase: true, fecha_inicio: '', fecha_limite: '' })); setModalTarea({ ensayo_id: vistaEnsayo.id, accion_id: vistaEnsayo.accion_id, proyecto_id: vistaEnsayo.proyecto_id }) }} style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>📅 + Fase</button>
             <button onClick={() => setModalEventoProyecto({ origenId: vistaEnsayo.id, origenTipo: 'ensayo', contexto: vistaEnsayo.nombre })} style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Evento</button>
@@ -911,9 +911,9 @@ export default function Proyectos() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
-                    <BtnAccion tipo="editar" onClick={() => setEditTarea({ ...tarea, asignados: tarea.asignados ? tarea.asignados.split(',').filter(Boolean) : [] })}>✏️</BtnAccion>
+                    {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditTarea({ ...tarea, asignados: tarea.asignados ? tarea.asignados.split(',').filter(Boolean) : [] })}>✏️</BtnAccion>}
                     {tarea.estado !== 'completada' && <button onClick={() => setModalCompletar(tarea)} style={{ background: '#f0fdf4', color: '#00953B', border: '1px solid #00953B', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>✅</button>}
-                    <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: tarea })}>🗑</BtnAccion>
+                    {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: tarea })}>🗑</BtnAccion>}
                     <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : tarea.estado === 'en_curso' ? '#dbeafe' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : tarea.estado === 'en_curso' ? '#1d4ed8' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>{tarea.estado || 'pendiente'}</span>
                   </div>
                 </div>
@@ -979,8 +979,8 @@ export default function Proyectos() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <BtnAccion tipo="editar" onClick={() => setEditProyecto({ ...vistaProyecto })}>✏️ Editar</BtnAccion>
-            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'proyecto', item: vistaProyecto })}>🗑 Eliminar</BtnAccion>
+            {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditProyecto({ ...vistaProyecto })}>✏️ Editar</BtnAccion>}
+            {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'proyecto', item: vistaProyecto })}>🗑 Eliminar</BtnAccion>}
             <button onClick={() => { setNuevaTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [], esFase: false })); setModalTareaProyecto({ proyecto_id: vistaProyecto.id }) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>📋 + Tarea</button>
           </div>
         </div>
@@ -999,8 +999,8 @@ export default function Proyectos() {
                       <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>
-                      <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                      {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>}
+                      {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>}
                     </div>
                   </div>
                   )
@@ -1016,10 +1016,10 @@ export default function Proyectos() {
                   <span style={{ color: '#00953B', marginRight: '4px' }}>{estado.orden}.</span><span style={{ color: estadoCompletado(estado.id) ? '#9ca3af' : '#373A36' }}>{estado.nombre}</span>{estadoCompletado(estado.id) && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px', marginLeft: '8px' }}>Completado</span>}
                 </h3>
                 <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                  <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'estado', item: estado })}>🗑</BtnAccion>
-                  <BtnAccion tipo="añadir" onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Acción</BtnAccion>
-                  <BtnAccion tipo="editar" onClick={() => { setNuevaTarea({ nombre: '', asignados: [String(usuario.id)], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); setModalTareaEstado({ estado_id: estado.id, proyecto_id: vistaProyecto.id }) }}>📋 + Tarea</BtnAccion>
-                  <BtnAccion tipo="añadir" onClick={() => setModalEventoProyecto({ origenId: estado.id, origenTipo: 'estado', contexto: estado.nombre })}>+ Evento</BtnAccion>
+                  {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'estado', item: estado })}>🗑</BtnAccion>}
+                  {!isViewer && <BtnAccion tipo="añadir" onClick={() => setModalAccion({ estado_id: estado.id, proyecto_id: vistaProyecto.id })}>+ Acción</BtnAccion>}
+                  {!isViewer && <BtnAccion tipo="editar" onClick={() => { setNuevaTarea({ nombre: '', asignados: [String(usuario.id)], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '' }); setModalTareaEstado({ estado_id: estado.id, proyecto_id: vistaProyecto.id }) }}>📋 + Tarea</BtnAccion>}
+                  {!isViewer && <BtnAccion tipo="añadir" onClick={() => setModalEventoProyecto({ origenId: estado.id, origenTipo: 'estado', contexto: estado.nombre })}>+ Evento</BtnAccion>}
                 </div>
               </div>
               {estaExpandido(estado.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1039,11 +1039,11 @@ export default function Proyectos() {
                         )}
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
-                        <BtnAccion tipo="editar" onClick={() => setEditAccion({ ...accion })}>✏️</BtnAccion>
-                        <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'accion', item: accion })}>🗑</BtnAccion>
-                        <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo</BtnAccion>
-                        <BtnAccion tipo="editar" onClick={() => setModalTareaAccion({ accion_id: accion.id, proyecto_id: vistaProyecto.id, estado_id: accion.estado_id })}>📋 + Tarea</BtnAccion>
-                        <BtnAccion tipo="añadir" onClick={() => setModalEventoProyecto({ origenId: accion.id, origenTipo: 'accion', contexto: accion.nombre })}>+ Evento</BtnAccion>
+                        {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditAccion({ ...accion })}>✏️</BtnAccion>}
+                        {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'accion', item: accion })}>🗑</BtnAccion>}
+                        {!isViewer && <BtnAccion tipo="añadir" onClick={() => setModalEnsayo({ accion_id: accion.id, proyecto_id: vistaProyecto.id })}>+ Ensayo</BtnAccion>}
+                        {!isViewer && <BtnAccion tipo="editar" onClick={() => setModalTareaAccion({ accion_id: accion.id, proyecto_id: vistaProyecto.id, estado_id: accion.estado_id })}>📋 + Tarea</BtnAccion>}
+                        {!isViewer && <BtnAccion tipo="añadir" onClick={() => setModalEventoProyecto({ origenId: accion.id, origenTipo: 'accion', contexto: accion.nombre })}>+ Evento</BtnAccion>}
                       </div>
                     </div>
                     {estaExpandido('accion_' + accion.id) && <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1059,8 +1059,8 @@ export default function Proyectos() {
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: '12px', color: '#888' }}>{tareasDeEnsayo(ensayo.id).length} tareas</span>
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              <BtnAccion tipo="editar" onClick={() => setEditEnsayo({ ...ensayo })}>✏️</BtnAccion>
-                              <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: ensayo })}>🗑</BtnAccion>
+                              {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditEnsayo({ ...ensayo })}>✏️</BtnAccion>}
+                              {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'ensayo', item: ensayo })}>🗑</BtnAccion>}
                               <span onClick={() => setVistaEnsayo(ensayo)} style={{ color: '#00953B', fontSize: '14px', cursor: 'pointer', fontWeight: '700' }}>→ Ver</span>
                             </div>
                           </div>
@@ -1073,8 +1073,8 @@ export default function Proyectos() {
                             <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado} {t.fecha_limite ? `· 📅 ${t.fecha_limite}` : ''}</p>
                           </div>
                           <div style={{ display: 'flex', gap: '4px' }}>
-                            <BtnAccion tipo="editar" onClick={() => { setEditTarea(t); setNuevaTarea({ nombre: t.nombre, asignados: t.asignados ? t.asignados.split(',') : [], fecha_limite: t.fecha_limite || '', fechas_exactas: '', descripcion: t.descripcion || '' }) }}>✏️</BtnAccion>
-                            <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                            {!isViewer && <BtnAccion tipo="editar" onClick={() => { setEditTarea(t); setNuevaTarea({ nombre: t.nombre, asignados: t.asignados ? t.asignados.split(',') : [], fecha_limite: t.fecha_limite || '', fechas_exactas: '', descripcion: t.descripcion || '' }) }}>✏️</BtnAccion>}
+                            {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>}
                           </div>
                         </div>
                       ))}
@@ -1091,8 +1091,8 @@ export default function Proyectos() {
                       <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>
-                      <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>
+                      {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>}
+                      {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'tarea', item: t })}>🗑</BtnAccion>}
                     </div>
                   </div>
                   )
