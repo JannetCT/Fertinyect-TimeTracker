@@ -212,10 +212,16 @@ export default function CalendarioEquipo() {
     // Eventos
     eventos.forEach(ev => {
       if (!ev.fecha_exacta || !ev.fecha_exacta.split(',').map(f=>f.trim()).includes(fechaStr)) return
-      const email = getEmailUsuario(ev.usuario_id)
-      if (filtroPersona !== 'todos' && email !== filtroPersona) return
-      const cu = getColorUsuario(email)
-      items.push({ id: ev.id, texto: `${cu.nombre} — 🗓 ${ev.titulo}`, color: cu.color, bg: cu.bg, email, userId: ev.usuario_id, tipo: 'evento' })
+      const userIds = (ev.usuario_id || '').split(',').map(s => s.trim()).filter(Boolean)
+      userIds.forEach(userId => {
+        const email = getEmailUsuario(userId)
+        if (filtroPersona !== 'todos' && email !== filtroPersona) return
+        const cu = getColorUsuario(email)
+        if (!idsYaAgregados.has(ev.id + userId)) {
+          items.push({ id: ev.id + userId, texto: `${cu.nombre} — 🗓 ${ev.titulo}`, color: cu.color, bg: cu.bg, email, userId, tipo: 'evento' })
+          idsYaAgregados.add(ev.id + userId)
+        }
+      })
     })
 
     return items
