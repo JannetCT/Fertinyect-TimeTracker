@@ -154,18 +154,20 @@ export default function CalendarioEquipo() {
 
     // Tareas proyecto via tareas_planner (fecha personal)
     const idsYaAgregados = new Set(items.map(i => i.id))
+    const plannerIdsProcesados = new Set()
     tareasPlanner.forEach(tp => {
       if (tp.fecha_exacta !== fechaStr) return
       if (!tp.tarea_padre_id) return
       const tPadre = tareas.find(t => t.id === tp.tarea_padre_id)
       if (!tPadre) return
       const itemId = tPadre.id + tp.usuario_id
-      if (idsYaAgregados.has(itemId)) return
+      if (idsYaAgregados.has(itemId)) { plannerIdsProcesados.add(tp.id); return }
       const email = getEmailUsuario(tp.usuario_id)
-      if (filtroPersona !== 'todos' && email !== filtroPersona) return
+      if (filtroPersona !== 'todos' && email !== filtroPersona) { plannerIdsProcesados.add(tp.id); return }
       const cu = getColorUsuario(email)
       items.push({ id: itemId, texto: `${cu.nombre} — ${getContextoTarea(tPadre, 'proyecto')}`, color: cu.color, bg: cu.bg, email, userId: tp.usuario_id, tipo: 'proyecto' })
       idsYaAgregados.add(itemId)
+      plannerIdsProcesados.add(tp.id)
     })
 
     // Tareas soporte (fecha directa en la tabla)
@@ -187,19 +189,19 @@ export default function CalendarioEquipo() {
       const tPadre = tareasSoporte.find(t => t.id === tp.tarea_padre_id)
       if (!tPadre) return
       const itemId = tPadre.id + tp.usuario_id
-      if (idsYaAgregados.has(itemId)) return
+      if (idsYaAgregados.has(itemId)) { plannerIdsProcesados.add(tp.id); return }
       const email = getEmailUsuario(tp.usuario_id)
-      if (filtroPersona !== 'todos' && email !== filtroPersona) return
+      if (filtroPersona !== 'todos' && email !== filtroPersona) { plannerIdsProcesados.add(tp.id); return }
       const cu = getColorUsuario(email)
       items.push({ id: itemId, texto: `${cu.nombre} — ${getContextoTarea(tPadre, 'soporte')}`, color: cu.color, bg: cu.bg, email, userId: tp.usuario_id, tipo: 'soporte' })
       idsYaAgregados.add(itemId)
+      plannerIdsProcesados.add(tp.id)
     })
 
-    // Tareas planner
+    // Tareas planner (las que no se procesaron via proyecto/soporte)
     tareasPlanner.forEach(t => {
       if (t.fecha_exacta !== fechaStr) return
-      // Saltar solo si el padre ya se procesó como proyecto o soporte
-      if (t.tarea_padre_id && idsYaAgregados.has(t.tarea_padre_id + t.usuario_id)) return
+      if (plannerIdsProcesados.has(t.id)) return
       const email = getEmailUsuario(t.usuario_id)
       if (filtroPersona !== 'todos' && email !== filtroPersona) return
       const cu = getColorUsuario(email)
