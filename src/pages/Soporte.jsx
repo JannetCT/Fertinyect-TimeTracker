@@ -322,6 +322,7 @@ function BuscadorGlobal({ resultados, busqueda, setBusqueda, onSeleccionar, colo
 }
 export default function Soporte() {
   const { accessToken, usuario } = useAuth()
+  const isViewer = usuario?.rol === 'viewer'
   const { obtenerHoja, refrescar } = useDatos()
   const [searchParams, setSearchParams] = useSearchParams()
 

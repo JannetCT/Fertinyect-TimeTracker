@@ -345,6 +345,7 @@ function BuscadorGlobal({ resultados, busqueda, setBusqueda, onSeleccionar, colo
 }
 export default function Proyectos() {
   const { accessToken, usuario } = useAuth()
+  const isViewer = usuario?.rol === 'viewer'
   const { refrescar } = useDatos()
 
   function buscarEnTodo(q) {
