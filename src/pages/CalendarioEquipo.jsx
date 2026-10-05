@@ -142,7 +142,7 @@ export default function CalendarioEquipo() {
 
     // Tareas proyecto (fecha directa en la tabla)
     tareas.forEach(t => {
-      if (t.fecha_exacta !== fechaStr) return
+      if (!t.fecha_exacta || !t.fecha_exacta.split(',').map(f=>f.trim()).includes(fechaStr)) return
       const asignados = (t.asignados || '').split(',').map(s => s.trim()).filter(Boolean)
       asignados.forEach(userId => {
         const email = getEmailUsuario(userId)
@@ -156,7 +156,7 @@ export default function CalendarioEquipo() {
     const idsYaAgregados = new Set(items.map(i => i.id))
     const plannerIdsProcesados = new Set()
     tareasPlanner.forEach(tp => {
-      if (tp.fecha_exacta !== fechaStr) return
+      if (!tp.fecha_exacta || !tp.fecha_exacta.split(',').map(f=>f.trim()).includes(fechaStr)) return
       if (!tp.tarea_padre_id) return
       const tPadre = tareas.find(t => t.id === tp.tarea_padre_id)
       if (!tPadre) return
@@ -172,7 +172,7 @@ export default function CalendarioEquipo() {
 
     // Tareas soporte (fecha directa en la tabla)
     tareasSoporte.forEach(t => {
-      if (t.fecha_exacta !== fechaStr) return
+      if (!t.fecha_exacta || !t.fecha_exacta.split(',').map(f=>f.trim()).includes(fechaStr)) return
       const asignados = (t.asignados || '').split(',').map(s => s.trim()).filter(Boolean)
       asignados.forEach(userId => {
         const email = getEmailUsuario(userId)
@@ -184,7 +184,7 @@ export default function CalendarioEquipo() {
 
     // Tareas soporte via tareas_planner (fecha personal)
     tareasPlanner.forEach(tp => {
-      if (tp.fecha_exacta !== fechaStr) return
+      if (!tp.fecha_exacta || !tp.fecha_exacta.split(',').map(f=>f.trim()).includes(fechaStr)) return
       if (!tp.tarea_padre_id) return
       const tPadre = tareasSoporte.find(t => t.id === tp.tarea_padre_id)
       if (!tPadre) return
@@ -200,7 +200,7 @@ export default function CalendarioEquipo() {
 
     // Tareas planner (las que no se procesaron via proyecto/soporte)
     tareasPlanner.forEach(t => {
-      if (t.fecha_exacta !== fechaStr) return
+      if (!t.fecha_exacta || !t.fecha_exacta.split(',').map(f=>f.trim()).includes(fechaStr)) return
       if (plannerIdsProcesados.has(t.id)) return
       const email = getEmailUsuario(t.usuario_id)
       if (filtroPersona !== 'todos' && email !== filtroPersona) return
@@ -211,7 +211,7 @@ export default function CalendarioEquipo() {
 
     // Eventos
     eventos.forEach(ev => {
-      if (ev.fecha_exacta !== fechaStr) return
+      if (!ev.fecha_exacta || !ev.fecha_exacta.split(',').map(f=>f.trim()).includes(fechaStr)) return
       const email = getEmailUsuario(ev.usuario_id)
       if (filtroPersona !== 'todos' && email !== filtroPersona) return
       const cu = getColorUsuario(email)
