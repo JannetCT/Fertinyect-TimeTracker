@@ -1179,6 +1179,13 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         <div style={{ display: 'flex', alignItems: esMobile ? 'flex-start' : 'center', justifyContent: 'space-between', width: '100%', flexDirection: esMobile ? 'column' : 'row', gap: esMobile ? '8px' : '0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h1 style={{ margin: 0 }}>📅 Planner</h1>
+            {isViewer && (
+              <select value={usuarioVista || ''} onChange={e => { setUsuarioVista(e.target.value || null); setTimeout(() => cargarDatos(), 100) }}
+                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', fontWeight: '600' }}>
+                <option value="">Ver planner de...</option>
+                {usuarios.filter(u => u.rol !== 'viewer').map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+              </select>
+            )}
             <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
               <button onClick={() => setVista('semana')} style={{ padding: '6px 14px', background: vista === 'semana' ? '#00953B' : 'white', color: vista === 'semana' ? 'white' : '#373A36', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Semana</button>
               <button onClick={() => setVista('mes')} style={{ padding: '6px 14px', background: vista === 'mes' ? '#00953B' : 'white', color: vista === 'mes' ? 'white' : '#373A36', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Mes</button>
