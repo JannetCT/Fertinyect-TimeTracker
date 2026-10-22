@@ -353,16 +353,24 @@ export default function Direccion() {
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
+  const _dirMountedCat = useRef(false)
   useEffect(() => {
+    if (!_dirMountedCat.current) { _dirMountedCat.current = true; return }
     try { if (vistaCategoria) sessionStorage.setItem('dir_vistaCategoriaId', vistaCategoria.id); else sessionStorage.removeItem('dir_vistaCategoriaId') } catch {}
   }, [vistaCategoria])
+  const _dirMountedProy = useRef(false)
   useEffect(() => {
+    if (!_dirMountedProy.current) { _dirMountedProy.current = true; return }
     try { if (vistaProyecto) sessionStorage.setItem('dir_vistaProyectoId', vistaProyecto.id); else sessionStorage.removeItem('dir_vistaProyectoId') } catch {}
   }, [vistaProyecto])
+  const _dirMountedSub = useRef(false)
   useEffect(() => {
+    if (!_dirMountedSub.current) { _dirMountedSub.current = true; return }
     try { if (vistaSubcarpeta) sessionStorage.setItem('dir_vistaSubcarpetaId', vistaSubcarpeta.id); else sessionStorage.removeItem('dir_vistaSubcarpetaId') } catch {}
   }, [vistaSubcarpeta])
+  const _dirMountedTarea = useRef(false)
   useEffect(() => {
+    if (!_dirMountedTarea.current) { _dirMountedTarea.current = true; return }
     try { if (vistaTarea) sessionStorage.setItem('dir_vistaTareaId', vistaTarea.id); else sessionStorage.removeItem('dir_vistaTareaId') } catch {}
   }, [vistaTarea])
 

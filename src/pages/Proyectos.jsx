@@ -414,13 +414,19 @@ export default function Proyectos() {
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
+  const _projMounted = useRef(false)
   useEffect(() => {
+    if (!_projMounted.current) { _projMounted.current = true; return }
     try { if (vistaProyecto) sessionStorage.setItem('proj_vistaProyectoId', vistaProyecto.id); else sessionStorage.removeItem('proj_vistaProyectoId') } catch {}
   }, [vistaProyecto])
+  const _projMountedEnsayo = useRef(false)
   useEffect(() => {
+    if (!_projMountedEnsayo.current) { _projMountedEnsayo.current = true; return }
     try { if (vistaEnsayo) sessionStorage.setItem('proj_vistaEnsayoId', vistaEnsayo.id); else sessionStorage.removeItem('proj_vistaEnsayoId') } catch {}
   }, [vistaEnsayo])
+  const _projMountedTarea = useRef(false)
   useEffect(() => {
+    if (!_projMountedTarea.current) { _projMountedTarea.current = true; return }
     try { if (vistaTarea) sessionStorage.setItem('proj_vistaTareaId', vistaTarea.id); else sessionStorage.removeItem('proj_vistaTareaId') } catch {}
   }, [vistaTarea])
 

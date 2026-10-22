@@ -357,16 +357,24 @@ export default function Soporte() {
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
+  const _sopMountedCat = useRef(false)
   useEffect(() => {
+    if (!_sopMountedCat.current) { _sopMountedCat.current = true; return }
     try { if (vistaCategoria) sessionStorage.setItem('sop_vistaCategoriaId', vistaCategoria.id); else sessionStorage.removeItem('sop_vistaCategoriaId') } catch {}
   }, [vistaCategoria])
+  const _sopMountedProy = useRef(false)
   useEffect(() => {
+    if (!_sopMountedProy.current) { _sopMountedProy.current = true; return }
     try { if (vistaProyecto) sessionStorage.setItem('sop_vistaProyectoId', vistaProyecto.id); else sessionStorage.removeItem('sop_vistaProyectoId') } catch {}
   }, [vistaProyecto])
+  const _sopMountedSub = useRef(false)
   useEffect(() => {
+    if (!_sopMountedSub.current) { _sopMountedSub.current = true; return }
     try { if (vistaSubcarpeta) sessionStorage.setItem('sop_vistaSubcarpetaId', vistaSubcarpeta.id); else sessionStorage.removeItem('sop_vistaSubcarpetaId') } catch {}
   }, [vistaSubcarpeta])
+  const _sopMountedTarea = useRef(false)
   useEffect(() => {
+    if (!_sopMountedTarea.current) { _sopMountedTarea.current = true; return }
     try { if (vistaTarea) sessionStorage.setItem('sop_vistaTareaId', vistaTarea.id); else sessionStorage.removeItem('sop_vistaTareaId') } catch {}
   }, [vistaTarea])
 
