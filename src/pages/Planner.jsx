@@ -1554,6 +1554,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
             <h2 style={{ marginBottom: '24px' }}>Nueva tarea</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre de la tarea *" value={formTarea.nombre} onChange={e => setFormTarea({...formTarea, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
+              <textarea placeholder="Descripción (opcional)" value={formTarea.descripcion || ''} onChange={e => setFormTarea({...formTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '70px', resize: 'none', width: '100%', boxSizing: 'border-box' }} />
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Asignar a:</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1600,10 +1601,6 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
                 <BotonesPrioridad etiqueta={formTarea.etiqueta} onChange={val => setFormTarea({...formTarea, etiqueta: val})} />
-              </div>
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Descripción (opcional):</label>
-                <textarea placeholder="Añade notas, contexto o detalles..." value={formTarea.descripcion || ''} onChange={e => setFormTarea({...formTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none', width: '100%', boxSizing: 'border-box' }} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
