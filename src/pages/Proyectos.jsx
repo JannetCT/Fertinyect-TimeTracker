@@ -415,6 +415,16 @@ export default function Proyectos() {
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
   useEffect(() => {
+    try { if (vistaProyecto) sessionStorage.setItem('proj_vistaProyectoId', vistaProyecto.id); else sessionStorage.removeItem('proj_vistaProyectoId') } catch {}
+  }, [vistaProyecto])
+  useEffect(() => {
+    try { if (vistaEnsayo) sessionStorage.setItem('proj_vistaEnsayoId', vistaEnsayo.id); else sessionStorage.removeItem('proj_vistaEnsayoId') } catch {}
+  }, [vistaEnsayo])
+  useEffect(() => {
+    try { if (vistaTarea) sessionStorage.setItem('proj_vistaTareaId', vistaTarea.id); else sessionStorage.removeItem('proj_vistaTareaId') } catch {}
+  }, [vistaTarea])
+
+  useEffect(() => {
     if (cargando) return
     const ensayoId = searchParams.get('ensayo')
     const proyectoId = searchParams.get('proyecto')
@@ -452,10 +462,19 @@ export default function Proyectos() {
       setTareas(t)
       setUsuarios(u)
       setTareasPlanner(tp.filter(t => t.id !== 'eliminado' && t.usuario_id !== 'eliminado'))
-      // Mantener la posición actual en la navegación tras recargar
-      setVistaProyecto(prev => prev ? (p.find(x => x.id === prev.id) || prev) : null)
-      setVistaEnsayo(prev => prev ? (en.find(x => x.id === prev.id) || prev) : null)
-      setVistaTarea(prev => prev ? (t.find(x => x.id === prev.id) || prev) : null)
+      // Mantener la posición actual en la navegación (intra-sesión y tras recargar)
+      setVistaProyecto(prev => {
+        if (prev) return p.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('proj_vistaProyectoId'); return id ? (p.find(x => x.id === id) || null) : null } catch { return null }
+      })
+      setVistaEnsayo(prev => {
+        if (prev) return en.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('proj_vistaEnsayoId'); return id ? (en.find(x => x.id === id) || null) : null } catch { return null }
+      })
+      setVistaTarea(prev => {
+        if (prev) return t.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('proj_vistaTareaId'); return id ? (t.find(x => x.id === id) || null) : null } catch { return null }
+      })
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }

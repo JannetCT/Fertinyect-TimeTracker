@@ -353,6 +353,19 @@ export default function Direccion() {
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
+  useEffect(() => {
+    try { if (vistaCategoria) sessionStorage.setItem('dir_vistaCategoriaId', vistaCategoria.id); else sessionStorage.removeItem('dir_vistaCategoriaId') } catch {}
+  }, [vistaCategoria])
+  useEffect(() => {
+    try { if (vistaProyecto) sessionStorage.setItem('dir_vistaProyectoId', vistaProyecto.id); else sessionStorage.removeItem('dir_vistaProyectoId') } catch {}
+  }, [vistaProyecto])
+  useEffect(() => {
+    try { if (vistaSubcarpeta) sessionStorage.setItem('dir_vistaSubcarpetaId', vistaSubcarpeta.id); else sessionStorage.removeItem('dir_vistaSubcarpetaId') } catch {}
+  }, [vistaSubcarpeta])
+  useEffect(() => {
+    try { if (vistaTarea) sessionStorage.setItem('dir_vistaTareaId', vistaTarea.id); else sessionStorage.removeItem('dir_vistaTareaId') } catch {}
+  }, [vistaTarea])
+
   async function cargarDatos() {
     try {
       const [c, p, s, t, u, tp] = await Promise.all([
@@ -369,6 +382,22 @@ export default function Direccion() {
       setTareas(t)
       setUsuarios(u)
       setTareasPlanner(tp)
+      setVistaCategoria(prev => {
+        if (prev) return c.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('dir_vistaCategoriaId'); return id ? (c.find(x => x.id === id) || null) : null } catch { return null }
+      })
+      setVistaProyecto(prev => {
+        if (prev) return p.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('dir_vistaProyectoId'); return id ? (p.find(x => x.id === id) || null) : null } catch { return null }
+      })
+      setVistaSubcarpeta(prev => {
+        if (prev) return s.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('dir_vistaSubcarpetaId'); return id ? (s.find(x => x.id === id) || null) : null } catch { return null }
+      })
+      setVistaTarea(prev => {
+        if (prev) return t.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('dir_vistaTareaId'); return id ? (t.find(x => x.id === id) || null) : null } catch { return null }
+      })
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }

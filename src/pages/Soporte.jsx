@@ -358,6 +358,19 @@ export default function Soporte() {
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
   useEffect(() => {
+    try { if (vistaCategoria) sessionStorage.setItem('sop_vistaCategoriaId', vistaCategoria.id); else sessionStorage.removeItem('sop_vistaCategoriaId') } catch {}
+  }, [vistaCategoria])
+  useEffect(() => {
+    try { if (vistaProyecto) sessionStorage.setItem('sop_vistaProyectoId', vistaProyecto.id); else sessionStorage.removeItem('sop_vistaProyectoId') } catch {}
+  }, [vistaProyecto])
+  useEffect(() => {
+    try { if (vistaSubcarpeta) sessionStorage.setItem('sop_vistaSubcarpetaId', vistaSubcarpeta.id); else sessionStorage.removeItem('sop_vistaSubcarpetaId') } catch {}
+  }, [vistaSubcarpeta])
+  useEffect(() => {
+    try { if (vistaTarea) sessionStorage.setItem('sop_vistaTareaId', vistaTarea.id); else sessionStorage.removeItem('sop_vistaTareaId') } catch {}
+  }, [vistaTarea])
+
+  useEffect(() => {
     if (cargando) return
     const subcarpetaId = searchParams.get('subcarpeta')
     const proyectoId = searchParams.get('proyecto')
@@ -407,10 +420,22 @@ export default function Soporte() {
       setUsuarios(u)
       setTareasPlanner(tp)
       // Mantener la posición actual en la navegación tras recargar
-      setVistaCategoria(prev => prev ? (c.find(x => x.id === prev.id) || prev) : null)
-      setVistaProyecto(prev => prev ? (p.find(x => x.id === prev.id) || prev) : null)
-      setVistaSubcarpeta(prev => prev ? (s.find(x => x.id === prev.id) || prev) : null)
-      setVistaTarea(prev => prev ? (t.find(x => x.id === prev.id) || prev) : null)
+      setVistaCategoria(prev => {
+        if (prev) return c.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('sop_vistaCategoriaId'); return id ? (c.find(x => x.id === id) || null) : null } catch { return null }
+      })
+      setVistaProyecto(prev => {
+        if (prev) return p.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('sop_vistaProyectoId'); return id ? (p.find(x => x.id === id) || null) : null } catch { return null }
+      })
+      setVistaSubcarpeta(prev => {
+        if (prev) return s.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('sop_vistaSubcarpetaId'); return id ? (s.find(x => x.id === id) || null) : null } catch { return null }
+      })
+      setVistaTarea(prev => {
+        if (prev) return t.find(x => x.id === prev.id) || prev
+        try { const id = sessionStorage.getItem('sop_vistaTareaId'); return id ? (t.find(x => x.id === id) || null) : null } catch { return null }
+      })
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
