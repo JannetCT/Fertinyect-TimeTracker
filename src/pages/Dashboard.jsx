@@ -5,8 +5,8 @@ import * as XLSX from 'xlsx'
 
 const COLORES_USUARIO = {
   'cto.fertinyect@gmail.com':            { color: '#00953B', bg: '#f0fdf4' },
-  'tecnico.fertinyect@gmail.com':        { color: '#f59e0b', bg: '#fffbeb' },
-  'sanidadvegetal.fertinyect@gmail.com': { color: '#3b82f6', bg: '#eff6ff' },
+  'tecnico.fertinyect@gmail.com':        { color: '#f97316', bg: '#fff7ed' },
+  'sanidadvegetal.fertinyect@gmail.com': { color: '#ec4899', bg: '#fdf2f8' },
 }
 
 const COLORES_MODULO = {
