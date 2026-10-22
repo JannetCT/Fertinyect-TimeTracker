@@ -7,8 +7,8 @@ const DIAS_CABECERA = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
 
 const COLORES_USUARIO = {
   'cto.fertinyect@gmail.com':       { color: '#00953B', bg: '#f0fdf4', nombre: 'Lorenzo' },
-  'tecnico.fertinyect@gmail.com':   { color: '#f59e0b', bg: '#fffbeb', nombre: 'Jannet' },
-  'sanidadvegetal.fertinyect@gmail.com': { color: '#3b82f6', bg: '#eff6ff', nombre: 'Ahlam' },
+  'tecnico.fertinyect@gmail.com':   { color: '#f97316', bg: '#fff7ed', nombre: 'Jannet' },
+  'sanidadvegetal.fertinyect@gmail.com': { color: '#ec4899', bg: '#fdf2f8', nombre: 'Ahlam' },
 }
 
 function getColorUsuario(email) {

@@ -406,6 +406,11 @@ export default function Soporte() {
       setTareas(t)
       setUsuarios(u)
       setTareasPlanner(tp)
+      // Mantener la posición actual en la navegación tras recargar
+      setVistaCategoria(prev => prev ? (c.find(x => x.id === prev.id) || prev) : null)
+      setVistaProyecto(prev => prev ? (p.find(x => x.id === prev.id) || prev) : null)
+      setVistaSubcarpeta(prev => prev ? (s.find(x => x.id === prev.id) || prev) : null)
+      setVistaTarea(prev => prev ? (t.find(x => x.id === prev.id) || prev) : null)
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }

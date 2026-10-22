@@ -841,10 +841,10 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       const tienePadrePlanner = tipoParaPlanner && tipoParaPlanner.includes('planner')
       const padreIdParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : (formTarea.tarea_padre_id || '')
       const tipoParaFila = tienePadrePlanner && uid !== String(usuario.id) ? '' : tipoParaPlanner
-      await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', '', '', tiempoEstimado, formTarea.hora_inicio || '', uid, String(usuario.id)], accessToken)
+      await escribirFila('tareas_planner', [id, uid, padreIdParaFila, tipoParaFila, formTarea.nombre, diaCalculado, formTarea.fecha_limite || '', fechasExactas, 'pendiente', new Date().toISOString(), formTarea.etiqueta || '', formTarea.fecha_limite || '', formTarea.descripcion || '', '', tiempoEstimado, formTarea.hora_inicio || '', uid, String(usuario.id)], accessToken)
     }
     setModalNuevaTarea(false)
-    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0, hora_inicio: '' })
+    setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _opcionDireccionId: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0, hora_inicio: '', descripcion: '' })
     await refrescar('tareas_planner')
     await new Promise(r => setTimeout(r, 800))
     cargarDatos()
@@ -898,7 +898,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   function tareaEnFecha(tarea, fechaStr) { return (tarea.fecha_exacta || '').split(',').map(f => f.trim()).includes(fechaStr) }
   function tareasDeDia(fechaStr) {
     return todasLasTareas().filter(t => {
-      if (t.estado === 'completada' && !mostrarCompletadas) return false
+      if (t.estado === 'completada' && !mostrarCompletadas && t.tarea_grupo_id !== 'postit') return false
       if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
       if (busqueda && !t.nombre?.toLowerCase().includes(busqueda.toLowerCase())) return false
       if (filtroVencimiento === 'vencida' && !(t.fecha_limite && new Date(t.fecha_limite) < new Date())) return false
@@ -908,7 +908,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   }
   function tareasBacklog() {
     return todasLasTareas().filter(t => {
-      if (t.estado === 'completada' && !mostrarCompletadas) return false
+      if (t.estado === 'completada' && !mostrarCompletadas && t.tarea_grupo_id !== 'postit') return false
       if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
       if (busqueda && !t.nombre?.toLowerCase().includes(busqueda.toLowerCase())) return false
       if (filtroVencimiento === 'vencida' && !(t.fecha_limite && new Date(t.fecha_limite) < new Date())) return false
@@ -917,7 +917,19 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
     })
   }
   function eventosDeDia(fechaStr) { return eventos.filter(e => e.fecha_exacta === fechaStr && (mostrarCompletadas || e.estado !== 'completado')) }
-  function minutosEstimadosDia(fechaStr) { return tareasDeDia(fechaStr).filter(t => t.estado !== 'completada').reduce((sum, t) => sum + (parseInt(t.tiempo_estimado) || 0), 0) }
+  function minutosEventosDia(fechaStr) {
+    return eventosDeDia(fechaStr).reduce((sum, ev) => {
+      if (!ev.hora_inicio || !ev.hora_fin) return sum
+      const [h1, m1] = ev.hora_inicio.split(':').map(Number)
+      const [h2, m2] = ev.hora_fin.split(':').map(Number)
+      const dur = (h2 * 60 + m2) - (h1 * 60 + m1)
+      return sum + (dur > 0 ? dur : 0)
+    }, 0)
+  }
+  function minutosEstimadosDia(fechaStr) {
+    const minTareas = tareasDeDia(fechaStr).filter(t => t.estado !== 'completada').reduce((sum, t) => sum + (parseInt(t.tiempo_estimado) || 0), 0)
+    return minTareas + minutosEventosDia(fechaStr)
+  }
   function getContexto(tarea) {
     if (tarea._tipo === 'proyecto') { const p = proyectos.find(p => p.id === tarea.proyecto_id); return p ? p.nombre : 'Proyecto' }
     if (tarea._tipo === 'soporte') { const c = categoriasSoporte.find(c => c.id === tarea.categoria_id); return c ? c.nombre : 'Soporte' }
@@ -1062,6 +1074,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
         onEditar={() => { const tipoLigar = tarea.tarea_padre_tipo ? tarea.tarea_padre_tipo.startsWith('proyecto') ? 'proyecto' : tarea.tarea_padre_tipo.startsWith('soporte') ? 'soporte' : '' : ''; const te = parseTiempoEstimado(tarea); const asignadosArr = tarea.asignados ? (Array.isArray(tarea.asignados) ? tarea.asignados : tarea.asignados.split(',').filter(Boolean)) : [tarea.usuario_id || '']; const fechaPersonal = ['proyecto','soporte','direccion'].includes(tarea._tipo) ? (tareasPlanner.find(tp => tp.tarea_padre_id === tarea.id && String(tp.usuario_id) === String(usuario.id))?.fecha_exacta || '') : (tarea.fecha_exacta || ''); setModalEditarTarea({ ...tarea, descripcion: getDescripcionTarea(tarea), fechas_exactas: fechaPersonal, _tipoLigar: tipoLigar, _opcionProyectoId: '', _opcionSoporteId: '', _horas: te.horas, _minutos: te.minutos, asignados: asignadosArr }) }}
         onClonar={() => clonarTarea(tarea)}
         onCompletar={(dia) => { if (tarea.tarea_grupo_id === 'postit') { completarTareaConHoras(tarea, '', '', 0, dia || fechaDia) } else { setModalCompletar({ tarea, dia: dia || fechaDia }) } }}
+        onReactivar={() => reactivarTarea(tarea)}
       />
     )
   }
@@ -1076,14 +1089,48 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       const tipo = t._tipo
       if (tipo === 'planner') {
         if (!t.tarea_padre_tipo || t.tarea_padre_tipo === '') return null
-        // Mini tarea ligada a una Fase
-        const fase = tareas.find(x => x.tarea_grupo_id === 'fase' && x.id === t.tarea_padre_id)
-        if (fase) {
-          const proy = proyectos.find(p => p.id === fase.proyecto_id)
-          const accion = acciones.find(a => a.id === fase.accion_id)
-          const estado = estadosProyecto.find(e => e.id === accion?.estado_id)
-          const ensayo = ensayos.find(e => e.id === fase.ensayo_id)
-          return { modulo: '📁 Proyectos', partes: [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre, fase.nombre].filter(Boolean), color: '#00953B' }
+        const padreType = t.tarea_padre_tipo
+        // Ligada a proyectos I+D
+        if (padreType.includes('proyecto') || padreType === 'planner_proyecto') {
+          const fase = tareas.find(x => x.tarea_grupo_id === 'fase' && x.id === t.tarea_padre_id)
+          if (fase) {
+            const proy = proyectos.find(p => p.id === fase.proyecto_id)
+            const accion = acciones.find(a => a.id === fase.accion_id)
+            const estado = estadosProyecto.find(e => e.id === accion?.estado_id)
+            const ensayo = ensayos.find(e => e.id === fase.ensayo_id)
+            return { modulo: '📁 Proyectos', partes: [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre, fase.nombre].filter(Boolean), color: '#00953B' }
+          }
+          const tareaProyecto = tareas.find(x => x.id === t.tarea_padre_id)
+          if (tareaProyecto) {
+            const proy = proyectos.find(p => p.id === tareaProyecto.proyecto_id)
+            const accion = acciones.find(a => a.id === tareaProyecto.accion_id)
+            const estado = estadosProyecto.find(e => e.id === (accion?.estado_id || tareaProyecto.estado_id))
+            const ensayo = ensayos.find(e => e.id === tareaProyecto.ensayo_id)
+            const partes = [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre, tareaProyecto.nombre].filter(Boolean)
+            return { modulo: '📁 Proyectos', partes, color: '#00953B' }
+          }
+        }
+        // Ligada a soporte
+        if (padreType.includes('soporte') || padreType === 'planner_soporte') {
+          const tareaSop = tareasSoporte.find(x => x.id === t.tarea_padre_id)
+          if (tareaSop) {
+            const proy = proyectosSoporte.find(p => p.id === tareaSop.proyecto_soporte_id)
+            const cat = categoriasSoporte.find(c => c.id === (proy?.categoria_id || tareaSop.categoria_id))
+            const sub = subcarpetasSoporte.find(s => s.id === tareaSop.subcarpeta_id)
+            const partes = [cat?.nombre, proy?.nombre, sub?.nombre, tareaSop.nombre].filter(Boolean)
+            return { modulo: '🔧 Soporte', partes, color: '#3b82f6' }
+          }
+        }
+        // Ligada a dirección
+        if (padreType.includes('direccion') || padreType === 'planner_direccion') {
+          const tareaDir = tareasDireccion.find(x => x.id === t.tarea_padre_id)
+          if (tareaDir) {
+            const cat = categoriasDireccion.find(c => c.id === tareaDir.categoria_id)
+            const proy = proyectosDireccion.find(p => p.id === tareaDir.proyecto_direccion_id)
+            const sub = subcarpetasDireccion.find(s => s.id === tareaDir.subcarpeta_id)
+            const partes = [cat?.nombre, proy?.nombre, sub?.nombre, tareaDir.nombre].filter(Boolean)
+            return { modulo: '🎯 Dirección', partes, color: '#7c3aed' }
+          }
         }
         return null
       }
@@ -1315,6 +1362,11 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                 <span className="task-count">{tareasBacklog().length}</span>
               </div>
               <DroppableColumna diaFecha="por_asignar"><div className="column-tasks">{tareasBacklog().map(tarea => <DraggableTarea key={tarea.id} tarea={tarea}>{renderTarjeta(tarea)}</DraggableTarea>)}</div></DroppableColumna>
+              {(() => { const minBack = tareasBacklog().filter(t => t.estado !== 'completada').reduce((s, t) => s + (parseInt(t.tiempo_estimado) || 0), 0); return minBack > 0 ? (
+                <div style={{ padding: '6px 8px', borderTop: '1px solid #f3f4f6', marginTop: '4px' }}>
+                  <span style={{ fontSize: '11px', color: '#6b7280' }}>⏳ {formatMinutos(minBack)} arrastrado</span>
+                </div>
+              ) : null })()}
             </div>
           </div>
         </>
@@ -1496,9 +1548,13 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '8px' }}>Prioridad:</label>
                 <BotonesPrioridad etiqueta={formTarea.etiqueta} onChange={val => setFormTarea({...formTarea, etiqueta: val})} />
               </div>
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Descripción (opcional):</label>
+                <textarea placeholder="Añade notas, contexto o detalles..." value={formTarea.descripcion || ''} onChange={e => setFormTarea({...formTarea, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none', width: '100%', boxSizing: 'border-box' }} />
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _tipoLigar: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0 }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => { setModalNuevaTarea(false); setFormTarea({ nombre: '', tipo: 'libre', tarea_padre_id: '', tarea_padre_tipo: '', _opcionSoporteId: '', _opcionProyectoId: '', _tipoLigar: '', fechas_exactas: '', fecha_limite: '', etiqueta: '', asignadoA: '', _horas: 0, _minutos: 0, descripcion: '' }) }} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>Cancelar</button>
               <button onClick={crearTareaPlanner} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600' }}>Crear</button>
             </div>
           </div>
@@ -1784,6 +1840,11 @@ function TarjetaTarea({ tarea, contexto, checklistCount, onVerDetalle, onEditar,
             <div style={{ borderTop: '1px solid #f3f4f6', margin: '2px 0' }} />
             {!esCompletada ? (
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onCompletar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#00953B', fontWeight: '600', textAlign: 'left' }}>✅ Completar</button>
+            ) : esPostit ? (
+              <>
+                <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); onReactivar && onReactivar() }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#f59e0b', fontWeight: '600', textAlign: 'left' }}>↩️ Reactivar</button>
+                <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); if(confirm('¿Eliminar esta nota?')) eliminarTarea(tarea) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#dc2626', textAlign: 'left' }}>🗑 Eliminar</button>
+              </>
             ) : (
               <button onClick={e => { e.stopPropagation(); setMenuAbierto(false); if(confirm('¿Eliminar esta tarea?')) eliminarTarea(tarea) }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#dc2626', textAlign: 'left' }}>🗑 Eliminar</button>
             )}

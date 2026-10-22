@@ -452,6 +452,10 @@ export default function Proyectos() {
       setTareas(t)
       setUsuarios(u)
       setTareasPlanner(tp.filter(t => t.id !== 'eliminado' && t.usuario_id !== 'eliminado'))
+      // Mantener la posición actual en la navegación tras recargar
+      setVistaProyecto(prev => prev ? (p.find(x => x.id === prev.id) || prev) : null)
+      setVistaEnsayo(prev => prev ? (en.find(x => x.id === prev.id) || prev) : null)
+      setVistaTarea(prev => prev ? (t.find(x => x.id === prev.id) || prev) : null)
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
