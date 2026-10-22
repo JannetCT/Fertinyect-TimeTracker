@@ -1090,48 +1090,101 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
       if (tipo === 'planner') {
         if (!t.tarea_padre_tipo || t.tarea_padre_tipo === '') return null
         const padreType = t.tarea_padre_tipo
-        // Ligada a proyectos I+D
+        const pid = t.tarea_padre_id
+
+        // === PROYECTOS I+D ===
         if (padreType.includes('proyecto') || padreType === 'planner_proyecto') {
-          const fase = tareas.find(x => x.tarea_grupo_id === 'fase' && x.id === t.tarea_padre_id)
-          if (fase) {
-            const proy = proyectos.find(p => p.id === fase.proyecto_id)
-            const accion = acciones.find(a => a.id === fase.accion_id)
-            const estado = estadosProyecto.find(e => e.id === accion?.estado_id)
-            const ensayo = ensayos.find(e => e.id === fase.ensayo_id)
-            return { modulo: '📁 Proyectos', partes: [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre, fase.nombre].filter(Boolean), color: '#00953B' }
+          let partes = []
+          if (padreType === 'proyecto_proyecto') {
+            const proy = proyectos.find(p => p.id === pid)
+            if (proy) partes = [proy.nombre]
+          } else if (padreType === 'proyecto_estado') {
+            const estado = estadosProyecto.find(e => e.id === pid)
+            const proy = estado ? proyectos.find(p => p.id === estado.proyecto_id) : null
+            if (estado) partes = [proy?.nombre, estado.nombre].filter(Boolean)
+          } else if (padreType === 'proyecto_accion') {
+            const accion = acciones.find(a => a.id === pid)
+            const estado = accion ? estadosProyecto.find(e => e.id === accion.estado_id) : null
+            const proy = estado ? proyectos.find(p => p.id === estado.proyecto_id) : null
+            if (accion) partes = [proy?.nombre, estado?.nombre, accion.nombre].filter(Boolean)
+          } else if (padreType === 'proyecto_ensayo') {
+            const ensayo = ensayos.find(e => e.id === pid)
+            const accion = ensayo ? acciones.find(a => a.id === ensayo.accion_id) : null
+            const estado = accion ? estadosProyecto.find(e => e.id === accion.estado_id) : null
+            const proy = estado ? proyectos.find(p => p.id === estado.proyecto_id) : null
+            if (ensayo) partes = [proy?.nombre, estado?.nombre, accion?.nombre, ensayo.nombre].filter(Boolean)
+          } else {
+            // padre es una tarea concreta (tipo 'proyecto' o 'planner_proyecto')
+            const tareaP = todasTareasProyecto.find(x => x.id === pid)
+            if (tareaP) {
+              const proy = proyectos.find(p => p.id === tareaP.proyecto_id)
+              const accion = acciones.find(a => a.id === tareaP.accion_id)
+              const estado = accion ? estadosProyecto.find(e => e.id === accion.estado_id) : null
+              const ensayo = ensayos.find(e => e.id === tareaP.ensayo_id)
+              partes = [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre, tareaP.nombre].filter(Boolean)
+            }
           }
-          const tareaProyecto = tareas.find(x => x.id === t.tarea_padre_id)
-          if (tareaProyecto) {
-            const proy = proyectos.find(p => p.id === tareaProyecto.proyecto_id)
-            const accion = acciones.find(a => a.id === tareaProyecto.accion_id)
-            const estado = estadosProyecto.find(e => e.id === (accion?.estado_id || tareaProyecto.estado_id))
-            const ensayo = ensayos.find(e => e.id === tareaProyecto.ensayo_id)
-            const partes = [proy?.nombre, estado?.nombre, accion?.nombre, ensayo?.nombre, tareaProyecto.nombre].filter(Boolean)
-            return { modulo: '📁 Proyectos', partes, color: '#00953B' }
-          }
+          if (partes.length > 0) return { modulo: '📁 Proyectos', partes, color: '#00953B' }
         }
-        // Ligada a soporte
+
+        // === SOPORTE ===
         if (padreType.includes('soporte') || padreType === 'planner_soporte') {
-          const tareaSop = tareasSoporte.find(x => x.id === t.tarea_padre_id)
-          if (tareaSop) {
-            const proy = proyectosSoporte.find(p => p.id === tareaSop.proyecto_soporte_id)
-            const cat = categoriasSoporte.find(c => c.id === (proy?.categoria_id || tareaSop.categoria_id))
-            const sub = subcarpetasSoporte.find(s => s.id === tareaSop.subcarpeta_id)
-            const partes = [cat?.nombre, proy?.nombre, sub?.nombre, tareaSop.nombre].filter(Boolean)
-            return { modulo: '🔧 Soporte', partes, color: '#3b82f6' }
+          let partes = []
+          if (padreType === 'soporte_categoria') {
+            const cat = categoriasSoporte.find(c => c.id === pid)
+            if (cat) partes = [cat.nombre]
+          } else if (padreType === 'soporte_proyecto') {
+            const proy = proyectosSoporte.find(p => p.id === pid)
+            const cat = proy ? categoriasSoporte.find(c => c.id === proy.categoria_id) : null
+            if (proy) partes = [cat?.nombre, proy.nombre].filter(Boolean)
+          } else if (padreType === 'soporte_subcarpeta') {
+            const sub = subcarpetasSoporte.find(s => s.id === pid)
+            const proy = sub ? proyectosSoporte.find(p => p.id === sub.proyecto_soporte_id) : null
+            const cat = proy ? categoriasSoporte.find(c => c.id === proy.categoria_id) : null
+            if (sub) partes = [cat?.nombre, proy?.nombre, sub.nombre].filter(Boolean)
+          } else {
+            const tareaSop = todasTareasSoporte.find(x => x.id === pid)
+            if (tareaSop) {
+              const proy = proyectosSoporte.find(p => p.id === tareaSop.proyecto_soporte_id)
+              const cat = categoriasSoporte.find(c => c.id === (proy?.categoria_id || tareaSop.categoria_id))
+              const sub = subcarpetasSoporte.find(s => s.id === tareaSop.subcarpeta_id)
+              partes = [cat?.nombre, proy?.nombre, sub?.nombre, tareaSop.nombre].filter(Boolean)
+            }
           }
+          if (partes.length > 0) return { modulo: '🔧 Soporte', partes, color: '#3b82f6' }
         }
-        // Ligada a dirección
+
+        // === DIRECCIÓN ===
         if (padreType.includes('direccion') || padreType === 'planner_direccion') {
-          const tareaDir = tareasDireccion.find(x => x.id === t.tarea_padre_id)
-          if (tareaDir) {
-            const cat = categoriasDireccion.find(c => c.id === tareaDir.categoria_id)
-            const proy = proyectosDireccion.find(p => p.id === tareaDir.proyecto_direccion_id)
-            const sub = subcarpetasDireccion.find(s => s.id === tareaDir.subcarpeta_id)
-            const partes = [cat?.nombre, proy?.nombre, sub?.nombre, tareaDir.nombre].filter(Boolean)
-            return { modulo: '🎯 Dirección', partes, color: '#7c3aed' }
+          let partes = []
+          if (padreType === 'direccion_categoria') {
+            const cat = categoriasDireccion.find(c => c.id === pid)
+            if (cat) partes = [cat.nombre]
+          } else if (padreType === 'direccion_proyecto') {
+            const proy = proyectosDireccion.find(p => p.id === pid)
+            const cat = proy ? categoriasDireccion.find(c => c.id === proy.categoria_id) : null
+            if (proy) partes = [cat?.nombre, proy.nombre].filter(Boolean)
+          } else if (padreType === 'direccion_subcarpeta') {
+            const sub = subcarpetasDireccion.find(s => s.id === pid)
+            const proy = sub ? proyectosDireccion.find(p => p.id === sub.proyecto_direccion_id) : null
+            const cat = proy ? categoriasDireccion.find(c => c.id === proy.categoria_id) : null
+            if (sub) partes = [cat?.nombre, proy?.nombre, sub.nombre].filter(Boolean)
+          } else {
+            const tareaDir = todasTareasDireccion.find(x => x.id === pid)
+            if (tareaDir) {
+              const cat = categoriasDireccion.find(c => c.id === tareaDir.categoria_id)
+              const proy = proyectosDireccion.find(p => p.id === tareaDir.proyecto_direccion_id)
+              const sub = subcarpetasDireccion.find(s => s.id === tareaDir.subcarpeta_id)
+              partes = [cat?.nombre, proy?.nombre, sub?.nombre, tareaDir.nombre].filter(Boolean)
+            }
           }
+          if (partes.length > 0) return { modulo: '🎯 Dirección', partes, color: '#7c3aed' }
         }
+
+        // Subtarea de otra tarea del Planner
+        const tareaPadre = tareasPlanner.find(x => x.id === pid)
+        if (tareaPadre) return { modulo: '📋 Planner', partes: [tareaPadre.nombre], color: '#8b5cf6' }
+
         return null
       }
       if (tipo === 'soporte') {
