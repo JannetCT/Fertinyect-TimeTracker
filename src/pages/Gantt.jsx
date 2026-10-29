@@ -533,15 +533,20 @@ function Gantt() {
                   return (
                     <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#f5fff8' : undefined }}>
                       <div style={{ display: 'flex', width: '100%', height: '16px', alignItems: 'center' }}>
-                        {semanas.map((activa, s) => (
-                          <div key={s} style={{
-                            flex: 1, height: '16px',
-                            background: activa ? colorProyecto : 'transparent',
-                            opacity: activa ? 0.25 : 1,
-                            borderRight: s < 3 ? '1px solid rgba(0,0,0,0.04)' : 'none',
-                            borderRadius: s === 0 && semanas[0] && !semanas[1] ? '4px' : s === 0 && semanas[0] ? '4px 0 0 4px' : s === 3 && semanas[3] && !semanas[2] ? '4px' : s === 3 && semanas[3] ? '0 4px 4px 0' : '0',
-                          }} />
-                        ))}
+                        {semanas.map((activa, s) => {
+                          const primeraActiva = semanas.indexOf(true)
+                          const ultimaActiva = semanas.lastIndexOf(true)
+                          const esFirst = s === primeraActiva
+                          const esLast = s === ultimaActiva
+                          return (
+                            <div key={s} style={{
+                              flex: 1, height: '16px',
+                              background: activa ? '#00953B' : 'transparent',
+                              borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.5)' : '#c8cdd4'}` : 'none',
+                              borderRadius: activa ? (esFirst && esLast ? '4px' : esFirst ? '4px 0 0 4px' : esLast ? '0 4px 4px 0' : '0') : '0',
+                            }} />
+                          )
+                        })}
                       </div>
                     </div>
                   )
@@ -583,8 +588,8 @@ function Gantt() {
                                 return (
                                   <div key={s} style={{
                                     flex: 1, height: '22px',
-                                    background: activa ? colorProyecto : 'transparent',
-                                    opacity: activa ? 0.85 : 1,
+                                    background: activa ? '#f97316' : 'transparent',
+                                    opacity: activa ? 0.9 : 1,
                                     borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.4)' : '#c8cdd4'}` : 'none',
                                     borderRadius: activa ? (esFirst && esLast ? '4px' : esFirst ? '4px 0 0 4px' : esLast ? '0 4px 4px 0' : '0') : '0',
                                   }} />
@@ -649,9 +654,9 @@ function Gantt() {
 
         {/* Leyenda */}
         <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '24px', height: '12px', background: colorProyecto, borderRadius: '6px', opacity: 0.85 }}></div><span style={{ fontSize: '12px', color: '#555' }}>Acción</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '24px', height: '10px', background: '#3b82f6', borderRadius: '5px', opacity: 0.8 }}></div><span style={{ fontSize: '12px', color: '#555' }}>Ensayo</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '24px', height: '10px', background: '#f59e0b', borderRadius: '5px', opacity: 0.8 }}></div><span style={{ fontSize: '12px', color: '#555' }}>Informe</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '24px', height: '12px', background: '#f97316', borderRadius: '3px' }}></div><span style={{ fontSize: '12px', color: '#555' }}>Acción</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '24px', height: '10px', background: '#3b82f6', borderRadius: '3px' }}></div><span style={{ fontSize: '12px', color: '#555' }}>Ensayo</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '24px', height: '10px', background: '#f59e0b', borderRadius: '3px' }}></div><span style={{ fontSize: '12px', color: '#555' }}>Informe</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '12px', background: '#f0fdf4', border: '1px solid #00953B', borderRadius: '2px' }}></div><span style={{ fontSize: '12px', color: '#555' }}>Mes actual</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto', fontSize: '11px', color: '#9ca3af' }}>S1–S4 = semanas del mes</div>
         </div>
