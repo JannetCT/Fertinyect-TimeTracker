@@ -531,7 +531,7 @@ function Gantt() {
                 {meses.map(mes => {
                   const semanas = getSemanasActivas(mes, iniE, finE)
                   return (
-                    <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#bbf7d0' : '#dcfce7' }}>
+                    <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#a3cfb0' : '#c8e6d0' }}>
                       <div style={{ display: 'flex', width: '100%', height: '20px', alignItems: 'center' }}>
                         {semanas.map((activa, s) => {
                           const primeraActiva = semanas.indexOf(true)
