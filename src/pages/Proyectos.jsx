@@ -814,6 +814,17 @@ export default function Proyectos() {
               </div>
             </div>
             <div>
+              <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Responsable</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {['Jannet', 'Lorenzo', 'Ahlam'].map(nombre => (
+                  <button key={nombre} onClick={() => setEditAccion({ ...editAccion, responsable: editAccion.responsable === nombre ? '' : nombre })}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: `2px solid ${editAccion.responsable === nombre ? '#00953B' : '#ddd'}`, background: editAccion.responsable === nombre ? '#f0fdf4' : 'white', color: editAccion.responsable === nombre ? '#00953B' : '#555', fontSize: '13px', fontWeight: editAccion.responsable === nombre ? '600' : '400', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    {nombre}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
               <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
               <select value={editAccion.estado || 'pendiente'} onChange={e => setEditAccion({ ...editAccion, estado: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
                 <option value="pendiente">Pendiente</option>
@@ -1058,7 +1069,7 @@ export default function Proyectos() {
                   <div key={accion.id} style={{ background: '#f8f9fa', borderRadius: '8px', padding: '14px', borderLeft: `3px solid ${vistaProyecto.color}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }} onClick={() => toggleColapso('accion_' + accion.id)}>
                       <div>
-                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '11px', color: '#6b7280' }}>{estaExpandido('accion_' + accion.id) ? '▼' : '▶'}</span><span style={{ color: accionCompletada(accion.id) ? '#9ca3af' : '#373A36' }}>{accion.nombre}</span>{accionCompletada(accion.id) && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}</p>
+                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}><span style={{ fontSize: '11px', color: '#6b7280' }}>{estaExpandido('accion_' + accion.id) ? '▼' : '▶'}</span><span style={{ color: accionCompletada(accion.id) ? '#9ca3af' : '#373A36' }}>{accion.nombre}</span>{accion.responsable && <span style={{ fontSize: '10px', color: '#f97316', fontWeight: '600', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '4px', padding: '1px 6px' }}>{accion.responsable}</span>}{accionCompletada(accion.id) && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}</p>
                         {accion.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{accion.descripcion}</p>}
                         {(accion.fecha_inicio || accion.fecha_fin) && (
                           <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6b7280' }}>
