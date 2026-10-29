@@ -407,7 +407,7 @@ export default function Proyectos() {
   const [confirmEliminar, setConfirmEliminar] = useState(null)
 
   const [nuevoProyecto, setNuevoProyecto] = useState({ nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: '' })
-  const [nuevaAccion, setNuevaAccion] = useState({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
+  const [nuevaAccion, setNuevaAccion] = useState({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '', responsable: '' })
   const [nuevoEnsayo, setNuevoEnsayo] = useState({ nombre: '', tipo: 'ensayo', descripcion: '', fecha_inicio: '', fecha_fin: '' })
   const [nuevaTarea, setNuevaTarea] = useState({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '', descripcion: '', esFase: false, fecha_inicio: '' })
   const [nuevoEstado, setNuevoEstado] = useState({ nombre: '' })
@@ -528,10 +528,11 @@ export default function Proyectos() {
       id, modalAccion.estado_id, modalAccion.proyecto_id,
       nuevaAccion.nombre, nuevaAccion.descripcion, new Date().toISOString(),
       nuevaAccion.fecha_inicio, nuevaAccion.fecha_fin,
-      nuevaAccion.fecha_inicio, nuevaAccion.fecha_fin
+      nuevaAccion.fecha_inicio, nuevaAccion.fecha_fin,
+      'pendiente', nuevaAccion.responsable
     ], accessToken)
     setModalAccion(null)
-    setNuevaAccion({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
+    setNuevaAccion({ nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '', responsable: '' })
     await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
@@ -544,7 +545,7 @@ export default function Proyectos() {
       editAccion.fecha_inicio, editAccion.fecha_fin,
       editAccion.fecha_inicio_original || editAccion.fecha_inicio,
       editAccion.fecha_fin_original || editAccion.fecha_fin,
-      editAccion.estado || 'pendiente'
+      editAccion.estado || 'pendiente', editAccion.responsable || ''
     ], accessToken)
     setEditAccion(null)
     await new Promise(r => setTimeout(r, 800))
@@ -1329,6 +1330,17 @@ export default function Proyectos() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <input placeholder="Nombre de la acción *" value={nuevaAccion.nombre} onChange={e => setNuevaAccion({ ...nuevaAccion, nombre: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
               <textarea placeholder="Descripción (opcional)" value={nuevaAccion.descripcion} onChange={e => setNuevaAccion({ ...nuevaAccion, descripcion: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+              <div>
+                <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Responsable</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {['Jannet', 'Lorenzo', 'Ahlam'].map(nombre => (
+                    <button key={nombre} onClick={() => setNuevaAccion({ ...nuevaAccion, responsable: nuevaAccion.responsable === nombre ? '' : nombre })}
+                      style={{ flex: 1, padding: '8px', borderRadius: '8px', border: `2px solid ${nuevaAccion.responsable === nombre ? '#00953B' : '#ddd'}`, background: nuevaAccion.responsable === nombre ? '#f0fdf4' : 'white', color: nuevaAccion.responsable === nombre ? '#00953B' : '#555', fontSize: '13px', fontWeight: nuevaAccion.responsable === nombre ? '600' : '400', cursor: 'pointer', transition: 'all 0.15s' }}>
+                      {nombre}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ fontSize: '12px', color: '#555', display: 'block', marginBottom: '4px' }}>Fecha inicio</label>

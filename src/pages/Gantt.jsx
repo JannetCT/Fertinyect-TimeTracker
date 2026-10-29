@@ -570,6 +570,7 @@ function Gantt() {
                           {ensayosAccion.length > 0 ? (expAccion ? '▼' : '▶') : '·'}
                         </button>
                         <span style={{ fontSize: '13px', fontWeight: '600', color: '#373A36', flex: 1 }}>{accion.nombre}</span>
+                        {accion.responsable && <span style={{ fontSize: '11px', color: '#f97316', fontWeight: '600', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '4px', padding: '1px 6px', whiteSpace: 'nowrap' }}>{accion.responsable}</span>}
                         <button onClick={() => { setEditando({ tipo: 'accion', item: accion }); setFormFechas({ fecha_inicio: accion.fecha_inicio || '', fecha_fin: accion.fecha_fin || '' }) }}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#00953B' }}>✏️</button>
                         {progreso > 0 && <span style={{ fontSize: '11px', color: '#00953B', fontWeight: '600' }}>{progreso}%</span>}
