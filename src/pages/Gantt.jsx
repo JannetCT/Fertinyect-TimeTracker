@@ -485,7 +485,7 @@ function Gantt() {
         <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 41, background: 'white', zIndex: 9 }}>
           <div style={{ width: COL_NOMBRE, minWidth: COL_NOMBRE, borderRight: '2px solid #e5e7eb' }}></div>
           {meses.map(mes => (
-            <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #f3f4f6', background: mes === mesActual ? '#f0fdf4' : undefined }}>
+            <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', background: mes === mesActual ? '#f0fdf4' : undefined }}>
               {/* Nombre mes */}
               <div style={{ textAlign: 'center', padding: '4px 2px 2px', fontSize: '11px', fontWeight: '600', color: mes === mesActual ? '#00953B' : '#6b7280' }}>
                 {MESES[parseInt(mes.slice(5, 7)) - 1]}
@@ -493,7 +493,7 @@ function Gantt() {
               {/* 4 semanas */}
               <div style={{ display: 'flex', borderTop: '1px solid #f3f4f6' }}>
                 {[1,2,3,4].map(s => (
-                  <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: '8px', color: '#b0b7c0', padding: '1px 0', borderRight: s < 4 ? '1px solid #e2e4e8' : 'none' }}>
+                  <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: '8px', color: '#9ca3af', padding: '1px 0', borderRight: s < 4 ? '1px solid #c8cdd4' : 'none' }}>
                     S{s}
                   </div>
                 ))}
@@ -509,7 +509,7 @@ function Gantt() {
         )}
 
         {estadosProyecto.map(estado => {
-          const accsEstado = accionesProyecto.filter(a => a.estado_id === estado.id)
+          const accsEstado = accionesProyecto.filter(a => a.estado_id === estado.id).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }))
           const expEstado = expandidosEstado[estado.id]
           const { inicio: iniE, fin: finE } = rangoEstado(estado.id)
 
@@ -531,7 +531,7 @@ function Gantt() {
                 {meses.map(mes => {
                   const semanas = getSemanasActivas(mes, iniE, finE)
                   return (
-                    <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #f3f4f6', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#f5fff8' : undefined }}>
+                    <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#f5fff8' : undefined }}>
                       <div style={{ display: 'flex', width: '100%', height: '16px', alignItems: 'center' }}>
                         {semanas.map((activa, s) => (
                           <div key={s} style={{
@@ -573,7 +573,7 @@ function Gantt() {
                         const semanas = getSemanasActivas(mes, accion.fecha_inicio, accion.fecha_fin)
                         const hayAlgo = semanas.some(Boolean)
                         return (
-                          <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #f3f4f6', padding: '6px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#fafff9' : undefined }}>
+                          <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', padding: '6px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#fafff9' : undefined }}>
                             <div style={{ display: 'flex', width: '100%', height: '22px', alignItems: 'center' }}>
                               {semanas.map((activa, s) => {
                                 const primeraActiva = semanas.indexOf(true)
@@ -585,7 +585,7 @@ function Gantt() {
                                     flex: 1, height: '22px',
                                     background: activa ? colorProyecto : 'transparent',
                                     opacity: activa ? 0.85 : 1,
-                                    borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.4)' : '#e8e8e8'}` : 'none',
+                                    borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.4)' : '#c8cdd4'}` : 'none',
                                     borderRadius: activa ? (esFirst && esLast ? '4px' : esFirst ? '4px 0 0 4px' : esLast ? '0 4px 4px 0' : '0') : '0',
                                   }} />
                                 )
@@ -597,7 +597,7 @@ function Gantt() {
                     </div>
 
                     {/* Ensayos de la acción */}
-                    {expAccion && ensayosAccion.map(ensayo => {
+                    {expAccion && ensayosAccion.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true })).map(ensayo => {
                       const progEnsayo = progresoEnsayo(ensayo.id)
                       const esEnsayo = ensayo.tipo === 'ensayo'
                       const colorEnsayo = esEnsayo ? '#3b82f6' : '#f59e0b'
@@ -616,7 +616,7 @@ function Gantt() {
                             const semanas = getSemanasActivas(mes, ensayo.fecha_inicio, ensayo.fecha_fin)
                             const hayAlgo = semanas.some(Boolean)
                             return (
-                              <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #f3f4f6', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#fafff9' : undefined }}>
+                              <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#fafff9' : undefined }}>
                                 <div style={{ display: 'flex', width: '100%', height: '18px', alignItems: 'center' }}>
                                   {semanas.map((activa, s) => {
                                     const primeraActiva = semanas.indexOf(true)
@@ -628,7 +628,7 @@ function Gantt() {
                                         flex: 1, height: '18px',
                                         background: activa ? colorEnsayo : 'transparent',
                                         opacity: activa ? 0.8 : 1,
-                                        borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.4)' : '#e8e8e8'}` : 'none',
+                                        borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.4)' : '#c8cdd4'}` : 'none',
                                         borderRadius: activa ? (esFirst && esLast ? '4px' : esFirst ? '4px 0 0 4px' : esLast ? '0 4px 4px 0' : '0') : '0',
                                       }} />
                                     )
