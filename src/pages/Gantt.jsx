@@ -531,8 +531,8 @@ function Gantt() {
                 {meses.map(mes => {
                   const semanas = getSemanasActivas(mes, iniE, finE)
                   return (
-                    <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#f5fff8' : undefined }}>
-                      <div style={{ display: 'flex', width: '100%', height: '16px', alignItems: 'center' }}>
+                    <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#dcfce7' : '#f0fdf4' }}>
+                      <div style={{ display: 'flex', width: '100%', height: '20px', alignItems: 'center' }}>
                         {semanas.map((activa, s) => {
                           const primeraActiva = semanas.indexOf(true)
                           const ultimaActiva = semanas.lastIndexOf(true)
@@ -540,7 +540,7 @@ function Gantt() {
                           const esLast = s === ultimaActiva
                           return (
                             <div key={s} style={{
-                              flex: 1, height: '16px',
+                              flex: 1, height: '20px',
                               background: activa ? '#00953B' : 'transparent',
                               borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.5)' : '#c8cdd4'}` : 'none',
                               borderRadius: activa ? (esFirst && esLast ? '4px' : esFirst ? '4px 0 0 4px' : esLast ? '0 4px 4px 0' : '0') : '0',
@@ -579,7 +579,7 @@ function Gantt() {
                         const hayAlgo = semanas.some(Boolean)
                         return (
                           <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #d1d5db', padding: '6px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#fafff9' : undefined }}>
-                            <div style={{ display: 'flex', width: '100%', height: '22px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', width: '100%', height: '18px', alignItems: 'center' }}>
                               {semanas.map((activa, s) => {
                                 const primeraActiva = semanas.indexOf(true)
                                 const ultimaActiva = semanas.lastIndexOf(true)
@@ -587,7 +587,7 @@ function Gantt() {
                                 const esLast = s === ultimaActiva
                                 return (
                                   <div key={s} style={{
-                                    flex: 1, height: '22px',
+                                    flex: 1, height: '18px',
                                     background: activa ? '#f97316' : 'transparent',
                                     opacity: activa ? 0.9 : 1,
                                     borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.4)' : '#c8cdd4'}` : 'none',
