@@ -493,7 +493,7 @@ function Gantt() {
               {/* 4 semanas */}
               <div style={{ display: 'flex', borderTop: '1px solid #f3f4f6' }}>
                 {[1,2,3,4].map(s => (
-                  <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: '8px', color: '#d1d5db', padding: '1px 0', borderRight: s < 4 ? '1px solid #f3f4f6' : 'none' }}>
+                  <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: '8px', color: '#b0b7c0', padding: '1px 0', borderRight: s < 4 ? '1px solid #e2e4e8' : 'none' }}>
                     S{s}
                   </div>
                 ))}
@@ -574,7 +574,7 @@ function Gantt() {
                         const hayAlgo = semanas.some(Boolean)
                         return (
                           <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #f3f4f6', padding: '6px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#fafff9' : undefined }}>
-                            <div style={{ display: 'flex', width: '100%', height: '20px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', width: '100%', height: '22px', alignItems: 'center' }}>
                               {semanas.map((activa, s) => {
                                 const primeraActiva = semanas.indexOf(true)
                                 const ultimaActiva = semanas.lastIndexOf(true)
@@ -582,11 +582,11 @@ function Gantt() {
                                 const esLast = s === ultimaActiva
                                 return (
                                   <div key={s} style={{
-                                    flex: 1, height: '20px',
+                                    flex: 1, height: '22px',
                                     background: activa ? colorProyecto : 'transparent',
                                     opacity: activa ? 0.85 : 1,
-                                    borderRight: s < 3 && hayAlgo ? '1px solid rgba(255,255,255,0.3)' : 'none',
-                                    borderRadius: activa ? (esFirst && esLast ? '10px' : esFirst ? '10px 0 0 10px' : esLast ? '0 10px 10px 0' : '0') : '0',
+                                    borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.4)' : '#e8e8e8'}` : 'none',
+                                    borderRadius: activa ? (esFirst && esLast ? '4px' : esFirst ? '4px 0 0 4px' : esLast ? '0 4px 4px 0' : '0') : '0',
                                   }} />
                                 )
                               })}
@@ -617,7 +617,7 @@ function Gantt() {
                             const hayAlgo = semanas.some(Boolean)
                             return (
                               <div key={mes} style={{ width: COL_MES, minWidth: COL_MES, borderRight: '1px solid #f3f4f6', padding: '8px 0', display: 'flex', alignItems: 'center', background: mes === mesActual ? '#fafff9' : undefined }}>
-                                <div style={{ display: 'flex', width: '100%', height: '14px', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', width: '100%', height: '18px', alignItems: 'center' }}>
                                   {semanas.map((activa, s) => {
                                     const primeraActiva = semanas.indexOf(true)
                                     const ultimaActiva = semanas.lastIndexOf(true)
@@ -625,11 +625,11 @@ function Gantt() {
                                     const esLast = s === ultimaActiva
                                     return (
                                       <div key={s} style={{
-                                        flex: 1, height: '14px',
+                                        flex: 1, height: '18px',
                                         background: activa ? colorEnsayo : 'transparent',
                                         opacity: activa ? 0.8 : 1,
-                                        borderRight: s < 3 && hayAlgo ? '1px solid rgba(255,255,255,0.4)' : 'none',
-                                        borderRadius: activa ? (esFirst && esLast ? '7px' : esFirst ? '7px 0 0 7px' : esLast ? '0 7px 7px 0' : '0') : '0',
+                                        borderRight: s < 3 ? `1px solid ${activa ? 'rgba(255,255,255,0.4)' : '#e8e8e8'}` : 'none',
+                                        borderRadius: activa ? (esFirst && esLast ? '4px' : esFirst ? '4px 0 0 4px' : esLast ? '0 4px 4px 0' : '0') : '0',
                                       }} />
                                     )
                                   })}
