@@ -898,7 +898,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   function tareaEnFecha(tarea, fechaStr) { return (tarea.fecha_exacta || '').split(',').map(f => f.trim()).includes(fechaStr) }
   function tareasDeDia(fechaStr) {
     return todasLasTareas().filter(t => {
-      if (t.estado === 'completada' && !mostrarCompletadas && t.tarea_grupo_id !== 'postit') return false
+      if (t.estado === 'completada' && !mostrarCompletadas) return false
       if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
       if (busqueda && !t.nombre?.toLowerCase().includes(busqueda.toLowerCase())) return false
       if (filtroVencimiento === 'vencida' && !(t.fecha_limite && new Date(t.fecha_limite) < new Date())) return false
@@ -908,7 +908,7 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
   }
   function tareasBacklog() {
     return todasLasTareas().filter(t => {
-      if (t.estado === 'completada' && !mostrarCompletadas && t.tarea_grupo_id !== 'postit') return false
+      if (t.estado === 'completada' && !mostrarCompletadas) return false
       if (filtroEtiqueta && !(t.etiqueta && t.etiqueta.split(',').map(e => e.trim()).includes(filtroEtiqueta))) return false
       if (busqueda && !t.nombre?.toLowerCase().includes(busqueda.toLowerCase())) return false
       if (filtroVencimiento === 'vencida' && !(t.fecha_limite && new Date(t.fecha_limite) < new Date())) return false
