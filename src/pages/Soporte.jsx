@@ -553,7 +553,7 @@ export default function Soporte() {
       return d.split('-').reverse().join('/')
     }
     const colabRows = []
-    const soporteRows = []
+    const estructuraRows = []
     for (const t of tareas) {
       if (!t.id || t.id === 'eliminado') continue
       const proj = proyectosSoporte.find(p => p.id === t.proyecto_soporte_id)
@@ -562,11 +562,10 @@ export default function Soporte() {
       const asigs = (t.asignados || '').split(',').filter(Boolean).map(id => getNombreExp(id.trim())).join(', ')
       const fechaLim = formatFecha(t.fecha_limite)
       const fechaCrea = formatFecha(t.fecha_creacion)
-      if (proj && proj.para_quien) {
-        soporteRows.push({
-          'Para quién': proj.para_quien,
-          'Categoría': cat?.nombre || '',
-          'Proyecto': proj?.nombre || '',
+      const esColaboradores = cat?.nombre?.toLowerCase().includes('colabor')
+      if (esColaboradores) {
+        colabRows.push({
+          'Colaborador': proj?.nombre || '',
           'Subcarpeta': sub?.nombre || '',
           'Tarea / Acción': t.nombre,
           'Estado': t.estado,
@@ -575,8 +574,10 @@ export default function Soporte() {
           'Fecha creación': fechaCrea,
         })
       } else {
-        colabRows.push({
-          'Colaborador': proj?.nombre || cat?.nombre || '',
+        estructuraRows.push({
+          'Para quién': proj?.para_quien || '',
+          'Categoría': cat?.nombre || '',
+          'Proyecto': proj?.nombre || '',
           'Subcarpeta': sub?.nombre || '',
           'Tarea / Acción': t.nombre,
           'Estado': t.estado,
@@ -588,9 +589,9 @@ export default function Soporte() {
     }
     const wb = XLSX.utils.book_new()
     const wsColab = XLSX.utils.json_to_sheet(colabRows.length > 0 ? colabRows : [{ 'Colaborador': '', 'Subcarpeta': '', 'Tarea / Acción': '', 'Estado': '', 'Asignado a': '', 'Fecha límite': '', 'Fecha creación': '' }])
-    const wsSoporte = XLSX.utils.json_to_sheet(soporteRows.length > 0 ? soporteRows : [{ 'Para quién': '', 'Categoría': '', 'Proyecto': '', 'Subcarpeta': '', 'Tarea / Acción': '', 'Estado': '', 'Asignado a': '', 'Fecha límite': '', 'Fecha creación': '' }])
+    const wsEst = XLSX.utils.json_to_sheet(estructuraRows.length > 0 ? estructuraRows : [{ 'Para quién': '', 'Categoría': '', 'Proyecto': '', 'Subcarpeta': '', 'Tarea / Acción': '', 'Estado': '', 'Asignado a': '', 'Fecha límite': '', 'Fecha creación': '' }])
     XLSX.utils.book_append_sheet(wb, wsColab, 'Colaboradores')
-    XLSX.utils.book_append_sheet(wb, wsSoporte, 'Soporte')
+    XLSX.utils.book_append_sheet(wb, wsEst, 'Estructura')
     const hoy = new Date().toISOString().split('T')[0]
     XLSX.writeFile(wb, `soporte_${hoy}.xlsx`)
   }
