@@ -5,8 +5,10 @@ import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareas
 import { useDatos } from '../contexts/DatosContext'
 import Checklist from '../components/Checklist'
 import { guardarFechaPersonalEnPlanner, obtenerFechaPersonal } from '../services/plannerHelpers'
+import * as XLSX from 'xlsx'
 
 const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes']
+const DEPARTAMENTOS = ['Marketing', 'Comercial', 'Producción', 'I+D', 'Dirección']
 
 function Modal({ titulo, onClose, onSave, children }) {
   return (
@@ -352,7 +354,7 @@ export default function Soporte() {
   const [mostrarBuscador, setMostrarBuscador] = useState(false)
   const [resultadosBusqueda, setResultadosBusqueda] = useState([])
 
-  const [form, setForm] = useState({ nombre: '', descripcion: '' })
+  const [form, setForm] = useState({ nombre: '', descripcion: '', para_quien: '' })
   const [formTarea, setFormTarea] = useState({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
@@ -454,7 +456,7 @@ export default function Soporte() {
     setModalProyecto(null)
     setModalSubcarpeta(null)
     setModalTarea(null)
-    setForm({ nombre: '', descripcion: '' })
+    setForm({ nombre: '', descripcion: '', para_quien: '' })
     setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '' })
     await new Promise(r => setTimeout(r, 800))
     cargarDatos()
@@ -464,10 +466,10 @@ export default function Soporte() {
     await actualizarFila(hoja, editItem.id, fila, accessToken)
     await refrescar(hoja)
     if (editItem._tipo === 'categoria') setVistaCategoria({...editItem, nombre: form.nombre, descripcion: form.descripcion})
-    if (editItem._tipo === 'proyecto') setVistaProyecto({...editItem, nombre: form.nombre, descripcion: form.descripcion})
+    if (editItem._tipo === 'proyecto') setVistaProyecto({...editItem, nombre: form.nombre, descripcion: form.descripcion, para_quien: form.para_quien})
     if (editItem._tipo === 'subcarpeta') setVistaSubcarpeta({...editItem, nombre: form.nombre, descripcion: form.descripcion})
     setEditItem(null)
-    setForm({ nombre: '', descripcion: '' })
+    setForm({ nombre: '', descripcion: '', para_quien: '' })
     await new Promise(r => setTimeout(r, 800))
     cargarDatos()
   }
@@ -482,7 +484,7 @@ export default function Soporte() {
       await guardarFechaPersonalEnPlanner(editItem.id, 'soporte', fechaPersonal, usuario, accessToken, editItem.nombre)
     }
     setEditItem(null)
-    setForm({ nombre: '', descripcion: '' })
+    setForm({ nombre: '', descripcion: '', para_quien: '' })
     await refrescar('tareas_soporte')
     await refrescar('tareas_planner')
     await new Promise(r => setTimeout(r, 800))
@@ -501,7 +503,7 @@ export default function Soporte() {
       }
     }
     setModalCategoria(false); setModalProyecto(null); setModalSubcarpeta(null); setModalTarea(null)
-    setForm({ nombre: '', descripcion: '' })
+    setForm({ nombre: '', descripcion: '', para_quien: '' })
     setFormTarea({ nombre: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' })
     await refrescar('tareas_planner'); cargarDatos()
   }
@@ -539,6 +541,60 @@ export default function Soporte() {
     return u ? (u.nombre ? u.nombre.split(' ')[0] : id) : id
   }
 
+  function exportarExcel() {
+    const NOMBRES_USR = { '1': 'Lorenzo', '2': 'Ahlam', '3': 'Jannet' }
+    function getNombreExp(id) {
+      const u = usuarios.find(u => u.id === String(id))
+      return u ? (u.nombre ? u.nombre.split(' ')[0] : id) : (NOMBRES_USR[String(id)] || id)
+    }
+    function formatFecha(iso) {
+      if (!iso) return ''
+      const d = iso.split('T')[0]
+      return d.split('-').reverse().join('/')
+    }
+    const colabRows = []
+    const soporteRows = []
+    for (const t of tareas) {
+      if (!t.id || t.id === 'eliminado') continue
+      const proj = proyectosSoporte.find(p => p.id === t.proyecto_soporte_id)
+      const sub = subcarpetas.find(s => s.id === t.subcarpeta_id)
+      const cat = categorias.find(c => c.id === t.categoria_id)
+      const asigs = (t.asignados || '').split(',').filter(Boolean).map(id => getNombreExp(id.trim())).join(', ')
+      const fechaLim = formatFecha(t.fecha_limite)
+      const fechaCrea = formatFecha(t.fecha_creacion)
+      if (proj && proj.para_quien) {
+        soporteRows.push({
+          'Para quién': proj.para_quien,
+          'Categoría': cat?.nombre || '',
+          'Proyecto': proj?.nombre || '',
+          'Subcarpeta': sub?.nombre || '',
+          'Tarea / Acción': t.nombre,
+          'Estado': t.estado,
+          'Asignado a': asigs,
+          'Fecha límite': fechaLim,
+          'Fecha creación': fechaCrea,
+        })
+      } else {
+        colabRows.push({
+          'Colaborador': proj?.nombre || cat?.nombre || '',
+          'Subcarpeta': sub?.nombre || '',
+          'Tarea / Acción': t.nombre,
+          'Estado': t.estado,
+          'Asignado a': asigs,
+          'Fecha límite': fechaLim,
+          'Fecha creación': fechaCrea,
+        })
+      }
+    }
+    const wb = XLSX.utils.book_new()
+    const wsColab = XLSX.utils.json_to_sheet(colabRows.length > 0 ? colabRows : [{ 'Colaborador': '', 'Subcarpeta': '', 'Tarea / Acción': '', 'Estado': '', 'Asignado a': '', 'Fecha límite': '', 'Fecha creación': '' }])
+    const wsSoporte = XLSX.utils.json_to_sheet(soporteRows.length > 0 ? soporteRows : [{ 'Para quién': '', 'Categoría': '', 'Proyecto': '', 'Subcarpeta': '', 'Tarea / Acción': '', 'Estado': '', 'Asignado a': '', 'Fecha límite': '', 'Fecha creación': '' }])
+    XLSX.utils.book_append_sheet(wb, wsColab, 'Colaboradores')
+    XLSX.utils.book_append_sheet(wb, wsSoporte, 'Soporte')
+    const hoy = new Date().toISOString().split('T')[0]
+    XLSX.writeFile(wb, `soporte_${hoy}.xlsx`)
+  }
+
   function buscarEnTodo(q) {
     if (!q || q.length < 2) return []
     const ql = q.toLowerCase()
@@ -566,13 +622,6 @@ export default function Soporte() {
   const tareasDirectasCategoria = (catId) => tareas.filter(t => t.categoria_id === catId && !t.proyecto_soporte_id)
   const tareasDirectasProyecto = (pId) => tareas.filter(t => t.proyecto_soporte_id === pId && !t.subcarpeta_id)
   const tareasDirectasSubcarpeta = (sId) => tareas.filter(t => t.subcarpeta_id === sId)
-  function esCompletada(t) { return t.estado === 'completada' || t.estado === 'completado' }
-  function subcarpetaCompletada(sId) { const ts = tareasDirectasSubcarpeta(sId); return ts.length > 0 && ts.every(esCompletada) }
-  function proyectoCompletado(pId) {
-    const subs = subcarpetasDeProyecto(pId); const dir = tareasDirectasProyecto(pId)
-    if (subs.length === 0 && dir.length === 0) return false
-    return subs.every(s => subcarpetaCompletada(s.id)) && (dir.length === 0 || dir.every(esCompletada))
-  }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
@@ -639,7 +688,7 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crearTareaConFechaPersonal('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', modalTarea.subcarpeta_id || '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', ''], formTarea.asignados, formTarea.nombre, formTarea.fechas_exactas || '', 'soporte')
           }} />}
-        {editItem && editItem._tipo === 'proyecto' && <Modal titulo="Editar proyecto" onClose={() => setEditItem(null)} onSave={() => guardarEdit('proyectos_soporte', [editItem.id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
+        {editItem && editItem._tipo === 'proyecto' && <Modal titulo="Editar proyecto" onClose={() => setEditItem(null)} onSave={() => guardarEdit('proyectos_soporte', [editItem.id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion, form.para_quien || ''])}><FormNombre form={form} setForm={setForm} mostrarParaQuien /></Modal>}
         {editItem && editItem._tipo === 'subcarpeta' && <Modal titulo="Editar subcarpeta" onClose={() => setEditItem(null)} onSave={() => guardarEdit('subcarpetas_soporte', [editItem.id, editItem.proyecto_soporte_id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
         {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEditTareaConFecha} usuario={usuario} accessToken={accessToken} tareasPlanner={tareasPlanner} />}
         {modalCompletar && <ModalCompletarTarea tarea={modalCompletar} onCancelar={() => setModalCompletar(null)} onConfirmar={(hi, hf, dur) => completarTareaConHoras(modalCompletar, hi, hf, dur)} />}
@@ -661,11 +710,14 @@ export default function Soporte() {
             <button onClick={() => setVistaProyecto(null)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Volver</button>
             <div>
               <Breadcrumb items={[cat?.nombre, vistaProyecto.nombre].filter(Boolean)} />
-              <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaProyecto.nombre}</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h1 style={{ margin: 0, fontSize: '20px' }}>{vistaProyecto.nombre}</h1>
+                {vistaProyecto.para_quien && <span style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: '12px', padding: '2px 10px', fontSize: '12px', fontWeight: '600' }}>🏢 {vistaProyecto.para_quien}</span>}
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <Btn tipo="editar" onClick={() => { setEditItem({...vistaProyecto, _tipo: 'proyecto'}); setForm({ nombre: vistaProyecto.nombre, descripcion: vistaProyecto.descripcion || '' }) }}>✏️ Editar</Btn>
+            <Btn tipo="editar" onClick={() => { setEditItem({...vistaProyecto, _tipo: 'proyecto'}); setForm({ nombre: vistaProyecto.nombre, descripcion: vistaProyecto.descripcion || '', para_quien: vistaProyecto.para_quien || '' }) }}>✏️ Editar</Btn>
             <Btn tipo="eliminar" onClick={() => setConfirmEliminar({ hoja: 'proyectos_soporte', item: vistaProyecto })}>🗑 Eliminar</Btn>
             <Btn tipo="añadir" onClick={() => setModalSubcarpeta({ proyecto_soporte_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id })}>+ Subcarpeta</Btn>
             <button onClick={() => setModalTarea({ proyecto_soporte_id: vistaProyecto.id, categoria_id: vistaProyecto.categoria_id })} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Tarea directa</button>
@@ -673,23 +725,20 @@ export default function Soporte() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {subcarpetasAqui.map(sub => { const compSub = subcarpetaCompletada(sub.id); return (
-            <div key={sub.id} onClick={() => setVistaSubcarpeta(sub)} style={{ background: compSub ? '#f9fafb' : 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${compSub ? '#86efac' : '#3b82f6'}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseOver={e => e.currentTarget.style.background = compSub ? '#f3f4f6' : '#f0f9ff'}
-              onMouseOut={e => e.currentTarget.style.background = compSub ? '#f9fafb' : 'white'}>
+          {subcarpetasAqui.map(sub => (
+            <div key={sub.id} onClick={() => setVistaSubcarpeta(sub)} style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #3b82f6', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              onMouseOver={e => e.currentTarget.style.background = '#f0f9ff'}
+              onMouseOut={e => e.currentTarget.style.background = 'white'}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <p style={{ margin: 0, fontWeight: '600', fontSize: '15px', color: compSub ? '#9ca3af' : undefined }}>📂 {sub.nombre}</p>
-                  {compSub && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px' }}>Completado</span>}
-                </div>
+                <p style={{ margin: 0, fontWeight: '600', fontSize: '15px' }}>📂 {sub.nombre}</p>
                 {sub.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{sub.descripcion}</p>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: '#888' }}>{tareasDirectasSubcarpeta(sub.id).length} tareas</span>
-                <span style={{ color: compSub ? '#9ca3af' : '#1d4ed8' }}>→</span>
+                <span style={{ color: '#1d4ed8' }}>→</span>
               </div>
             </div>
-          )})}
+          ))}
           {tareasDirectas.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <p style={{ fontSize: '13px', color: '#888', fontWeight: '600', marginBottom: '8px' }}>Tareas directas:</p>
@@ -706,7 +755,7 @@ export default function Soporte() {
             const diaRec = [formTarea.dia_recomendado, formTarea.fecha_recomendada].filter(Boolean).join(' ')
             crearTareaConFechaPersonal('tareas_soporte', [id, modalTarea.categoria_id || '', modalTarea.proyecto_soporte_id || '', '', formTarea.nombre, formTarea.asignados.join(','), 'por_asignar', '', diaRec, formTarea.fecha_limite, 'pendiente', new Date().toISOString(), '', formTarea.fecha_limite || '', formTarea.descripcion || '', ''], formTarea.asignados, formTarea.nombre, formTarea.fechas_exactas || '', 'soporte')
           }} />}
-        {editItem && editItem._tipo === 'proyecto' && <Modal titulo="Editar proyecto" onClose={() => setEditItem(null)} onSave={() => guardarEdit('proyectos_soporte', [editItem.id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion])}><FormNombre form={form} setForm={setForm} /></Modal>}
+        {editItem && editItem._tipo === 'proyecto' && <Modal titulo="Editar proyecto" onClose={() => setEditItem(null)} onSave={() => guardarEdit('proyectos_soporte', [editItem.id, editItem.categoria_id, form.nombre, form.descripcion, editItem.fecha_creacion, form.para_quien || ''])}><FormNombre form={form} setForm={setForm} mostrarParaQuien /></Modal>}
         {modalEvento && <ModalEvento titulo='Nuevo evento' contexto={modalEvento.contexto} origenId={modalEvento.origenId} origenTipo={modalEvento.origenTipo} usuario={usuario} accessToken={accessToken} onClose={() => setModalEvento(null)} onSave={async (fila) => { await escribirFila('eventos', fila, accessToken); cargarDatos() }} />}
         {editItem && editItem._tipo === 'tarea' && <ModalEditTarea editItem={editItem} setEditItem={setEditItem} usuarios={usuarios} guardarEdit={guardarEditTareaConFecha} usuario={usuario} accessToken={accessToken} tareasPlanner={tareasPlanner} />}
         {modalCompletar && <ModalCompletarTarea tarea={modalCompletar} onCancelar={() => setModalCompletar(null)} onConfirmar={(hi, hf, dur) => completarTareaConHoras(modalCompletar, hi, hf, dur)} />}
@@ -735,20 +784,18 @@ export default function Soporte() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {proyectosAqui.map(proy => { const compProy = proyectoCompletado(proy.id); return (
-            <div key={proy.id} onClick={() => setVistaProyecto(proy)} style={{ background: compProy ? '#f9fafb' : 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${compProy ? '#86efac' : '#3b82f6'}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseOver={e => e.currentTarget.style.background = compProy ? '#f3f4f6' : '#f0f9ff'}
-              onMouseOut={e => e.currentTarget.style.background = compProy ? '#f9fafb' : 'white'}>
+          {proyectosAqui.map(proy => (
+            <div key={proy.id} onClick={() => setVistaProyecto(proy)} style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #3b82f6', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              onMouseOver={e => e.currentTarget.style.background = '#f0f9ff'}
+              onMouseOut={e => e.currentTarget.style.background = 'white'}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <p style={{ margin: 0, fontWeight: '600', fontSize: '15px', color: compProy ? '#9ca3af' : undefined }}>📁 {proy.nombre}</p>
-                  {compProy && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px' }}>Completado</span>}
-                </div>
+                <p style={{ margin: 0, fontWeight: '600', fontSize: '15px' }}>📁 {proy.nombre}</p>
+                {proy.para_quien && <span style={{ display: 'inline-block', background: '#eff6ff', color: '#1d4ed8', borderRadius: '12px', padding: '1px 8px', fontSize: '11px', fontWeight: '600', marginTop: '3px' }}>🏢 {proy.para_quien}</span>}
                 {proy.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{proy.descripcion}</p>}
               </div>
-              <span style={{ color: compProy ? '#9ca3af' : '#1d4ed8' }}>→</span>
+              <span style={{ color: '#1d4ed8' }}>→</span>
             </div>
-          )})}
+          ))}
           {tareasDirectas.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <p style={{ fontSize: '13px', color: '#888', fontWeight: '600', marginBottom: '8px' }}>Tareas directas:</p>
@@ -757,7 +804,7 @@ export default function Soporte() {
           )}
           {proyectosAqui.length === 0 && tareasDirectas.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}><p>Sin contenido aún.</p></div>}
         </div>
-        {modalProyecto && <Modal titulo="Nuevo proyecto de soporte" onClose={() => setModalProyecto(null)} onSave={() => { const id = Date.now().toString(); crear('proyectos_soporte', [id, modalProyecto.categoria_id, form.nombre, form.descripcion, new Date().toISOString()]) }}><FormNombre form={form} setForm={setForm} /></Modal>}
+        {modalProyecto && <Modal titulo="Nuevo proyecto de soporte" onClose={() => setModalProyecto(null)} onSave={() => { const id = Date.now().toString(); crear('proyectos_soporte', [id, modalProyecto.categoria_id, form.nombre, form.descripcion, new Date().toISOString(), form.para_quien || '']) }}><FormNombre form={form} setForm={setForm} mostrarParaQuien /></Modal>}
         {modalTarea && <ModalTarea titulo="Nueva tarea directa" contexto={vistaCategoria.nombre} formTarea={formTarea} setFormTarea={setFormTarea} usuarios={usuarios}
           onClose={() => { setModalTarea(null); setFormTarea({ nombre: '', descripcion: '', asignados: [], dia_recomendado: '', fecha_recomendada: '', fecha_limite: '', fechas_exactas: '' }) }}
           onSave={() => {
@@ -788,6 +835,7 @@ export default function Soporte() {
             color="#3b82f6"
             placeholder="Buscar en soporte..."
           />
+          <button onClick={exportarExcel} style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>⬇ Exportar Excel</button>
           <button onClick={() => setModalCategoria(true)} style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nueva categoría</button>
         </div>
       </div>
@@ -810,11 +858,52 @@ export default function Soporte() {
   )
 }
 
-function FormNombre({ form, setForm }) {
+function FormNombre({ form, setForm, mostrarParaQuien = false }) {
+  const [nuevoDepto, setNuevoDepto] = useState('')
+  const [mostrarNuevo, setMostrarNuevo] = useState(false)
+  const opciones = [...DEPARTAMENTOS]
+  if (form.para_quien && !DEPARTAMENTOS.includes(form.para_quien)) opciones.push(form.para_quien)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <input placeholder="Nombre *" value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }} />
       <textarea placeholder="Descripción (opcional)" value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', height: '80px', resize: 'none' }} />
+      {mostrarParaQuien && (
+        <div>
+          <label style={{ fontSize: '13px', fontWeight: '600', color: '#555', display: 'block', marginBottom: '6px' }}>Para quién (departamento):</label>
+          <select
+            value={mostrarNuevo ? '__nuevo__' : (form.para_quien || '')}
+            onChange={e => {
+              if (e.target.value === '__nuevo__') { setMostrarNuevo(true) }
+              else { setMostrarNuevo(false); setForm({...form, para_quien: e.target.value}) }
+            }}
+            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', background: 'white' }}>
+            <option value="">— Sin asignar —</option>
+            {opciones.map(d => <option key={d} value={d}>{d}</option>)}
+            <option value="__nuevo__">+ Añadir nuevo...</option>
+          </select>
+          {mostrarNuevo && (
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <input
+                placeholder="Nombre del departamento"
+                value={nuevoDepto}
+                onChange={e => setNuevoDepto(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && nuevoDepto.trim()) { setForm({...form, para_quien: nuevoDepto.trim()}); setNuevoDepto(''); setMostrarNuevo(false) } }}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #1d4ed8', fontSize: '14px' }}
+                autoFocus
+              />
+              <button
+                onClick={() => { if (nuevoDepto.trim()) { setForm({...form, para_quien: nuevoDepto.trim()}); setNuevoDepto(''); setMostrarNuevo(false) } }}
+                style={{ padding: '10px 14px', borderRadius: '8px', background: '#1d4ed8', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '700' }}>✓</button>
+              <button
+                onClick={() => { setMostrarNuevo(false); setNuevoDepto('') }}
+                style={{ padding: '10px 14px', borderRadius: '8px', background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer' }}>✕</button>
+            </div>
+          )}
+          {form.para_quien && !mostrarNuevo && (
+            <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#1d4ed8', fontWeight: '600' }}>✓ Asignado a: {form.para_quien}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -955,15 +1044,14 @@ function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConf
         const asignados = tarea.asignados ? tarea.asignados.split(',').filter(Boolean) : []
         const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && tarea.estado !== 'completada'
         const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
-        const comp = tarea.estado === 'completada' || tarea.estado === 'completado'
         return (
-          <div key={tarea.id} style={{ background: comp ? '#f9fafb' : 'white', borderRadius: '10px', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${comp ? '#86efac' : vencida ? '#dc2626' : proxima ? '#f59e0b' : '#3b82f6'}` }}>
+          <div key={tarea.id} style={{ background: 'white', borderRadius: '10px', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : '#3b82f6'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => onVerDetalle(tarea)}>
-                <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: comp ? 'line-through' : 'none', color: comp ? '#9ca3af' : undefined }}>{tarea.nombre}</p>
-                {tarea.descripcion && <p style={{ margin: '0 0 4px', fontSize: '12px', color: comp ? '#9ca3af' : '#888' }}>{tarea.descripcion.slice(0, 80)}{tarea.descripcion.length > 80 ? '...' : ''}</p>}
+                <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none' }}>{tarea.nombre}</p>
+                {tarea.descripcion && <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#888' }}>{tarea.descripcion.slice(0, 80)}{tarea.descripcion.length > 80 ? '...' : ''}</p>}
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {asignados.map(id => <span key={id} style={{ background: comp ? '#f3f4f6' : '#eff6ff', color: comp ? '#9ca3af' : '#1d4ed8', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
+                  {asignados.map(id => <span key={id} style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
                   {tarea.dia_recomendado && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>📌 {tarea.dia_recomendado}</span>}
                   {tarea.fecha_limite && <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>{vencida ? '⚠️' : '📅'} {tarea.fecha_limite}</span>}
                 </div>
@@ -971,7 +1059,7 @@ function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConf
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button onClick={e => { e.stopPropagation(); setEditItem({...tarea, _tipo: 'tarea'}); setForm({ nombre: tarea.nombre, descripcion: tarea.descripcion || '' }) }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>✏️</button>
                 <button onClick={e => { e.stopPropagation(); setConfirmEliminar({ hoja: 'tareas_soporte', item: tarea }) }} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>🗑</button>
-                <span style={{ background: comp ? '#dcfce7' : '#f3f4f6', color: comp ? '#166534' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{comp ? 'Completado' : (tarea.estado || 'pendiente')}</span>
+                <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{tarea.estado || 'pendiente'}</span>
               </div>
             </div>
           </div>
