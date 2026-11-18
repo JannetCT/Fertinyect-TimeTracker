@@ -1051,7 +1051,7 @@ export default function Proyectos() {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
                         <span style={{ background: '#f0fdf4', color: '#166534', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #bbf7d0' }}>TAREA DIRECTA</span>
-                        <span style={{ fontSize: '13px', fontWeight: '600', textDecoration: completada ? 'line-through' : 'none', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
                       </div>
                       <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
@@ -1084,7 +1084,7 @@ export default function Proyectos() {
                   <div key={accion.id} style={{ background: '#f8f9fa', borderRadius: '8px', padding: '14px', borderLeft: `3px solid ${vistaProyecto.color}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }} onClick={() => toggleColapso('accion_' + accion.id)}>
                       <div>
-                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}><span style={{ fontSize: '11px', color: '#6b7280' }}>{estaExpandido('accion_' + accion.id) ? '▼' : '▶'}</span><span style={{ color: accionCompletada(accion.id) ? '#9ca3af' : '#373A36' }}>{accion.nombre}</span>{accion.responsable && <span style={{ fontSize: '10px', color: '#f97316', fontWeight: '600', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '4px', padding: '1px 6px' }}>{accion.responsable}</span>}{accionCompletada(accion.id) && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}</p>
+                        <p style={{ margin: 0, fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}><span style={{ fontSize: '11px', color: '#6b7280' }}>{estaExpandido('accion_' + accion.id) ? '▼' : '▶'}</span><span style={{ background: '#fff7ed', color: '#c2410c', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #fed7aa' }}>ACCIÓN</span><span style={{ color: accionCompletada(accion.id) ? '#9ca3af' : '#373A36' }}>{accion.nombre}</span>{accion.responsable && <span style={{ fontSize: '10px', color: '#f97316', fontWeight: '600', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '4px', padding: '1px 6px' }}>{accion.responsable}</span>}{accionCompletada(accion.id) && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}</p>
                         {accion.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{accion.descripcion}</p>}
                         {(accion.fecha_inicio || accion.fecha_fin) && (
                           <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6b7280' }}>
@@ -1128,7 +1128,7 @@ export default function Proyectos() {
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
                               <span style={{ background: '#f3f4f6', color: '#374151', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #e5e7eb' }}>TAREA</span>
-                              <span style={{ fontSize: '13px', fontWeight: '600', textDecoration: t.estado === 'completada' ? 'line-through' : 'none', color: t.estado === 'completada' ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
+                              <span style={{ fontSize: '13px', fontWeight: '600', color: t.estado === 'completada' ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
                             </div>
                             <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado} {t.fecha_limite ? `· 📅 ${t.fecha_limite}` : ''}</p>
                           </div>
@@ -1149,7 +1149,7 @@ export default function Proyectos() {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
                         <span style={{ background: '#f3f4f6', color: '#374151', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #e5e7eb' }}>TAREA</span>
-                        <span style={{ fontSize: '13px', fontWeight: '600', textDecoration: completada ? 'line-through' : 'none', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
                       </div>
                       <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
