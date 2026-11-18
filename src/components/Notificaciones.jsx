@@ -341,15 +341,6 @@ export default function Notificaciones() {
           </span>
         )}
       </button>
-      <button onClick={() => { setVistaActiva('alertas'); setAbierto(!abierto) }} title="Notificaciones"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', position: 'relative', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        🔔
-        {totalUrgentes > 0 && (
-          <span style={{ position: 'absolute', top: '-2px', right: '-4px', background: '#dc2626', color: 'white', borderRadius: '50%', fontSize: '10px', fontWeight: '700', minWidth: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '0 3px' }}>
-            {totalUrgentes}
-          </span>
-        )}
-      </button>
 
       {abierto && (
         <div style={{

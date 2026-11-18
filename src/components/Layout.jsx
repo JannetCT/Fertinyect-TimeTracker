@@ -1,6 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import logo from '../assets/logoblanco.png'
+import Notificaciones from './Notificaciones'
 
 
 const NAV_ITEMS = [
@@ -68,6 +69,10 @@ function Layout({ usuario, children }) {
               <p className="user-name">{usuario.nombre}</p>
               <p className="user-role">{usuario.rol === 'admin' ? 'Director' : 'Investigadora'}</p>
             </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 6px' }}>
+            <Notificaciones />
           </div>
 
           <button onClick={handleLogout} style={{ width: '100%', padding: '8px', background: '#1f2937', color: '#9ca3af', border: '1px solid #374151', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
