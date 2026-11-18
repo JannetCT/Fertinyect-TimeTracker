@@ -3,6 +3,56 @@ import { useAuth } from '../contexts/AuthContext'
 import { leerHoja, escribirFila, actualizarFila } from '../services/googleSheets'
 
 const NOMBRES = { '1': 'Lorenzo', '2': 'Ahlam', '3': 'Jannet' }
+// Colores iguales que el calendario grupal
+const COLORES_USUARIO = { '1': '#00953B', '2': '#ec4899', '3': '#f97316' } // Lorenzo=verde, Ahlam=rosa, Jannet=naranja
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+function formatMes(key) {
+  const [year, month] = key.split('-')
+  return `${MESES[parseInt(month)-1]} ${year}`
+}
+
+function agruparPorMes(actas) {
+  const grupos = {}
+  actas.forEach(acta => {
+    const fecha = acta.fecha || acta.fecha_creacion || ''
+    const key = fecha.slice(0, 7)
+    if (!grupos[key]) grupos[key] = []
+    grupos[key].push(acta)
+  })
+  return Object.entries(grupos).sort((a, b) => b[0].localeCompare(a[0]))
+}
+
+function getLunesViernes(fechaStr) {
+  const fecha = new Date(fechaStr + 'T12:00:00')
+  const dia = fecha.getDay()
+  const lunes = new Date(fecha)
+  lunes.setDate(fecha.getDate() - (dia === 0 ? 6 : dia - 1))
+  const viernes = new Date(lunes)
+  viernes.setDate(lunes.getDate() + 4)
+  return { lunes, viernes }
+}
+
+function semanaKey(fechaStr) {
+  const { lunes } = getLunesViernes(fechaStr)
+  return lunes.toISOString().slice(0, 10)
+}
+
+function semanaLabel(fechaStr) {
+  const { lunes, viernes } = getLunesViernes(fechaStr)
+  const mes = MESES[viernes.getMonth()].slice(0, 3).toLowerCase()
+  return `Semana ${lunes.getDate()}–${viernes.getDate()} ${mes}`
+}
+
+function agruparPorSemana(actas) {
+  const grupos = {}
+  actas.forEach(acta => {
+    const key = semanaKey(acta.fecha || acta.fecha_creacion || '')
+    if (!grupos[key]) grupos[key] = []
+    grupos[key].push(acta)
+  })
+  return Object.entries(grupos).sort((a, b) => b[0].localeCompare(a[0]))
+}
 
 export default function Actas() {
   const { usuario, accessToken } = useAuth()
@@ -14,6 +64,7 @@ export default function Actas() {
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [vista, setVista] = useState('lista')
+  const [gruposAbiertos, setGruposAbiertos] = useState([])
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
 
@@ -27,18 +78,26 @@ export default function Actas() {
         leerHoja('tareas_direccion', accessToken),
       ])
       setEventos(ev.filter(e => e.id !== 'eliminado' && e.estado !== 'completado' && e.usuario_id && e.usuario_id.split(',').map(s => s.trim()).includes(String(usuario.id))).sort((a,b) => (b.fecha_exacta||'') > (a.fecha_exacta||'') ? 1 : -1))
-      setActas(ac.filter(a => a.id !== 'eliminado').sort((a,b) => (b.fecha_creacion||'') > (a.fecha_creacion||'') ? 1 : -1))
-      // Guardar TODOS los eventos para buscar nombres en actas guardadas
+      const actasFiltradas = ac.filter(a => a.id !== 'eliminado').sort((a,b) => {
+        const fa = a.fecha_modificacion || a.fecha_creacion || ''
+        const fb = b.fecha_modificacion || b.fecha_creacion || ''
+        return fb > fa ? 1 : -1
+      })
+      setActas(actasFiltradas)
+      // Abrir el grupo del mes más reciente por defecto
+      const grupos = agruparPorMes(actasFiltradas)
+      if (grupos.length > 0) setGruposAbiertos([grupos[0][0]])
       setTodosEventos(ev.filter(e => e.id !== 'eliminado'))
       const activas = [
-        ...t.filter(x => x.id !== 'eliminado' && x.estado !== 'completada' && x.estado !== 'completado').map(x => ({ id: x.id, nombre: x.nombre, origen: 'Proyectos' })),
-        ...ts.filter(x => x.id !== 'eliminado' && x.estado !== 'completada' && x.estado !== 'completado').map(x => ({ id: x.id, nombre: x.nombre, origen: 'Soporte' })),
-        ...td.filter(x => x.id !== 'eliminado' && x.estado !== 'completada' && x.estado !== 'completado').map(x => ({ id: x.id, nombre: x.nombre, origen: 'Dirección' })),
+        ...t.filter(x => x.id !== 'eliminado' && x.estado !== 'completada' && x.estado !== 'completado').map(x => ({ id: x.id, nombre: x.nombre, origen: 'Proyectos', asignados: x.asignados || '' })),
+        ...ts.filter(x => x.id !== 'eliminado' && x.estado !== 'completada' && x.estado !== 'completado').map(x => ({ id: x.id, nombre: x.nombre, origen: 'Soporte', asignados: x.asignados || '' })),
+        ...td.filter(x => x.id !== 'eliminado' && x.estado !== 'completada' && x.estado !== 'completado').map(x => ({ id: x.id, nombre: x.nombre, origen: 'Dirección', asignados: x.asignados || '' })),
       ].sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es'))
       setTareasActivas(activas)
     } catch (err) { console.error(err) }
     finally { setCargando(false) }
   }
+
   function crearActa(evento) {
     const existente = actas.find(a => a.evento_id === evento.id)
     if (existente) { abrirActa(existente); return }
@@ -50,6 +109,7 @@ export default function Actas() {
       participantes,
       agenda: '',
       fecha_creacion: new Date().toISOString(),
+      fecha_modificacion: '',
       _evento: evento,
       _nueva: true,
       _secciones: [{ id: Date.now().toString(), titulo: '', contenido: '' }]
@@ -71,8 +131,10 @@ export default function Actas() {
     try {
       const secciones = actaActual._secciones || []
       const acuerdosStr = JSON.stringify(secciones)
-      const fila = [actaActual.id, actaActual.evento_id || '', actaActual.fecha, actaActual.participantes, actaActual.agenda || '', acuerdosStr, actaActual.fecha_creacion || new Date().toISOString()]
+      const ahora = new Date().toISOString()
       const existe = actas.find(a => a.id === actaActual.id)
+      const fechaMod = existe ? ahora : ''
+      const fila = [actaActual.id, actaActual.evento_id || '', actaActual.fecha, actaActual.participantes, actaActual.agenda || '', acuerdosStr, actaActual.fecha_creacion || ahora, fechaMod]
       if (existe) await actualizarFila('actas', actaActual.id, fila, accessToken)
       else await escribirFila('actas', fila, accessToken)
       await cargarDatos()
@@ -114,6 +176,10 @@ export default function Actas() {
   function removeSeccion(idx) {
     const secciones = (actaActual._secciones || []).filter((_, i) => i !== idx)
     setActaActual({ ...actaActual, _secciones: secciones.length > 0 ? secciones : [{ id: Date.now().toString(), titulo: '', contenido: '' }] })
+  }
+
+  function toggleGrupo(key) {
+    setGruposAbiertos(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
   }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
@@ -158,11 +224,16 @@ export default function Actas() {
                 <SeccionActa key={s.id} seccion={s} idx={idx} tareasActivas={tareasActivas} onUpdate={(campo, valor) => updateSeccion(idx, campo, valor)} onRemove={secciones.length > 1 ? () => removeSeccion(idx) : null} />
               ))}
             </div>
+            {/* Botón añadir al final para no tener que subir */}
+            <button onClick={addSeccion} style={{ marginTop: '12px', width: '100%', padding: '10px', borderRadius: '8px', border: '2px dashed #d1fae5', background: '#f0fdf4', color: '#00953B', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>+ Añadir punto al final</button>
           </div>
         </div>
       </div>
     )
   }
+
+  const gruposMes = agruparPorMes(actas)
+  const mesCurso = new Date().toISOString().slice(0, 7)
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
@@ -180,21 +251,66 @@ export default function Actas() {
             </div>
           ))}
         </div>
+
         <div>
           <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Actas guardadas</h3>
           {actas.length === 0 && <p style={{ color: '#9ca3af', fontSize: '14px' }}>Aún no hay actas</p>}
-          {actas.map(acta => (
-            <div key={acta.id} style={{ background: 'white', borderRadius: '10px', padding: '14px 16px', marginBottom: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #00953B', cursor: 'pointer', position: 'relative' }}
-              onClick={() => abrirActa(acta)} onMouseOver={e => e.currentTarget.style.background='#f0fdf4'} onMouseOut={e => e.currentTarget.style.background='white'}>
-              <button onClick={async e => { e.stopPropagation(); if(confirm('¿Eliminar esta acta?')) { await actualizarFila('actas', acta.id, ['eliminado', acta.evento_id||'', acta.fecha, acta.participantes, acta.agenda||'', acta.acuerdos||'', acta.fecha_creacion||''], accessToken); cargarDatos() } }}
-                style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px', opacity: 0.4 }}
-                onMouseOver={e=>e.target.style.opacity='1'} onMouseOut={e=>e.target.style.opacity='0.4'}>🗑</button>
-              <p style={{ margin: '0 0 4px', fontWeight: '600', fontSize: '14px' }}>{acta.fecha} — {todosEventos.find(e => e.id === acta.evento_id)?.titulo || eventos.find(e => e.id === acta.evento_id)?.titulo || 'Reunión'}</p>
-              <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>{acta.participantes}</p>
-            </div>
-          ))}
+          {gruposMes.map(([key, actasGrupo]) => {
+            const abierto = gruposAbiertos.includes(key)
+            const esMesCurso = key === mesCurso
+            const semanas = esMesCurso ? agruparPorSemana(actasGrupo) : null
+            return (
+              <div key={key} style={{ marginBottom: '10px' }}>
+                <button
+                  onClick={() => toggleGrupo(key)}
+                  style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: abierto ? '#f0fdf4' : '#f9fafb', border: '1px solid', borderColor: abierto ? '#86efac' : '#e5e7eb', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '13px', color: abierto ? '#166534' : '#6b7280' }}>
+                  <span>{formatMes(key)}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ background: abierto ? '#dcfce7' : '#f3f4f6', color: abierto ? '#166534' : '#6b7280', borderRadius: '20px', padding: '1px 8px', fontSize: '12px' }}>{actasGrupo.length}</span>
+                    <span style={{ fontSize: '12px' }}>{abierto ? '▲' : '▼'}</span>
+                  </span>
+                </button>
+                {abierto && (
+                  <div style={{ marginTop: '6px' }}>
+                    {esMesCurso ? (
+                      // Mes actual: agrupado por semanas
+                      semanas.map(([semKey, actasSem]) => (
+                        <div key={semKey} style={{ marginBottom: '8px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '4px 4px 4px 8px', borderLeft: '2px solid #d1fae5' }}>
+                            {semanaLabel(actasSem[0].fecha || actasSem[0].fecha_creacion || semKey)}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                            {actasSem.map(acta => <TarjetaActa key={acta.id} acta={acta} todosEventos={todosEventos} eventos={eventos} onAbrir={abrirActa} onEliminar={async () => { await actualizarFila('actas', acta.id, ['eliminado', acta.evento_id||'', acta.fecha, acta.participantes, acta.agenda||'', acta.acuerdos||'', acta.fecha_creacion||'', acta.fecha_modificacion||''], accessToken); cargarDatos() }} />)}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      // Meses anteriores: lista plana
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {actasGrupo.map(acta => <TarjetaActa key={acta.id} acta={acta} todosEventos={todosEventos} eventos={eventos} onAbrir={abrirActa} onEliminar={async () => { await actualizarFila('actas', acta.id, ['eliminado', acta.evento_id||'', acta.fecha, acta.participantes, acta.agenda||'', acta.acuerdos||'', acta.fecha_creacion||'', acta.fecha_modificacion||''], accessToken); cargarDatos() }} />)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
+    </div>
+  )
+}
+
+function TarjetaActa({ acta, todosEventos, eventos, onAbrir, onEliminar }) {
+  return (
+    <div style={{ background: 'white', borderRadius: '10px', padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #00953B', cursor: 'pointer', position: 'relative' }}
+      onClick={() => onAbrir(acta)} onMouseOver={e => e.currentTarget.style.background='#f0fdf4'} onMouseOut={e => e.currentTarget.style.background='white'}>
+      <button onClick={async e => { e.stopPropagation(); if(confirm('¿Eliminar esta acta?')) onEliminar() }}
+        style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px', opacity: 0.4 }}
+        onMouseOver={e=>e.target.style.opacity='1'} onMouseOut={e=>e.target.style.opacity='0.4'}>🗑</button>
+      <p style={{ margin: '0 0 4px', fontWeight: '600', fontSize: '14px' }}>{acta.fecha} — {todosEventos.find(e => e.id === acta.evento_id)?.titulo || eventos.find(e => e.id === acta.evento_id)?.titulo || 'Reunión'}</p>
+      <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>{acta.participantes}</p>
+      {acta.fecha_modificacion && <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>Actualizado: {acta.fecha_modificacion.slice(0,10)}</p>}
     </div>
   )
 }
@@ -221,14 +337,26 @@ function SeccionActa({ seccion, idx, tareasActivas, onUpdate, onRemove }) {
         />
         {mostrarDrop && filtradas.length > 0 && (
           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 50, maxHeight: '200px', overflowY: 'auto', marginTop: '4px' }}>
-            {filtradas.map(t => (
-              <div key={t.id} onMouseDown={() => { onUpdate('titulo', t.nombre); setBusqueda(''); setMostrarDrop(false) }}
-                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                onMouseOver={e => e.currentTarget.style.background='#f0fdf4'} onMouseOut={e => e.currentTarget.style.background='white'}>
-                <span>{t.nombre}</span>
-                <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '8px', flexShrink: 0 }}>{t.origen}</span>
-              </div>
-            ))}
+            {filtradas.map(t => {
+              const ids = t.asignados ? t.asignados.split(',').filter(Boolean) : []
+              return (
+                <div key={t.id} onMouseDown={() => { onUpdate('titulo', t.nombre); setBusqueda(''); setMostrarDrop(false) }}
+                  style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  onMouseOver={e => e.currentTarget.style.background='#f0fdf4'} onMouseOut={e => e.currentTarget.style.background='white'}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {ids.length > 0 && (
+                      <div style={{ display: 'flex', gap: '3px' }}>
+                        {ids.map(id => (
+                          <span key={id} style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORES_USUARIO[id.trim()] || '#9ca3af', display: 'inline-block', flexShrink: 0 }} title={NOMBRES[id.trim()] || id} />
+                        ))}
+                      </div>
+                    )}
+                    <span>{t.nombre}</span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '8px', flexShrink: 0 }}>{t.origen}</span>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
