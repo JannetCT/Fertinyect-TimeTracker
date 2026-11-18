@@ -112,7 +112,7 @@ export default function Actas() {
       fecha_modificacion: '',
       _evento: evento,
       _nueva: true,
-      _secciones: [{ id: Date.now().toString(), titulo: '', contenido: '' }]
+      _secciones: [{ id: Date.now().toString(), titulo: '', tareas: [{ id: (Date.now()+1).toString(), texto: '', asignados: [] }] }]
     })
     setVista('editar')
   }
@@ -120,7 +120,16 @@ export default function Actas() {
   function abrirActa(acta) {
     const evento = todosEventos.find(e => e.id === acta.evento_id) || eventos.find(e => e.id === acta.evento_id) || null
     let secciones
-    try { secciones = JSON.parse(acta.acuerdos) } catch { secciones = [{ id: Date.now().toString(), titulo: acta.acuerdos || '', contenido: '' }] }
+    try {
+      const parsed = JSON.parse(acta.acuerdos)
+      // Compatibilidad hacia atrás: si una sección tiene contenido pero no tareas, convertir
+      secciones = parsed.map(s => ({
+        ...s,
+        tareas: s.tareas || [{ id: Date.now().toString() + Math.random(), texto: s.contenido || '', asignados: [] }]
+      }))
+    } catch {
+      secciones = [{ id: Date.now().toString(), titulo: acta.acuerdos || '', tareas: [{ id: (Date.now()+1).toString(), texto: '', asignados: [] }] }]
+    }
     setActaActual({ ...acta, _evento: evento, _secciones: secciones })
     setVista('editar')
   }
@@ -156,7 +165,14 @@ export default function Actas() {
       <div class="meta"><span><strong>Fecha:</strong> ${actaActual.fecha}</span>${horaInicio?`<span><strong>Hora:</strong> ${horaInicio}${horaFin?` — ${horaFin}`:''}</span>`:''}<span><strong>Participantes:</strong> ${actaActual.participantes}</span></div>
       ${actaActual.agenda?`<div class="agenda"><h3>AGENDA</h3><p style="font-size:14px;line-height:1.6;white-space:pre-wrap">${actaActual.agenda}</p></div>`:''}
       <h3 class="acuerdos-title">ACUERDOS</h3>
-      ${secciones.map((s,i)=>`<div class="seccion">${s.titulo?`<h4>${i+1}. ${s.titulo}</h4>`:`<h4>Punto ${i+1}</h4>`}<p>${s.contenido||'—'}</p></div>`).join('')}
+      ${secciones.map((s,i)=>{
+        const tareas = s.tareas || (s.contenido ? [{texto: s.contenido, asignados:[]}] : [])
+        const tareasHtml = tareas.map(t => {
+          const nombres = (t.asignados||[]).map(id => NOMBRES[id]||id).filter(Boolean)
+          return `<div style="margin:4px 0;font-size:13px;line-height:1.6;display:flex;gap:8px;align-items:flex-start"><span style="color:#9ca3af;flex-shrink:0">•</span><span style="flex:1">${t.texto||'—'}${nombres.length?` <em style="color:#6b7280;font-size:12px">[${nombres.join(', ')}]</em>`:''}</span></div>`
+        }).join('')
+        return `<div class="seccion">${s.titulo?`<h4>${i+1}. ${s.titulo}</h4>`:`<h4>Punto ${i+1}</h4>`}${tareasHtml||'<p>—</p>'}</div>`
+      }).join('')}
       <div class="footer">Documento generado por Fertinyect TimeTracker · ${new Date().toLocaleDateString('es-ES')}</div>
       <script>window.onload=function(){window.print()}</script></body></html>`)
     win.document.close()
@@ -169,13 +185,42 @@ export default function Actas() {
   }
 
   function addSeccion() {
-    const secciones = [...(actaActual._secciones || []), { id: Date.now().toString(), titulo: '', contenido: '' }]
+    const t = Date.now()
+    const secciones = [...(actaActual._secciones || []), { id: t.toString(), titulo: '', tareas: [{ id: (t+1).toString(), texto: '', asignados: [] }] }]
     setActaActual({ ...actaActual, _secciones: secciones })
   }
 
   function removeSeccion(idx) {
+    const t = Date.now()
     const secciones = (actaActual._secciones || []).filter((_, i) => i !== idx)
-    setActaActual({ ...actaActual, _secciones: secciones.length > 0 ? secciones : [{ id: Date.now().toString(), titulo: '', contenido: '' }] })
+    setActaActual({ ...actaActual, _secciones: secciones.length > 0 ? secciones : [{ id: t.toString(), titulo: '', tareas: [{ id: (t+1).toString(), texto: '', asignados: [] }] }] })
+  }
+
+  function addTarea(secIdx) {
+    const secciones = [...(actaActual._secciones || [])]
+    const sec = { ...secciones[secIdx] }
+    sec.tareas = [...(sec.tareas || []), { id: Date.now().toString(), texto: '', asignados: [] }]
+    secciones[secIdx] = sec
+    setActaActual({ ...actaActual, _secciones: secciones })
+  }
+
+  function updateTarea(secIdx, tareaIdx, campo, valor) {
+    const secciones = [...(actaActual._secciones || [])]
+    const sec = { ...secciones[secIdx] }
+    const tareas = [...(sec.tareas || [])]
+    tareas[tareaIdx] = { ...tareas[tareaIdx], [campo]: valor }
+    sec.tareas = tareas
+    secciones[secIdx] = sec
+    setActaActual({ ...actaActual, _secciones: secciones })
+  }
+
+  function removeTarea(secIdx, tareaIdx) {
+    const secciones = [...(actaActual._secciones || [])]
+    const sec = { ...secciones[secIdx] }
+    const tareas = (sec.tareas || []).filter((_, i) => i !== tareaIdx)
+    sec.tareas = tareas.length > 0 ? tareas : [{ id: Date.now().toString(), texto: '', asignados: [] }]
+    secciones[secIdx] = sec
+    setActaActual({ ...actaActual, _secciones: secciones })
   }
 
   function toggleGrupo(key) {
@@ -185,7 +230,7 @@ export default function Actas() {
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
   if (vista === 'editar' && actaActual) {
-    const secciones = actaActual._secciones || [{ id: '1', titulo: '', contenido: '' }]
+    const secciones = actaActual._secciones || [{ id: '1', titulo: '', tareas: [{ id: '2', texto: '', asignados: [] }] }]
     return (
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
@@ -221,12 +266,24 @@ export default function Actas() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {secciones.map((s, idx) => (
-                <SeccionActa key={s.id} seccion={s} idx={idx} tareasActivas={tareasActivas} onUpdate={(campo, valor) => updateSeccion(idx, campo, valor)} onRemove={secciones.length > 1 ? () => removeSeccion(idx) : null} />
+                <SeccionActa key={s.id} seccion={s} idx={idx}
+                  onUpdate={(campo, valor) => updateSeccion(idx, campo, valor)}
+                  onRemove={secciones.length > 1 ? () => removeSeccion(idx) : null}
+                  onAddTarea={() => addTarea(idx)}
+                  onUpdateTarea={(ti, campo, valor) => updateTarea(idx, ti, campo, valor)}
+                  onRemoveTarea={(ti) => removeTarea(idx, ti)}
+                />
               ))}
             </div>
             {/* Botón añadir al final para no tener que subir */}
             <button onClick={addSeccion} style={{ marginTop: '12px', width: '100%', padding: '10px', borderRadius: '8px', border: '2px dashed #d1fae5', background: '#f0fdf4', color: '#00953B', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>+ Añadir punto al final</button>
           </div>
+        </div>
+
+        {/* Botón guardar al final */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
+          <button onClick={exportarPDF} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontWeight: '600' }}>📄 Exportar PDF</button>
+          <button onClick={guardarActa} disabled={guardando} style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', background: '#00953B', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '15px' }}>{guardando ? 'Guardando...' : '💾 Guardar'}</button>
         </div>
       </div>
     )
@@ -308,65 +365,97 @@ function TarjetaActa({ acta, todosEventos, eventos, onAbrir, onEliminar }) {
       <button onClick={async e => { e.stopPropagation(); if(confirm('¿Eliminar esta acta?')) onEliminar() }}
         style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px', opacity: 0.4 }}
         onMouseOver={e=>e.target.style.opacity='1'} onMouseOut={e=>e.target.style.opacity='0.4'}>🗑</button>
-      <p style={{ margin: '0 0 4px', fontWeight: '600', fontSize: '14px' }}>{acta.fecha} — {todosEventos.find(e => e.id === acta.evento_id)?.titulo || eventos.find(e => e.id === acta.evento_id)?.titulo || 'Reunión'}</p>
+      <p style={{ margin: '0 0 4px', fontWeight: '600', fontSize: '14px' }}>{acta.fecha ? acta.fecha.split('-').reverse().join('/') : '—'} — {todosEventos.find(e => e.id === acta.evento_id)?.titulo || eventos.find(e => e.id === acta.evento_id)?.titulo || 'Reunión'}</p>
       <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>{acta.participantes}</p>
       {acta.fecha_modificacion && <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>Actualizado: {acta.fecha_modificacion.slice(0,10)}</p>}
     </div>
   )
 }
 
-function SeccionActa({ seccion, idx, tareasActivas, onUpdate, onRemove }) {
-  const [busqueda, setBusqueda] = useState('')
-  const [mostrarDrop, setMostrarDrop] = useState(false)
-  const filtradas = busqueda.length > 0 ? tareasActivas.filter(t => t.nombre?.toLowerCase().includes(busqueda.toLowerCase())).slice(0, 8) : []
+// Pills de asignación — L=Lorenzo(1), J=Jannet(3), A=Ahlam(2)
+const PILLS = [
+  { id: '1', label: 'L', nombre: 'Lorenzo', color: '#00953B', bg: '#f0fdf4', textColor: '#166534' },
+  { id: '3', label: 'J', nombre: 'Jannet',  color: '#f97316', bg: '#fff7ed', textColor: '#9a3412' },
+  { id: '2', label: 'A', nombre: 'Ahlam',   color: '#ec4899', bg: '#fdf2f8', textColor: '#831843' },
+]
+
+function SeccionActa({ seccion, idx, onUpdate, onRemove, onAddTarea, onUpdateTarea, onRemoveTarea }) {
+  const tareas = seccion.tareas || [{ id: '1', texto: '', asignados: [] }]
+
+  function toggleAsignado(tareaIdx, userId) {
+    const tarea = tareas[tareaIdx]
+    const asignados = tarea.asignados || []
+    const nuevo = asignados.includes(userId)
+      ? asignados.filter(id => id !== userId)
+      : [...asignados, userId]
+    onUpdateTarea(tareaIdx, 'asignados', nuevo)
+  }
 
   return (
-    <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '16px', border: '1px solid #e5e7eb', position: 'relative' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+    <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '16px', border: '1px solid #e5e7eb' }}>
+      {/* Cabecera del punto */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <span style={{ fontSize: '12px', fontWeight: '700', color: '#00953B' }}>Punto {idx + 1}</span>
-        {onRemove && <button onClick={onRemove} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px' }}>✕</button>}
+        {onRemove && <button onClick={onRemove} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '14px', lineHeight: 1 }}>✕</button>}
       </div>
-      <div style={{ position: 'relative', marginBottom: '8px' }}>
-        <input
-          placeholder="Nombre del tema o tarea (ej: PY23-01) — escribe para buscar"
-          value={seccion.titulo}
-          onChange={e => { onUpdate('titulo', e.target.value); setBusqueda(e.target.value); setMostrarDrop(true) }}
-          onFocus={() => setMostrarDrop(true)}
-          onBlur={() => setTimeout(() => setMostrarDrop(false), 200)}
-          style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', fontWeight: '600' }}
-        />
-        {mostrarDrop && filtradas.length > 0 && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 50, maxHeight: '200px', overflowY: 'auto', marginTop: '4px' }}>
-            {filtradas.map(t => {
-              const ids = t.asignados ? t.asignados.split(',').filter(Boolean) : []
-              return (
-                <div key={t.id} onMouseDown={() => { onUpdate('titulo', t.nombre); setBusqueda(''); setMostrarDrop(false) }}
-                  style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                  onMouseOver={e => e.currentTarget.style.background='#f0fdf4'} onMouseOut={e => e.currentTarget.style.background='white'}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {ids.length > 0 && (
-                      <div style={{ display: 'flex', gap: '3px' }}>
-                        {ids.map(id => (
-                          <span key={id} style={{ width: '8px', height: '8px', borderRadius: '50%', background: COLORES_USUARIO[id.trim()] || '#9ca3af', display: 'inline-block', flexShrink: 0 }} title={NOMBRES[id.trim()] || id} />
-                        ))}
-                      </div>
-                    )}
-                    <span>{t.nombre}</span>
-                  </div>
-                  <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '8px', flexShrink: 0 }}>{t.origen}</span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-      <textarea
-        placeholder="Acuerdos de este punto..."
-        value={seccion.contenido}
-        onChange={e => onUpdate('contenido', e.target.value)}
-        rows={3}
-        style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', resize: 'vertical' }}
+
+      {/* Título del punto */}
+      <input
+        placeholder="Nombre del punto (ej: SE26-055 · SVTIC)"
+        value={seccion.titulo}
+        onChange={e => onUpdate('titulo', e.target.value)}
+        style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '13px', fontWeight: '600', marginBottom: '10px', boxSizing: 'border-box' }}
       />
+
+      {/* Lista de tareas */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+        {tareas.map((tarea, ti) => {
+          const asignados = tarea.asignados || []
+          return (
+            <div key={tarea.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {/* Input texto de la tarea */}
+              <input
+                placeholder={`Tarea ${ti + 1}...`}
+                value={tarea.texto}
+                onChange={e => onUpdateTarea(ti, 'texto', e.target.value)}
+                style={{ flex: 1, padding: '7px 9px', borderRadius: '7px', border: '1px solid #e5e7eb', fontSize: '13px', background: 'white', minWidth: 0, boxSizing: 'border-box' }}
+              />
+              {/* Pills L / J / A */}
+              {PILLS.map(p => {
+                const activo = asignados.includes(p.id)
+                return (
+                  <button
+                    key={p.id}
+                    title={p.nombre}
+                    onClick={() => toggleAsignado(ti, p.id)}
+                    style={{
+                      padding: '4px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
+                      cursor: 'pointer', flexShrink: 0, border: `1.5px solid`,
+                      borderColor: activo ? p.color : '#d1d5db',
+                      background: activo ? p.bg : '#f9fafb',
+                      color: activo ? p.textColor : '#9ca3af',
+                      transition: 'all 0.12s',
+                    }}
+                  >{p.label}</button>
+                )
+              })}
+              {/* Botón eliminar fila */}
+              {tareas.length > 1 && (
+                <button onClick={() => onRemoveTarea(ti)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '13px', padding: '0 2px', flexShrink: 0, opacity: 0.5 }}
+                  onMouseOver={e=>e.target.style.opacity='1'} onMouseOut={e=>e.target.style.opacity='0.5'}>✕</button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Añadir tarea */}
+      <button
+        onClick={onAddTarea}
+        style={{ width: '100%', padding: '7px', borderRadius: '7px', border: '1.5px dashed #d1fae5', background: 'none', color: '#00953B', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}
+        onMouseOver={e=>{e.target.style.borderColor='#00953B';e.target.style.background='#f0fdf4'}}
+        onMouseOut={e=>{e.target.style.borderColor='#d1fae5';e.target.style.background='none'}}
+      >+ añadir tarea</button>
     </div>
   )
 }
