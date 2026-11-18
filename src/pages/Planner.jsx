@@ -1371,6 +1371,17 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
               const esHoy = fecha === hoy
               const minEstimados = minutosEstimadosDia(fecha)
               const sobrecargado = minEstimados > 8 * 60
+              // Ordenar eventos y tareas por hora_inicio: con hora primero (ordenados), sin hora al final
+              function horaAMin(h) { if (!h) return 9999; const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm }
+              const eventosOrdenados = [...eventosDelDia].sort((a, b) => horaAMin(a.hora_inicio) - horaAMin(b.hora_inicio))
+              const tareasOrdenadas = [...tareasDelDia].sort((a, b) => horaAMin(a.hora_inicio) - horaAMin(b.hora_inicio))
+              // Mezclar: primero los que tienen hora (eventos y tareas intercalados por hora), luego los sin hora
+              const conHora = [
+                ...eventosOrdenados.filter(e => e.hora_inicio).map(e => ({ ...e, _esEvento: true })),
+                ...tareasOrdenadas.filter(t => t.hora_inicio).map(t => ({ ...t, _esEvento: false }))
+              ].sort((a, b) => horaAMin(a.hora_inicio) - horaAMin(b.hora_inicio))
+              const sinHoraEvs = eventosOrdenados.filter(e => !e.hora_inicio)
+              const sinHoraTareas = tareasOrdenadas.filter(t => !t.hora_inicio)
               return (
                 <div key={dia} className="planner-column">
                   <div className="column-header" style={{ background: esHoy ? '#00953B' : undefined, borderRadius: esHoy ? '8px' : undefined, cursor: 'pointer' }} onClick={() => abrirDia(fecha)}>
@@ -1382,22 +1393,31 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                   </div>
                   <DroppableColumna diaFecha={fecha}>
                   <div className="column-tasks">
-                    {eventosDelDia.map(ev => {
-                      const completado = ev.estado === 'completado'
-                      const evComoTarea = { ...ev, _tipo: 'evento', fecha_exacta: ev.fecha_exacta }
-                      return (
-                        <DraggableTarea key={ev.id} tarea={evComoTarea}>
-                        <EventoCard ev={ev} completado={completado} contexto={getContextoEvento(ev)}
+                    {conHora.map(item => item._esEvento ? (
+                      <DraggableTarea key={item.id} tarea={{ ...item, _tipo: 'evento', fecha_exacta: item.fecha_exacta }}>
+                        <EventoCard ev={item} completado={item.estado === 'completado'} contexto={getContextoEvento(item)}
+                          onEditar={() => setModalEditarEvento({ ...item, _asignados: item.usuario_id ? item.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId], _tipoLigar: item.origen_tipo ? (item.origen_tipo.startsWith('soporte') ? 'soporte' : item.origen_tipo.startsWith('direccion') ? 'direccion' : item.origen_tipo.startsWith('proyecto') ? 'proyecto' : '') : '' })}
+                          onClonar={() => clonarEvento(item)}
+                          onCompletar={() => completarEvento(item)}
+                          onReactivar={() => actualizarEstado(item, 'evento', 'pendiente').then(() => { refrescar('eventos'); cargarDatos() })}
+                          onEliminar={() => { if(confirm('¿Eliminar evento?')) eliminarEvento(item.id) }}
+                        />
+                      </DraggableTarea>
+                    ) : (
+                      <DraggableTarea key={item.id} tarea={item}>{renderTarjeta(item, fecha)}</DraggableTarea>
+                    ))}
+                    {sinHoraEvs.map(ev => (
+                      <DraggableTarea key={ev.id} tarea={{ ...ev, _tipo: 'evento', fecha_exacta: ev.fecha_exacta }}>
+                        <EventoCard ev={ev} completado={ev.estado === 'completado'} contexto={getContextoEvento(ev)}
                           onEditar={() => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId], _tipoLigar: ev.origen_tipo ? (ev.origen_tipo.startsWith('soporte') ? 'soporte' : ev.origen_tipo.startsWith('direccion') ? 'direccion' : ev.origen_tipo.startsWith('proyecto') ? 'proyecto' : '') : '' })}
                           onClonar={() => clonarEvento(ev)}
                           onCompletar={() => completarEvento(ev)}
                           onReactivar={() => actualizarEstado(ev, 'evento', 'pendiente').then(() => { refrescar('eventos'); cargarDatos() })}
                           onEliminar={() => { if(confirm('¿Eliminar evento?')) eliminarEvento(ev.id) }}
                         />
-                        </DraggableTarea>
-                      )
-                    })}
-                    {tareasDelDia.map(tarea => <DraggableTarea key={tarea.id} tarea={tarea}>{renderTarjeta(tarea, fecha)}</DraggableTarea>)}
+                      </DraggableTarea>
+                    ))}
+                    {sinHoraTareas.map(tarea => <DraggableTarea key={tarea.id} tarea={tarea}>{renderTarjeta(tarea, fecha)}</DraggableTarea>)}
                   </div>
                   </DroppableColumna>
                   {minEstimados > 0 && (
