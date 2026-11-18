@@ -171,8 +171,9 @@ export default function Actas() {
         const tareas = s.tareas || (s.contenido ? [{texto: s.contenido, asignados:[]}] : [])
         const tareasHtml = tareas.map(t => {
           const asignadosIds = t.asignados || []
-          const pillsHtml = asignadosIds.map(id => `<span style="color:${COLORES_USUARIO[id]||'#6b7280'};font-size:11px;font-weight:700;background:${id==='1'?'#f0fdf4':id==='3'?'#fff7ed':'#fdf2f8'};padding:1px 6px;border-radius:20px;margin-left:4px">${NOMBRES[id]||id}</span>`).join('')
-          return `<div style="margin:4px 0;font-size:13px;line-height:1.6;display:flex;gap:8px;align-items:flex-start"><span style="color:#9ca3af;flex-shrink:0">•</span><span style="flex:1">${t.texto||'—'}${pillsHtml}</span></div>`
+          const pillsHtml = asignadosIds.map(id => `<span style="color:${COLORES_USUARIO[id]||'#6b7280'};font-size:11px;font-weight:700;background:${id==='1'?'#bbf7d0':id==='3'?'#fed7aa':'#fbcfe8'};padding:2px 7px;border-radius:20px;margin-left:5px">${NOMBRES[id]||id}</span>`).join('')
+          const indentStyle = t.indent ? 'margin-left:18px;border-left:2px solid #86efac;padding-left:8px;' : ''
+          return `<div style="${indentStyle}margin-top:4px;font-size:13px;line-height:1.6;display:flex;gap:8px;align-items:flex-start"><span style="color:#9ca3af;flex-shrink:0">•</span><span style="flex:1">${t.texto||'—'}${pillsHtml}</span></div>`
         }).join('')
         return `<div class="seccion">${s.titulo?`<h4>${i+1}. ${s.titulo}</h4>`:`<h4>Punto ${i+1}</h4>`}${tareasHtml||'<p>—</p>'}</div>`
       }).join('')}
@@ -430,7 +431,7 @@ function SeccionActa({ seccion, idx, onUpdate, onRemove, onAddTarea, onUpdateTar
                 onChange={e => onUpdateTarea(ti, 'texto', e.target.value)}
                 onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                 rows={1}
-                style={{ flex: 1, padding: '7px 9px', borderRadius: '7px', border: '1px solid #e5e7eb', fontSize: '13px', background: 'white', minWidth: 0, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', fontFamily: 'inherit', lineHeight: '1.5' }}
+                style={{ flex: 1, padding: '7px 9px', borderRadius: '7px', border: '1px solid #e5e7eb', fontSize: '13px', background: 'white', minWidth: 0, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', fontFamily: 'inherit', lineHeight: '1.6', minHeight: '36px' }}
               />
               {/* Pills L / J / A */}
               <div style={{ display: 'flex', gap: '4px', paddingTop: '5px', flexShrink: 0 }}>
