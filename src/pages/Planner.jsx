@@ -409,8 +409,14 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
   const esHoy = fecha === hoy
   const horaActualDec = ahora.getHours() + ahora.getMinutes() / 60
   const posLinea = (horaActualDec - HORA_INICIO) * ALTURA_HORA
-  const horas = Array.from({ length: HORA_FIN - HORA_INICIO + 1 }, (_, i) => HORA_INICIO + i)
   function horaADec(h) { if (!h) return null; const [hh, mm] = h.split(':').map(Number); return hh + mm / 60 }
+  // Slots de media hora para la cuadrícula
+  const halfSlots = []
+  for (let h = HORA_INICIO; h <= HORA_FIN; h++) {
+    halfSlots.push({ hora: h, min: 0 })
+    if (h < HORA_FIN) halfSlots.push({ hora: h, min: 30 })
+  }
+  const SLOT_H = ALTURA_HORA / 2 // 32px por media hora
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -438,21 +444,27 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
       )}
       <div style={{ overflowY: 'auto', flex: 1, position: 'relative' }}>
         <div style={{ position: 'relative', minHeight: `${(HORA_FIN - HORA_INICIO + 1) * ALTURA_HORA}px` }}>
-          {horas.map(h => (
-            <div key={h}
-              onDoubleClick={() => onDblClickHora && onDblClickHora(fecha, `${h.toString().padStart(2,'0')}:00`)}
-              onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,149,59,0.08)' }}
-              onDragLeave={e => { e.currentTarget.style.background = 'transparent' }}
-              onDrop={e => { e.preventDefault(); e.currentTarget.style.background = 'transparent'; try { const tarea = JSON.parse(e.dataTransfer.getData('tareaId')); if (tarea && onMoverHora) onMoverHora(tarea, `${h.toString().padStart(2,'0')}:00`) } catch(err){} }}
-              style={{ position: 'absolute', top: `${(h - HORA_INICIO) * ALTURA_HORA}px`, left: 0, right: 0, height: `${ALTURA_HORA}px`, borderTop: h === HORA_INICIO ? 'none' : '1px solid #f0f0f0', display: 'flex', cursor: 'crosshair' }}>
-              <div style={{ width: '52px', flexShrink: 0, paddingRight: '8px', paddingTop: '4px', textAlign: 'right' }}>
-                <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{h.toString().padStart(2,'0')}:00</span>
+          {halfSlots.map(({ hora, min }) => {
+            const slotTime = `${hora.toString().padStart(2,'0')}:${min === 0 ? '00' : '30'}`
+            const topPos = (hora - HORA_INICIO) * ALTURA_HORA + (min === 30 ? SLOT_H : 0)
+            const esMediaHora = min === 30
+            return (
+              <div key={slotTime}
+                onDoubleClick={() => onDblClickHora && onDblClickHora(fecha, slotTime)}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,149,59,0.08)' }}
+                onDragLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                onDrop={e => { e.preventDefault(); e.currentTarget.style.background = 'transparent'; try { const tarea = JSON.parse(e.dataTransfer.getData('tareaId')); if (tarea && onMoverHora) onMoverHora(tarea, slotTime) } catch(err){} }}
+                style={{ position: 'absolute', top: `${topPos}px`, left: 0, right: 0, height: `${SLOT_H}px`, borderTop: esMediaHora ? '1px dashed #ebebeb' : (hora === HORA_INICIO ? 'none' : '1px solid #e8e8e8'), display: 'flex', cursor: 'crosshair' }}>
+                <div style={{ width: '52px', flexShrink: 0, paddingRight: '8px', paddingTop: '3px', textAlign: 'right' }}>
+                  {!esMediaHora
+                    ? <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{hora.toString().padStart(2,'0')}:00</span>
+                    : <span style={{ fontSize: '9px', color: '#d1d5db' }}>:30</span>
+                  }
+                </div>
+                <div style={{ flex: 1, borderLeft: '1px solid #e5e7eb', position: 'relative' }} />
               </div>
-              <div style={{ flex: 1, borderLeft: '1px solid #e5e7eb', position: 'relative' }}>
-                <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: '#f8f8f8' }} />
-              </div>
-            </div>
-          ))}
+            )
+          })}
           {esHoy && horaActualDec >= HORA_INICIO && horaActualDec <= HORA_FIN && (
             <div ref={horaActualRef} style={{ position: 'absolute', left: '52px', right: 0, top: `${posLinea}px`, zIndex: 10, pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', marginLeft: '-5px', flexShrink: 0 }} />
@@ -533,6 +545,8 @@ function Planner() {
   const [usuarios, setUsuarios] = useState([])
   const [checklistCounts, setChecklistCounts] = useState({})
   const [cargando, setCargando] = useState(true)
+  // Orden manual dentro de cada columna: { [fechaStr]: [id, id, ...] }
+  const [ordenColumnas, setOrdenColumnas] = useState({})
   const [mostrarCompletadas, setMostrarCompletadas] = useState(false)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const [filtroEtiqueta, setFiltroEtiqueta] = useState('')
@@ -1343,7 +1357,26 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
             if (!over || !active.data.current?.tarea) return
             const tarea = active.data.current.tarea
             const overId = over.id
-            if (overId.startsWith('col_')) {
+            if (overId.startsWith('item_')) {
+              // Soltar sobre otro item — reordenar dentro de la misma columna
+              const sobreId = overId.replace('item_', '')
+              const fechaActual = (tarea.fecha_exacta || '').split(',')[0]?.trim() || 'por_asignar'
+              const colKey = fechaActual
+              // Obtener todos los ids de esa columna en el orden actual
+              const todasDia = tareasDeDia(fechaActual !== 'por_asignar' ? fechaActual : null)
+              const evsDia = eventosDeDia(fechaActual !== 'por_asignar' ? fechaActual : null)
+              const todosIds = [...evsDia.map(e => e.id), ...todasDia.map(t => t.id)]
+              const ordenActual = ordenColumnas[colKey] || todosIds
+              const idsOrdenados = [...new Set([...ordenActual, ...todosIds])]
+              const idxOrigen = idsOrdenados.indexOf(tarea.id)
+              const idxDestino = idsOrdenados.indexOf(sobreId)
+              if (idxOrigen >= 0 && idxDestino >= 0 && idxOrigen !== idxDestino) {
+                const nuevo = [...idsOrdenados]
+                nuevo.splice(idxOrigen, 1)
+                nuevo.splice(idxDestino, 0, tarea.id)
+                setOrdenColumnas(prev => ({ ...prev, [colKey]: nuevo }))
+              }
+            } else if (overId.startsWith('col_')) {
               const destino = overId.replace('col_', '')
               const fechaActual = (tarea.fecha_exacta || '').split(',')[0]?.trim()
               if (tarea._tipo === 'evento') {
@@ -1371,17 +1404,29 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
               const esHoy = fecha === hoy
               const minEstimados = minutosEstimadosDia(fecha)
               const sobrecargado = minEstimados > 8 * 60
-              // Ordenar eventos y tareas por hora_inicio: con hora primero (ordenados), sin hora al final
+              // Ordenar por hora_inicio: con hora primero, sin hora al final
               function horaAMin(h) { if (!h) return 9999; const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm }
-              const eventosOrdenados = [...eventosDelDia].sort((a, b) => horaAMin(a.hora_inicio) - horaAMin(b.hora_inicio))
-              const tareasOrdenadas = [...tareasDelDia].sort((a, b) => horaAMin(a.hora_inicio) - horaAMin(b.hora_inicio))
-              // Mezclar: primero los que tienen hora (eventos y tareas intercalados por hora), luego los sin hora
               const conHora = [
-                ...eventosOrdenados.filter(e => e.hora_inicio).map(e => ({ ...e, _esEvento: true })),
-                ...tareasOrdenadas.filter(t => t.hora_inicio).map(t => ({ ...t, _esEvento: false }))
+                ...eventosDelDia.filter(e => e.hora_inicio).map(e => ({ ...e, _esEvento: true })),
+                ...tareasDelDia.filter(t => t.hora_inicio).map(t => ({ ...t, _esEvento: false }))
               ].sort((a, b) => horaAMin(a.hora_inicio) - horaAMin(b.hora_inicio))
-              const sinHoraEvs = eventosOrdenados.filter(e => !e.hora_inicio)
-              const sinHoraTareas = tareasOrdenadas.filter(t => !t.hora_inicio)
+              const sinHora = [
+                ...eventosDelDia.filter(e => !e.hora_inicio).map(e => ({ ...e, _esEvento: true })),
+                ...tareasDelDia.filter(t => !t.hora_inicio).map(t => ({ ...t, _esEvento: false }))
+              ]
+              const todosSinHora = sinHora
+              // Aplicar orden manual si existe
+              const ordenManual = ordenColumnas[fecha]
+              const todosSinHoraOrdenados = ordenManual
+                ? [...todosSinHora].sort((a, b) => {
+                    const ia = ordenManual.indexOf(a.id), ib = ordenManual.indexOf(b.id)
+                    if (ia === -1 && ib === -1) return 0
+                    if (ia === -1) return 1
+                    if (ib === -1) return -1
+                    return ia - ib
+                  })
+                : todosSinHora
+              const todosItems = [...conHora, ...todosSinHoraOrdenados]
               return (
                 <div key={dia} className="planner-column">
                   <div className="column-header" style={{ background: esHoy ? '#00953B' : undefined, borderRadius: esHoy ? '8px' : undefined, cursor: 'pointer' }} onClick={() => abrirDia(fecha)}>
@@ -1393,31 +1438,23 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
                   </div>
                   <DroppableColumna diaFecha={fecha}>
                   <div className="column-tasks">
-                    {conHora.map(item => item._esEvento ? (
-                      <DraggableTarea key={item.id} tarea={{ ...item, _tipo: 'evento', fecha_exacta: item.fecha_exacta }}>
-                        <EventoCard ev={item} completado={item.estado === 'completado'} contexto={getContextoEvento(item)}
-                          onEditar={() => setModalEditarEvento({ ...item, _asignados: item.usuario_id ? item.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId], _tipoLigar: item.origen_tipo ? (item.origen_tipo.startsWith('soporte') ? 'soporte' : item.origen_tipo.startsWith('direccion') ? 'direccion' : item.origen_tipo.startsWith('proyecto') ? 'proyecto' : '') : '' })}
-                          onClonar={() => clonarEvento(item)}
-                          onCompletar={() => completarEvento(item)}
-                          onReactivar={() => actualizarEstado(item, 'evento', 'pendiente').then(() => { refrescar('eventos'); cargarDatos() })}
-                          onEliminar={() => { if(confirm('¿Eliminar evento?')) eliminarEvento(item.id) }}
-                        />
-                      </DraggableTarea>
-                    ) : (
-                      <DraggableTarea key={item.id} tarea={item}>{renderTarjeta(item, fecha)}</DraggableTarea>
+                    {todosItems.map(item => (
+                      <DroppableItem key={item.id} itemId={item.id}>
+                        {item._esEvento ? (
+                          <DraggableTarea tarea={{ ...item, _tipo: 'evento', fecha_exacta: item.fecha_exacta }}>
+                            <EventoCard ev={item} completado={item.estado === 'completado'} contexto={getContextoEvento(item)}
+                              onEditar={() => setModalEditarEvento({ ...item, _asignados: item.usuario_id ? item.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId], _tipoLigar: item.origen_tipo ? (item.origen_tipo.startsWith('soporte') ? 'soporte' : item.origen_tipo.startsWith('direccion') ? 'direccion' : item.origen_tipo.startsWith('proyecto') ? 'proyecto' : '') : '' })}
+                              onClonar={() => clonarEvento(item)}
+                              onCompletar={() => completarEvento(item)}
+                              onReactivar={() => actualizarEstado(item, 'evento', 'pendiente').then(() => { refrescar('eventos'); cargarDatos() })}
+                              onEliminar={() => { if(confirm('¿Eliminar evento?')) eliminarEvento(item.id) }}
+                            />
+                          </DraggableTarea>
+                        ) : (
+                          <DraggableTarea tarea={item}>{renderTarjeta(item, fecha)}</DraggableTarea>
+                        )}
+                      </DroppableItem>
                     ))}
-                    {sinHoraEvs.map(ev => (
-                      <DraggableTarea key={ev.id} tarea={{ ...ev, _tipo: 'evento', fecha_exacta: ev.fecha_exacta }}>
-                        <EventoCard ev={ev} completado={ev.estado === 'completado'} contexto={getContextoEvento(ev)}
-                          onEditar={() => setModalEditarEvento({ ...ev, _asignados: ev.usuario_id ? ev.usuario_id.split(',').map(s => s.trim()).filter(Boolean) : [misId], _tipoLigar: ev.origen_tipo ? (ev.origen_tipo.startsWith('soporte') ? 'soporte' : ev.origen_tipo.startsWith('direccion') ? 'direccion' : ev.origen_tipo.startsWith('proyecto') ? 'proyecto' : '') : '' })}
-                          onClonar={() => clonarEvento(ev)}
-                          onCompletar={() => completarEvento(ev)}
-                          onReactivar={() => actualizarEstado(ev, 'evento', 'pendiente').then(() => { refrescar('eventos'); cargarDatos() })}
-                          onEliminar={() => { if(confirm('¿Eliminar evento?')) eliminarEvento(ev.id) }}
-                        />
-                      </DraggableTarea>
-                    ))}
-                    {sinHoraTareas.map(tarea => <DraggableTarea key={tarea.id} tarea={tarea}>{renderTarjeta(tarea, fecha)}</DraggableTarea>)}
                   </div>
                   </DroppableColumna>
                   {minEstimados > 0 && (
@@ -1846,6 +1883,15 @@ function DraggableTarea({ tarea, children }) {
 function DroppableColumna({ diaFecha, children }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'col_' + diaFecha })
   return <div ref={setNodeRef} style={{ flex: 1, minHeight: '100px', background: isOver ? 'rgba(0,149,59,0.05)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s' }}>{children}</div>
+}
+
+function DroppableItem({ itemId, children }) {
+  const { setNodeRef, isOver } = useDroppable({ id: 'item_' + itemId })
+  return (
+    <div ref={setNodeRef} style={{ borderTop: isOver ? '2px solid #00953B' : '2px solid transparent', borderRadius: '4px', transition: 'border-color 0.1s' }}>
+      {children}
+    </div>
+  )
 }
 
 function EventoCard({ ev, completado, contexto, onEditar, onClonar, onCompletar, onReactivar, onEliminar }) {
