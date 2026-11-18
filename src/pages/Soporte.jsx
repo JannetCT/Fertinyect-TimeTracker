@@ -566,6 +566,13 @@ export default function Soporte() {
   const tareasDirectasCategoria = (catId) => tareas.filter(t => t.categoria_id === catId && !t.proyecto_soporte_id)
   const tareasDirectasProyecto = (pId) => tareas.filter(t => t.proyecto_soporte_id === pId && !t.subcarpeta_id)
   const tareasDirectasSubcarpeta = (sId) => tareas.filter(t => t.subcarpeta_id === sId)
+  function esCompletada(t) { return t.estado === 'completada' || t.estado === 'completado' }
+  function subcarpetaCompletada(sId) { const ts = tareasDirectasSubcarpeta(sId); return ts.length > 0 && ts.every(esCompletada) }
+  function proyectoCompletado(pId) {
+    const subs = subcarpetasDeProyecto(pId); const dir = tareasDirectasProyecto(pId)
+    if (subs.length === 0 && dir.length === 0) return false
+    return subs.every(s => subcarpetaCompletada(s.id)) && (dir.length === 0 || dir.every(esCompletada))
+  }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
@@ -666,20 +673,23 @@ export default function Soporte() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {subcarpetasAqui.map(sub => (
-            <div key={sub.id} onClick={() => setVistaSubcarpeta(sub)} style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #3b82f6', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseOver={e => e.currentTarget.style.background = '#f0f9ff'}
-              onMouseOut={e => e.currentTarget.style.background = 'white'}>
+          {subcarpetasAqui.map(sub => { const compSub = subcarpetaCompletada(sub.id); return (
+            <div key={sub.id} onClick={() => setVistaSubcarpeta(sub)} style={{ background: compSub ? '#f9fafb' : 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${compSub ? '#86efac' : '#3b82f6'}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              onMouseOver={e => e.currentTarget.style.background = compSub ? '#f3f4f6' : '#f0f9ff'}
+              onMouseOut={e => e.currentTarget.style.background = compSub ? '#f9fafb' : 'white'}>
               <div>
-                <p style={{ margin: 0, fontWeight: '600', fontSize: '15px' }}>📂 {sub.nombre}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <p style={{ margin: 0, fontWeight: '600', fontSize: '15px', color: compSub ? '#9ca3af' : undefined }}>📂 {sub.nombre}</p>
+                  {compSub && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px' }}>Completado</span>}
+                </div>
                 {sub.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{sub.descripcion}</p>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: '#888' }}>{tareasDirectasSubcarpeta(sub.id).length} tareas</span>
-                <span style={{ color: '#1d4ed8' }}>→</span>
+                <span style={{ color: compSub ? '#9ca3af' : '#1d4ed8' }}>→</span>
               </div>
             </div>
-          ))}
+          )})}
           {tareasDirectas.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <p style={{ fontSize: '13px', color: '#888', fontWeight: '600', marginBottom: '8px' }}>Tareas directas:</p>
@@ -725,17 +735,20 @@ export default function Soporte() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {proyectosAqui.map(proy => (
-            <div key={proy.id} onClick={() => setVistaProyecto(proy)} style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #3b82f6', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseOver={e => e.currentTarget.style.background = '#f0f9ff'}
-              onMouseOut={e => e.currentTarget.style.background = 'white'}>
+          {proyectosAqui.map(proy => { const compProy = proyectoCompletado(proy.id); return (
+            <div key={proy.id} onClick={() => setVistaProyecto(proy)} style={{ background: compProy ? '#f9fafb' : 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${compProy ? '#86efac' : '#3b82f6'}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              onMouseOver={e => e.currentTarget.style.background = compProy ? '#f3f4f6' : '#f0f9ff'}
+              onMouseOut={e => e.currentTarget.style.background = compProy ? '#f9fafb' : 'white'}>
               <div>
-                <p style={{ margin: 0, fontWeight: '600', fontSize: '15px' }}>📁 {proy.nombre}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <p style={{ margin: 0, fontWeight: '600', fontSize: '15px', color: compProy ? '#9ca3af' : undefined }}>📁 {proy.nombre}</p>
+                  {compProy && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px' }}>Completado</span>}
+                </div>
                 {proy.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{proy.descripcion}</p>}
               </div>
-              <span style={{ color: '#1d4ed8' }}>→</span>
+              <span style={{ color: compProy ? '#9ca3af' : '#1d4ed8' }}>→</span>
             </div>
-          ))}
+          )})}
           {tareasDirectas.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <p style={{ fontSize: '13px', color: '#888', fontWeight: '600', marginBottom: '8px' }}>Tareas directas:</p>
@@ -942,14 +955,15 @@ function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConf
         const asignados = tarea.asignados ? tarea.asignados.split(',').filter(Boolean) : []
         const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && tarea.estado !== 'completada'
         const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
+        const comp = tarea.estado === 'completada' || tarea.estado === 'completado'
         return (
-          <div key={tarea.id} style={{ background: 'white', borderRadius: '10px', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : '#3b82f6'}` }}>
+          <div key={tarea.id} style={{ background: comp ? '#f9fafb' : 'white', borderRadius: '10px', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${comp ? '#86efac' : vencida ? '#dc2626' : proxima ? '#f59e0b' : '#3b82f6'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => onVerDetalle(tarea)}>
-                <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none' }}>{tarea.nombre}</p>
-                {tarea.descripcion && <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#888' }}>{tarea.descripcion.slice(0, 80)}{tarea.descripcion.length > 80 ? '...' : ''}</p>}
+                <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: comp ? 'line-through' : 'none', color: comp ? '#9ca3af' : undefined }}>{tarea.nombre}</p>
+                {tarea.descripcion && <p style={{ margin: '0 0 4px', fontSize: '12px', color: comp ? '#9ca3af' : '#888' }}>{tarea.descripcion.slice(0, 80)}{tarea.descripcion.length > 80 ? '...' : ''}</p>}
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {asignados.map(id => <span key={id} style={{ background: '#eff6ff', color: '#1d4ed8', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
+                  {asignados.map(id => <span key={id} style={{ background: comp ? '#f3f4f6' : '#eff6ff', color: comp ? '#9ca3af' : '#1d4ed8', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
                   {tarea.dia_recomendado && <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>📌 {tarea.dia_recomendado}</span>}
                   {tarea.fecha_limite && <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>{vencida ? '⚠️' : '📅'} {tarea.fecha_limite}</span>}
                 </div>
@@ -957,7 +971,7 @@ function TareasList({ tareas, usuarios, getNombre, setEditItem, setForm, setConf
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button onClick={e => { e.stopPropagation(); setEditItem({...tarea, _tipo: 'tarea'}); setForm({ nombre: tarea.nombre, descripcion: tarea.descripcion || '' }) }} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>✏️</button>
                 <button onClick={e => { e.stopPropagation(); setConfirmEliminar({ hoja: 'tareas_soporte', item: tarea }) }} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>🗑</button>
-                <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{tarea.estado || 'pendiente'}</span>
+                <span style={{ background: comp ? '#dcfce7' : '#f3f4f6', color: comp ? '#166534' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{comp ? 'Completado' : (tarea.estado || 'pendiente')}</span>
               </div>
             </div>
           </div>

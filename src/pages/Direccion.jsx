@@ -524,6 +524,13 @@ export default function Direccion() {
   function tareasDeSubcarpeta(sId) { return tareas.filter(t => t.subcarpeta_id === sId).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDirectasProyecto(pId) { return tareas.filter(t => t.proyecto_direccion_id === pId && !t.subcarpeta_id).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
   function tareasDirectasCategoria(catId) { return tareas.filter(t => t.categoria_id === catId && !t.proyecto_direccion_id).sort((a,b) => (a.nombre||'').localeCompare(b.nombre||'', 'es')) }
+  function esCompletada(t) { return t.estado === 'completada' || t.estado === 'completado' }
+  function subcarpetaCompletada(sId) { const ts = tareasDeSubcarpeta(sId); return ts.length > 0 && ts.every(esCompletada) }
+  function proyectoCompletado(pId) {
+    const subs = subcarpetasDeProyecto(pId); const dir = tareasDirectasProyecto(pId)
+    if (subs.length === 0 && dir.length === 0) return false
+    return subs.every(s => subcarpetaCompletada(s.id)) && (dir.length === 0 || dir.every(esCompletada))
+  }
 
   if (cargando) return <div className="loading-screen"><div className="loading-spinner"></div><p>Cargando...</p></div>
 
@@ -626,21 +633,24 @@ export default function Direccion() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {subcarpetasAqui.map(sub => (
+          {subcarpetasAqui.map(sub => { const compSub = subcarpetaCompletada(sub.id); return (
             <div key={sub.id} onClick={() => setVistaSubcarpeta(sub)}
-              style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #7c3aed', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseOver={e => e.currentTarget.style.background = '#faf5ff'}
-              onMouseOut={e => e.currentTarget.style.background = 'white'}>
+              style={{ background: compSub ? '#f9fafb' : 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${compSub ? '#86efac' : '#7c3aed'}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              onMouseOver={e => e.currentTarget.style.background = compSub ? '#f3f4f6' : '#faf5ff'}
+              onMouseOut={e => e.currentTarget.style.background = compSub ? '#f9fafb' : 'white'}>
               <div>
-                <p style={{ margin: 0, fontWeight: '600', fontSize: '15px' }}>📂 {sub.nombre}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <p style={{ margin: 0, fontWeight: '600', fontSize: '15px', color: compSub ? '#9ca3af' : undefined }}>📂 {sub.nombre}</p>
+                  {compSub && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px' }}>Completado</span>}
+                </div>
                 {sub.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{sub.descripcion}</p>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: '#888' }}>{tareasDeSubcarpeta(sub.id).length} tareas</span>
-                <span style={{ color: '#7c3aed' }}>→</span>
+                <span style={{ color: compSub ? '#9ca3af' : '#7c3aed' }}>→</span>
               </div>
             </div>
-          ))}
+          )})}
           {tareasDirectas.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <p style={{ fontSize: '13px', color: '#888', fontWeight: '600', marginBottom: '8px' }}>Tareas directas:</p>
@@ -691,18 +701,21 @@ export default function Direccion() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {proyectosAqui.map(proy => (
+          {proyectosAqui.map(proy => { const compProy = proyectoCompletado(proy.id); return (
             <div key={proy.id} onClick={() => setVistaProyecto(proy)}
-              style={{ background: 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: '4px solid #7c3aed', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseOver={e => e.currentTarget.style.background = '#faf5ff'}
-              onMouseOut={e => e.currentTarget.style.background = 'white'}>
+              style={{ background: compProy ? '#f9fafb' : 'white', borderRadius: '10px', padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${compProy ? '#86efac' : '#7c3aed'}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              onMouseOver={e => e.currentTarget.style.background = compProy ? '#f3f4f6' : '#faf5ff'}
+              onMouseOut={e => e.currentTarget.style.background = compProy ? '#f9fafb' : 'white'}>
               <div>
-                <p style={{ margin: 0, fontWeight: '600', fontSize: '15px' }}>📁 {proy.nombre}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <p style={{ margin: 0, fontWeight: '600', fontSize: '15px', color: compProy ? '#9ca3af' : undefined }}>📁 {proy.nombre}</p>
+                  {compProy && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px' }}>Completado</span>}
+                </div>
                 {proy.descripcion && <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>{proy.descripcion}</p>}
               </div>
-              <span style={{ color: '#7c3aed' }}>→</span>
+              <span style={{ color: compProy ? '#9ca3af' : '#7c3aed' }}>→</span>
             </div>
-          ))}
+          )})}
           {tareasDirectas.length > 0 && (
             <div style={{ marginTop: '8px' }}>
               <p style={{ fontSize: '13px', color: '#888', fontWeight: '600', marginBottom: '8px' }}>Tareas directas:</p>
@@ -909,22 +922,23 @@ function TareasList({ tareas, usuarios, getNombre, onVerDetalle, onEditar, onCom
         const asignados = tarea.asignados ? tarea.asignados.split(',').filter(Boolean) : []
         const vencida = tarea.fecha_limite && new Date(tarea.fecha_limite) < new Date() && tarea.estado !== 'completada'
         const proxima = tarea.fecha_limite && !vencida && (new Date(tarea.fecha_limite) - new Date()) < 3 * 24 * 60 * 60 * 1000
+        const comp = tarea.estado === 'completada' || tarea.estado === 'completado'
         return (
-          <div key={tarea.id} style={{ background: 'white', borderRadius: '10px', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${vencida ? '#dc2626' : proxima ? '#f59e0b' : '#7c3aed'}` }}>
+          <div key={tarea.id} style={{ background: comp ? '#f9fafb' : 'white', borderRadius: '10px', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', borderLeft: `4px solid ${comp ? '#86efac' : vencida ? '#dc2626' : proxima ? '#f59e0b' : '#7c3aed'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => onVerDetalle(tarea)}>
-                <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: tarea.estado === 'completada' ? 'line-through' : 'none' }}>{tarea.nombre}</p>
-                {tarea.descripcion && <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#888' }}>{tarea.descripcion.slice(0, 80)}{tarea.descripcion.length > 80 ? '...' : ''}</p>}
+                <p style={{ margin: '0 0 6px', fontWeight: '600', fontSize: '15px', textDecoration: comp ? 'line-through' : 'none', color: comp ? '#9ca3af' : undefined }}>{tarea.nombre}</p>
+                {tarea.descripcion && <p style={{ margin: '0 0 6px', fontSize: '12px', color: comp ? '#9ca3af' : '#888' }}>{tarea.descripcion.slice(0, 80)}{tarea.descripcion.length > 80 ? '...' : ''}</p>}
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {asignados.map(id => <span key={id} style={{ background: '#f5f3ff', color: '#7c3aed', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
+                  {asignados.map(id => <span key={id} style={{ background: comp ? '#f3f4f6' : '#f5f3ff', color: comp ? '#9ca3af' : '#7c3aed', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '600' }}>{getNombre(id)}</span>)}
                   {tarea.fecha_limite && <span style={{ background: vencida ? '#fee2e2' : proxima ? '#fef3c7' : '#f3f4f6', color: vencida ? '#dc2626' : proxima ? '#92400e' : '#6b7280', borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>{vencida ? '⚠️' : '📅'} {tarea.fecha_limite}</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
                 <button onClick={() => onEditar(tarea)} style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>✏️</button>
-                {tarea.estado !== 'completada' && onCompletar && <button onClick={() => onCompletar(tarea)} style={{ background: '#f0fdf4', color: '#00953B', border: '1px solid #00953B', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>✅</button>}
+                {!comp && onCompletar && <button onClick={() => onCompletar(tarea)} style={{ background: '#f0fdf4', color: '#00953B', border: '1px solid #00953B', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>✅</button>}
                 <button onClick={() => onEliminar(tarea)} style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px' }}>🗑</button>
-                <span style={{ background: tarea.estado === 'completada' ? '#dcfce7' : '#f3f4f6', color: tarea.estado === 'completada' ? '#166534' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{tarea.estado || 'pendiente'}</span>
+                <span style={{ background: comp ? '#dcfce7' : '#f3f4f6', color: comp ? '#166534' : '#6b7280', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{comp ? 'Completado' : (tarea.estado || 'pendiente')}</span>
               </div>
             </div>
           </div>
