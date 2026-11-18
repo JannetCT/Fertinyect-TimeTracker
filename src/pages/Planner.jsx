@@ -458,7 +458,7 @@ function VistaDia({ fecha, tareasConPosicion, tareasTodoDia, eventosDia, onVerDe
                 <div style={{ width: '52px', flexShrink: 0, paddingRight: '8px', paddingTop: '3px', textAlign: 'right' }}>
                   {!esMediaHora
                     ? <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{hora.toString().padStart(2,'0')}:00</span>
-                    : <span style={{ fontSize: '9px', color: '#d1d5db' }}>:30</span>
+                    : <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '600' }}>:30</span>
                   }
                 </div>
                 <div style={{ flex: 1, borderLeft: '1px solid #e5e7eb', position: 'relative' }} />
@@ -1404,29 +1404,25 @@ await escribirFila('registros', [Date.now().toString(), registroTareaId, usuario
               const esHoy = fecha === hoy
               const minEstimados = minutosEstimadosDia(fecha)
               const sobrecargado = minEstimados > 8 * 60
-              // Ordenar por hora_inicio: con hora primero, sin hora al final
-              function horaAMin(h) { if (!h) return 9999; const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm }
-              const conHora = [
-                ...eventosDelDia.filter(e => e.hora_inicio).map(e => ({ ...e, _esEvento: true })),
-                ...tareasDelDia.filter(t => t.hora_inicio).map(t => ({ ...t, _esEvento: false }))
-              ].sort((a, b) => horaAMin(a.hora_inicio) - horaAMin(b.hora_inicio))
-              const sinHora = [
-                ...eventosDelDia.filter(e => !e.hora_inicio).map(e => ({ ...e, _esEvento: true })),
-                ...tareasDelDia.filter(t => !t.hora_inicio).map(t => ({ ...t, _esEvento: false }))
-              ]
-              const todosSinHora = sinHora
-              // Aplicar orden manual si existe
+              // Ordenar: items con hora por hora, items sin hora se intercalan como si fueran mediodía (12:00)
+              // Así: reunión 08:30 → arriba, tareas sin hora → medio, reunión 17:00 → abajo
+              function horaAMin(h) { if (!h) return 12 * 60; const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm }
               const ordenManual = ordenColumnas[fecha]
-              const todosSinHoraOrdenados = ordenManual
-                ? [...todosSinHora].sort((a, b) => {
-                    const ia = ordenManual.indexOf(a.id), ib = ordenManual.indexOf(b.id)
-                    if (ia === -1 && ib === -1) return 0
-                    if (ia === -1) return 1
-                    if (ib === -1) return -1
-                    return ia - ib
-                  })
-                : todosSinHora
-              const todosItems = [...conHora, ...todosSinHoraOrdenados]
+              const todosItems = [
+                ...eventosDelDia.map(e => ({ ...e, _esEvento: true })),
+                ...tareasDelDia.map(t => ({ ...t, _esEvento: false }))
+              ].sort((a, b) => {
+                const ma = horaAMin(a.hora_inicio), mb = horaAMin(b.hora_inicio)
+                if (ma !== mb) return ma - mb
+                // Para items sin hora con el mismo valor (12:00), aplicar orden manual si existe
+                if (!a.hora_inicio && !b.hora_inicio && ordenManual) {
+                  const ia = ordenManual.indexOf(a.id), ib = ordenManual.indexOf(b.id)
+                  if (ia !== -1 && ib !== -1) return ia - ib
+                  if (ia !== -1) return -1
+                  if (ib !== -1) return 1
+                }
+                return 0
+              })
               return (
                 <div key={dia} className="planner-column">
                   <div className="column-header" style={{ background: esHoy ? '#00953B' : undefined, borderRadius: esHoy ? '8px' : undefined, cursor: 'pointer' }} onClick={() => abrirDia(fecha)}>
