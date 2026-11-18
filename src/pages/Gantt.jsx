@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx'
 import { useAuth } from '../contexts/AuthContext'
 import { actualizarFila } from '../services/googleSheets'
 import { useDatos } from '../contexts/DatosContext'
+import { useNavigate } from 'react-router-dom'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
@@ -84,6 +85,7 @@ function BarraSemanas({ semanas, color, altura = 20, radio = 10 }) {
 }
 
 function Gantt() {
+  const navigate = useNavigate()
   const { accessToken } = useAuth()
   const { obtenerHoja } = useDatos()
   const [proyectos, setProyectos] = useState([])
@@ -410,6 +412,7 @@ function Gantt() {
       <div className="proyectos-container">
         <div className="proyectos-header">
           <h1>📊 Diagrama de Gantt</h1>
+          <button onClick={() => navigate('/proyectos')} style={{ background: 'white', color: '#00953B', border: '1px solid #00953B', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>← Proyectos</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
           {proyectos.map(p => (

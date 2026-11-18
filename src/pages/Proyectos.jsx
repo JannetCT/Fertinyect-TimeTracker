@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { leerHoja, escribirFila, actualizarFila, marcarEliminado, eliminarTareasPlanner } from '../services/googleSheets'
 import Checklist from '../components/Checklist'
 import { useDatos } from '../contexts/DatosContext'
@@ -344,6 +344,7 @@ function BuscadorGlobal({ resultados, busqueda, setBusqueda, onSeleccionar, colo
   )
 }
 export default function Proyectos() {
+  const navigate = useNavigate()
   const { accessToken, usuario } = useAuth()
   const isViewer = usuario?.rol === 'viewer'
   const { refrescar } = useDatos()
@@ -1409,6 +1410,7 @@ export default function Proyectos() {
             color="#00953B"
             placeholder="Buscar en proyectos..."
           />
+          <button onClick={() => navigate('/gantt')} style={{ background: 'white', color: '#00953B', border: '1px solid #00953B', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>📊 Ver Gantt</button>
           <button onClick={() => setModalProyecto(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nuevo proyecto</button>
         </div>
       </div>
