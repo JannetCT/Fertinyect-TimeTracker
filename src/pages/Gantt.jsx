@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx'
 import { useAuth } from '../contexts/AuthContext'
 import { actualizarFila } from '../services/googleSheets'
 import { useDatos } from '../contexts/DatosContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
@@ -100,8 +100,19 @@ function Gantt() {
   const [editando, setEditando] = useState(null)
   const [formFechas, setFormFechas] = useState({ fecha_inicio: '', fecha_fin: '' })
   const ganttRef = useRef(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => { if (accessToken) cargarDatos() }, [accessToken])
+
+  useEffect(() => {
+    if (cargando) return
+    const proyectoId = searchParams.get('proyecto')
+    if (proyectoId) {
+      const proyecto = proyectos.find(p => p.id === proyectoId)
+      if (proyecto) setProyectoSeleccionado(proyecto)
+      setSearchParams({})
+    }
+  }, [cargando, searchParams])
 
   async function cargarDatos() {
     try {
@@ -454,7 +465,7 @@ function Gantt() {
     <div className="proyectos-container" ref={ganttRef}>
       <div className="proyectos-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={() => setProyectoSeleccionado(null)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Volver</button>
+          <button onClick={() => navigate(`/proyectos?proyecto=${proyectoSeleccionado.id}`)} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px' }}>← Proyecto</button>
           <div>
             <h1 style={{ margin: 0, fontSize: '20px' }}>📊 {proyectoSeleccionado.nombre}</h1>
             <span style={{ fontSize: '13px', color: '#888' }}>Diagrama de Gantt</span>

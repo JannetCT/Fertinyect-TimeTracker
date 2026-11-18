@@ -499,6 +499,7 @@ export default function Proyectos() {
     setNuevoProyecto({ nombre: '', descripcion: '', tipo: 'medio_plazo', color: '#00953B', fecha_inicio: '', fecha_fin: '' })
     await new Promise(r => setTimeout(r, 800))
     cargarDatos()
+    navigate(`/gantt?proyecto=${id}`)
   }
 
   async function guardarEditProyecto() {
@@ -1024,6 +1025,7 @@ export default function Proyectos() {
           <div style={{ display: 'flex', gap: '8px' }}>
             {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditProyecto({ ...vistaProyecto })}>✏️ Editar</BtnAccion>}
             {!isViewer && <BtnAccion tipo="eliminar" onClick={() => setConfirmEliminar({ tipo: 'proyecto', item: vistaProyecto })}>🗑 Eliminar</BtnAccion>}
+            <button onClick={() => navigate(`/gantt?proyecto=${vistaProyecto.id}`)} style={{ background: 'white', color: '#00953B', border: '1px solid #00953B', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>📊 Ver Gantt</button>
             <button onClick={() => { setNuevaTarea(prev => ({ ...prev, asignados: usuario?.id ? [String(usuario.id)] : [], esFase: false })); setModalTareaProyecto({ proyecto_id: vistaProyecto.id }) }} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>📋 + Tarea</button>
           </div>
         </div>
@@ -1410,7 +1412,6 @@ export default function Proyectos() {
             color="#00953B"
             placeholder="Buscar en proyectos..."
           />
-          <button onClick={() => navigate('/gantt')} style={{ background: 'white', color: '#00953B', border: '1px solid #00953B', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>📊 Ver Gantt</button>
           <button onClick={() => setModalProyecto(true)} style={{ background: '#00953B', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>+ Nuevo proyecto</button>
         </div>
       </div>
