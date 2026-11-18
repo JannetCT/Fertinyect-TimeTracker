@@ -657,6 +657,7 @@ export default function Proyectos() {
       await escribirFila('registros', [Date.now().toString(), tarea.id, usuario.id, inicioISO, finISO, duracionSegundos, new Date().toDateString(), 'proyecto', tarea.nombre], accessToken)
     }
     await actualizarFila('tareas', tarea.id, [tarea.id, tarea.ensayo_id, tarea.accion_id, tarea.proyecto_id, tarea.nombre, tarea.asignados, tarea.dia_semana, tarea.fecha_exacta || '', tarea.dia_recomendado || '', tarea.fecha_limite || '', 'completada', tarea.fecha_creacion, tarea.etiqueta || '', tarea.fecha_limite_original || tarea.fecha_limite || '', tarea.descripcion || '', tarea.tarea_grupo_id || ''], accessToken)
+    setTareas(prev => prev.map(t => t.id === tarea.id ? { ...t, estado: 'completada' } : t))
     setModalCompletar(null)
     await new Promise(r => setTimeout(r, 800))
     cargarDatos()
@@ -759,6 +760,14 @@ export default function Proyectos() {
             <div>
               <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Fecha límite:</label>
               <input type="date" value={editTarea.fecha_limite || ''} onChange={e => setEditTarea({ ...editTarea, fecha_limite: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }} />
+            </div>
+            <div>
+              <label style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Estado:</label>
+              <select value={editTarea.estado || 'pendiente'} onChange={e => setEditTarea({ ...editTarea, estado: e.target.value })} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', width: '100%' }}>
+                <option value="pendiente">Pendiente</option>
+                <option value="en_curso">En curso</option>
+                <option value="completada">✅ Completada</option>
+              </select>
             </div>
             <Checklist tareaId={editTarea.id} tipoTarea="proyecto" accessToken={accessToken} />
             <SeccionActualizaciones tareaId={editTarea.id} tipoTarea="proyecto" usuario={usuario} accessToken={accessToken} />
@@ -1040,8 +1049,11 @@ export default function Proyectos() {
                   return (
                   <div key={t.id} style={{ background: completada ? '#f9fafb' : '#f0fdf4', borderRadius: '8px', padding: '10px 14px', borderLeft: `3px solid ${completada ? '#9ca3af' : '#00953B'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: completada ? 0.8 : 1 }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', textDecoration: completada ? 'line-through' : 'none', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
+                        <span style={{ background: '#f0fdf4', color: '#166534', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #bbf7d0' }}>TAREA DIRECTA</span>
+                        <span style={{ fontSize: '13px', fontWeight: '600', textDecoration: completada ? 'line-through' : 'none', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>}
@@ -1112,10 +1124,13 @@ export default function Proyectos() {
                         </div>
                       ))}
                       {tareasDirectasDeAccion(accion.id).map(t => (
-                        <div key={t.id} style={{ background: '#f9fafb', borderRadius: '8px', padding: '10px 14px', borderLeft: '3px solid #00953B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div key={t.id} style={{ background: t.estado === 'completada' ? '#f3f4f6' : '#f9fafb', borderRadius: '8px', padding: '10px 14px', borderLeft: `3px solid ${t.estado === 'completada' ? '#9ca3af' : '#00953B'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: t.estado === 'completada' ? 0.8 : 1 }}>
                           <div>
-                            <p style={{ margin: 0, fontSize: '13px', fontWeight: '600' }}>{t.nombre}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado} {t.fecha_limite ? `· 📅 ${t.fecha_limite}` : ''}</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
+                              <span style={{ background: '#f3f4f6', color: '#374151', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #e5e7eb' }}>TAREA</span>
+                              <span style={{ fontSize: '13px', fontWeight: '600', textDecoration: t.estado === 'completada' ? 'line-through' : 'none', color: t.estado === 'completada' ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado} {t.fecha_limite ? `· 📅 ${t.fecha_limite}` : ''}</p>
                           </div>
                           <div style={{ display: 'flex', gap: '4px' }}>
                             {!isViewer && <BtnAccion tipo="editar" onClick={() => { setEditTarea(t); setNuevaTarea({ nombre: t.nombre, asignados: t.asignados ? t.asignados.split(',') : [], fecha_limite: t.fecha_limite || '', fechas_exactas: '', descripcion: t.descripcion || '' }) }}>✏️</BtnAccion>}
@@ -1132,8 +1147,11 @@ export default function Proyectos() {
                   return (
                   <div key={t.id} style={{ background: completada ? '#f9fafb' : '#f0fdf4', borderRadius: '8px', padding: '10px 14px', borderLeft: `3px solid ${completada ? '#9ca3af' : '#00953B'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: completada ? 0.8 : 1 }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', textDecoration: completada ? 'line-through' : 'none', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
+                        <span style={{ background: '#f3f4f6', color: '#374151', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #e5e7eb' }}>TAREA</span>
+                        <span style={{ fontSize: '13px', fontWeight: '600', textDecoration: completada ? 'line-through' : 'none', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>}

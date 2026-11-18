@@ -711,6 +711,8 @@ function Planner() {
           tarea.fecha_exacta || '', 'completada', new Date().toISOString(),
           tarea.etiqueta || '', '', '', '', tarea.tiempo_estimado || '', tarea.hora_inicio || '', String(usuario.id)
         ], accessToken)
+        // Sincronizar con la tabla original (tareas / tareas_soporte / tareas_direccion)
+        await actualizarEstado(tarea, tarea._tipo, 'completada')
       }
     }
     setModalCompletar(null)
