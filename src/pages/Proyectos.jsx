@@ -1052,8 +1052,9 @@ export default function Proyectos() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
                         <span style={{ background: '#f0fdf4', color: '#166534', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #bbf7d0' }}>TAREA DIRECTA</span>
                         <span style={{ fontSize: '13px', fontWeight: '600', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
+                        {completada && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}
                       </div>
-                      <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{!completada ? t.estado : ''}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>}
@@ -1127,10 +1128,11 @@ export default function Proyectos() {
                         <div key={t.id} style={{ background: t.estado === 'completada' ? '#f3f4f6' : '#f9fafb', borderRadius: '8px', padding: '10px 14px', borderLeft: `3px solid ${t.estado === 'completada' ? '#9ca3af' : '#00953B'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: t.estado === 'completada' ? 0.8 : 1 }}>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
-                              <span style={{ background: '#f3f4f6', color: '#374151', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #e5e7eb' }}>TAREA</span>
+                              <span style={{ background: '#f3f4f6', color: '#374151', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #e5e7eb' }}>TAREA DIRECTA</span>
                               <span style={{ fontSize: '13px', fontWeight: '600', color: t.estado === 'completada' ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
+                              {t.estado === 'completada' && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}
                             </div>
-                            <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado} {t.fecha_limite ? `· 📅 ${t.fecha_limite}` : ''}</p>
+                            <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado !== 'completada' ? t.estado : ''} {t.fecha_limite ? `· 📅 ${t.fecha_limite}` : ''}</p>
                           </div>
                           <div style={{ display: 'flex', gap: '4px' }}>
                             {!isViewer && <BtnAccion tipo="editar" onClick={() => { setEditTarea(t); setNuevaTarea({ nombre: t.nombre, asignados: t.asignados ? t.asignados.split(',') : [], fecha_limite: t.fecha_limite || '', fechas_exactas: '', descripcion: t.descripcion || '' }) }}>✏️</BtnAccion>}
@@ -1148,10 +1150,11 @@ export default function Proyectos() {
                   <div key={t.id} style={{ background: completada ? '#f9fafb' : '#f0fdf4', borderRadius: '8px', padding: '10px 14px', borderLeft: `3px solid ${completada ? '#9ca3af' : '#00953B'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: completada ? 0.8 : 1 }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
-                        <span style={{ background: '#f3f4f6', color: '#374151', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #e5e7eb' }}>TAREA</span>
+                        <span style={{ background: '#f3f4f6', color: '#374151', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '700', border: '1px solid #e5e7eb' }}>TAREA DIRECTA</span>
                         <span style={{ fontSize: '13px', fontWeight: '600', color: completada ? '#9ca3af' : '#373A36' }}>{t.nombre}</span>
+                        {completada && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '10px', fontWeight: '600', padding: '1px 7px', borderRadius: '20px' }}>Completado</span>}
                       </div>
-                      <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{t.estado}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
+                      <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>{!completada ? t.estado : ''}{t.fecha_limite ? ` · 📅 ${t.fecha_limite}` : ''}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {!isViewer && <BtnAccion tipo="editar" onClick={() => setEditTareaDirecta({...t})}>✏️</BtnAccion>}
