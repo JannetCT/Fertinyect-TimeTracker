@@ -20,6 +20,8 @@ function agruparPorMes(actas) {
     if (!grupos[key]) grupos[key] = []
     grupos[key].push(acta)
   })
+  // Dentro de cada grupo ordenar por fecha desc (más reciente arriba)
+  Object.values(grupos).forEach(g => g.sort((a, b) => (b.fecha || '') > (a.fecha || '') ? 1 : -1))
   return Object.entries(grupos).sort((a, b) => b[0].localeCompare(a[0]))
 }
 
@@ -168,8 +170,9 @@ export default function Actas() {
       ${secciones.map((s,i)=>{
         const tareas = s.tareas || (s.contenido ? [{texto: s.contenido, asignados:[]}] : [])
         const tareasHtml = tareas.map(t => {
-          const nombres = (t.asignados||[]).map(id => NOMBRES[id]||id).filter(Boolean)
-          return `<div style="margin:4px 0;font-size:13px;line-height:1.6;display:flex;gap:8px;align-items:flex-start"><span style="color:#9ca3af;flex-shrink:0">•</span><span style="flex:1">${t.texto||'—'}${nombres.length?` <em style="color:#6b7280;font-size:12px">[${nombres.join(', ')}]</em>`:''}</span></div>`
+          const asignadosIds = t.asignados || []
+          const pillsHtml = asignadosIds.map(id => `<span style="color:${COLORES_USUARIO[id]||'#6b7280'};font-size:11px;font-weight:700;background:${id==='1'?'#f0fdf4':id==='3'?'#fff7ed':'#fdf2f8'};padding:1px 6px;border-radius:20px;margin-left:4px">${NOMBRES[id]||id}</span>`).join('')
+          return `<div style="margin:4px 0;font-size:13px;line-height:1.6;display:flex;gap:8px;align-items:flex-start"><span style="color:#9ca3af;flex-shrink:0">•</span><span style="flex:1">${t.texto||'—'}${pillsHtml}</span></div>`
         }).join('')
         return `<div class="seccion">${s.titulo?`<h4>${i+1}. ${s.titulo}</h4>`:`<h4>Punto ${i+1}</h4>`}${tareasHtml||'<p>—</p>'}</div>`
       }).join('')}
@@ -411,37 +414,48 @@ function SeccionActa({ seccion, idx, onUpdate, onRemove, onAddTarea, onUpdateTar
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
         {tareas.map((tarea, ti) => {
           const asignados = tarea.asignados || []
+          const indent = tarea.indent || false
           return (
-            <div key={tarea.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {/* Input texto de la tarea */}
-              <input
+            <div key={tarea.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', paddingLeft: indent ? '20px' : '0', borderLeft: indent ? '2px solid #d1fae5' : 'none', marginLeft: indent ? '4px' : '0' }}>
+              {/* Botón indent */}
+              <button
+                title={indent ? 'Quitar sangría' : 'Marcar como sub-tarea'}
+                onClick={() => onUpdateTarea(ti, 'indent', !indent)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: indent ? '#00953B' : '#d1d5db', fontSize: '13px', padding: '7px 2px', flexShrink: 0, lineHeight: 1 }}
+              >↳</button>
+              {/* Textarea auto-expandible */}
+              <textarea
                 placeholder={`Tarea ${ti + 1}...`}
                 value={tarea.texto}
                 onChange={e => onUpdateTarea(ti, 'texto', e.target.value)}
-                style={{ flex: 1, padding: '7px 9px', borderRadius: '7px', border: '1px solid #e5e7eb', fontSize: '13px', background: 'white', minWidth: 0, boxSizing: 'border-box' }}
+                onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                rows={1}
+                style={{ flex: 1, padding: '7px 9px', borderRadius: '7px', border: '1px solid #e5e7eb', fontSize: '13px', background: 'white', minWidth: 0, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', fontFamily: 'inherit', lineHeight: '1.5' }}
               />
               {/* Pills L / J / A */}
-              {PILLS.map(p => {
-                const activo = asignados.includes(p.id)
-                return (
-                  <button
-                    key={p.id}
-                    title={p.nombre}
-                    onClick={() => toggleAsignado(ti, p.id)}
-                    style={{
-                      padding: '4px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
-                      cursor: 'pointer', flexShrink: 0, border: `1.5px solid`,
-                      borderColor: activo ? p.color : '#d1d5db',
-                      background: activo ? p.bg : '#f9fafb',
-                      color: activo ? p.textColor : '#9ca3af',
-                      transition: 'all 0.12s',
-                    }}
-                  >{p.label}</button>
-                )
-              })}
+              <div style={{ display: 'flex', gap: '4px', paddingTop: '5px', flexShrink: 0 }}>
+                {PILLS.map(p => {
+                  const activo = asignados.includes(p.id)
+                  return (
+                    <button
+                      key={p.id}
+                      title={p.nombre}
+                      onClick={() => toggleAsignado(ti, p.id)}
+                      style={{
+                        padding: '4px 7px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
+                        cursor: 'pointer', flexShrink: 0, border: `1.5px solid`,
+                        borderColor: activo ? p.color : '#d1d5db',
+                        background: activo ? p.bg : '#f9fafb',
+                        color: activo ? p.textColor : '#9ca3af',
+                        transition: 'all 0.12s',
+                      }}
+                    >{p.label}</button>
+                  )
+                })}
+              </div>
               {/* Botón eliminar fila */}
               {tareas.length > 1 && (
-                <button onClick={() => onRemoveTarea(ti)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '13px', padding: '0 2px', flexShrink: 0, opacity: 0.5 }}
+                <button onClick={() => onRemoveTarea(ti)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '13px', padding: '7px 2px', flexShrink: 0, opacity: 0.5, lineHeight: 1 }}
                   onMouseOver={e=>e.target.style.opacity='1'} onMouseOut={e=>e.target.style.opacity='0.5'}>✕</button>
               )}
             </div>
